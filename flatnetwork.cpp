@@ -198,8 +198,8 @@ TEST_CASE("main/synchronizer/networksimulator/generator-counter", "run")
 
     double final_date = a.run(-1., 1000.);
 
-    REQUIRE(a.child.children[1].model->observation() == "482");
-    REQUIRE(a.child.children[0].model->observation() == "241");
+    REQUIRE(a.child.children[1].model->observation() == "490");
+    REQUIRE(a.child.children[0].model->observation() == "245");
 
     REQUIRE(final_date >= 1000.);
 }
@@ -213,8 +213,8 @@ TEST_CASE("main/synchronizer/networksimulator/generator-counters", "run") {
     while (a.loop(1000.))
         i++;
 
-    REQUIRE(i == 240);
-    REQUIRE(a.child.children[2].model->observation() == "482");
-    REQUIRE(a.child.children[1].model->observation() == "482");
-    REQUIRE(a.child.children[0].model->observation() == "241");
+    REQUIRE(i == 244);
+    REQUIRE(a.child.children[2].model->observation() == "490");
+    REQUIRE(a.child.children[1].model->observation() == "490");
+    REQUIRE(a.child.children[0].model->observation() == "245");
 }

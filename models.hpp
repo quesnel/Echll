@@ -191,7 +191,7 @@ struct Generator : Dynamics
     std::normal_distribution < double > dist;
 
     Generator()
-        : Dynamics({}, {"out"}), i(0), prng(23165498765), dist(0., 5.)
+        : Dynamics({}, {"out"}), i(0), prng(1234), dist(0., 5.)
     {}
 
     virtual ~Generator()
