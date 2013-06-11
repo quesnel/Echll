@@ -1,0 +1,10 @@
+Here's a short list of things we can do:
+
+* Add static constant expression for Value?
+
+* Add management of pointer in Value? How manage delete of pointer? May be in
+  specialized template.
+
+* Add x and y children list to the GraphManager::put to efficiently manage
+  external transition.
+
