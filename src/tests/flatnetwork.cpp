@@ -29,7 +29,7 @@
 #include <vector>
 #include <iostream>
 #include <random>
-#include "vle.hpp"
+#include <vle/vle.hpp>
 #include "models.hpp"
 
 #define CATCH_CONFIG_MAIN

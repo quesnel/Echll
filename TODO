@@ -1,17 +1,17 @@
 Here's a short list of things we can do:
 
-* Values
+- Values
 
   - Add static constant expression for Value?
   - Add management of pointer in Value? How manage delete of pointer? May be in
     specialized template.
 
-* NetworkSimulator
+- NetworkSimulator
 
   - Add x and y children list to the GraphManager::put to efficiently manage
     output and external transition.
   - Use boost::heap to manage scheduller?
 
-* Project
+- Project
 
   - Use autotools to manage source code.
