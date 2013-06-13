@@ -35,7 +35,7 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
-struct StaticFlat
+struct StaticHierarchy
 {
     typedef Dynamics* Model;
 
@@ -46,7 +46,7 @@ struct StaticFlat
 
     std::vector < Dynamics* > children;
 
-    StaticFlat()
+    StaticHierarchy()
     {
         x.add("input");
         y.add("output");
@@ -66,10 +66,10 @@ struct StaticFlat
     }
 };
 
-TEST_CASE("main/synchronizer/recursive/model", "run") {
+TEST_CASE("main/synchronizer/hierarchy/model", "run") {
     vle::Synchronizer < MyTime, std::string,
                         vle::NetworkSimulator < MyTime, std::string,
-                                                StaticFlat > > a;
+                                                StaticHierarchy > > a;
 
     double final_date = a.run(0, 1);
 

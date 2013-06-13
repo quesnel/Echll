@@ -277,4 +277,73 @@ namespace vle {
                 }
             }
         };
+
+    template <typename Time, typename Value, typename GraphManager >
+        struct HierarchicalNetworkSimulator
+        {
+            typedef Simulator <Time, Value, typename GraphManager::Model> Child;
+
+            GraphManager gm;
+            std::vector <Child> children;
+            typename Time::type tl, tn;
+
+            HierarchicalNetworkSimulator()
+                : tl(-9), tn(+9)
+            {
+                std::for_each(gm.children.begin(),
+                              gm.children.end(),
+                              [this] (typename GraphManager::Model &mdl)
+                              {
+                              children.push_back(Child(mdl));
+                              }
+                             );
+            }
+
+            void start(typename Time::type t)
+            {
+                tl = t;
+                tn = Time::infinity;
+
+                std::for_each(children.begin(), children.end(),
+                              [this, t](Child &child)
+                              {
+                              child.start(t);
+                              if (child.tn < tn)
+                              tn = child.tn;
+                              });
+            }
+
+            void transition(typename Time::type time)
+            {
+                assert(tl <= time && time <= tn);
+
+                typename Time::type next = Time::infinity;
+                std::for_each(children.begin(), children.end(),
+                              [this, time, &next](Child &child)
+                              {
+                              if (not child.model->x.is_empty() or time == tn) {
+                              child.transition(time);
+
+                              if (child.tn < next)
+                              next = child.tn;
+
+                              }
+                              });
+
+                tn = next;
+            }
+
+            void output(typename Time::type time)
+            {
+                if (time == tn) {
+                    std::for_each(children.begin(), children.end(),
+                                  [time](Child &child)
+                                  {
+                                  child.output(time);
+                                  });
+
+                    gm.put();
+                }
+            }
+        };
 }
