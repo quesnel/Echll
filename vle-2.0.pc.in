@@ -3,12 +3,13 @@ prefix=@prefix@
 exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
+datarootdir=${prefix}/share
+datadir=${datarootdir}/@PACKAGE@
 docdir=@docdir@
 
-Name: vle-2.0
-Description: A Another Discrete Event Simulator
-@pkgconfig_requires_private@: @requirements_ecore@
+Name: vle
+Description: A Discrete Event and Polymorphic Simulation Kernel
 Version: @VERSION@
-Libs: -L${libdir} -lecore @EINA_LIBS@
+Libs: -L${libdir} -lvle
 Libs.private: -lm
-Cflags: -I${includedir}/ecore-@VMAJ@
+Cflags: -I${includedir}/vle
