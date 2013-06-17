@@ -2,8 +2,8 @@ MAINTAINERCLEANFILES = Makefile.in
 
 lib_LIBRARIES = libvle.a
 
-libvle_a_SOURCES = vle/vle.hpp
+libvle_a_SOURCES = vle/vle.hpp vle/dsde-classic.hpp vle/dsde-heap.hpp
 
 lib_LTLIBRARIES = libvle.la
 
-libvle_la_SOURCES = vle/vle.hpp
+libvle_la_SOURCES = vle/vle.hpp vle/dsde-classic.hpp vle/dsde-heap.hpp

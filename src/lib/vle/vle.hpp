@@ -25,6 +25,9 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef __VLE_KERNEL_BASE_HPP__
+#define __VLE_KERNEL_BASE_HPP__
+
 #include <algorithm>
 #include <map>
 #include <string>
@@ -79,12 +82,8 @@ namespace vle {
             PortList(std::initializer_list < std::string > lst)
                 : empty(true)
             {
-                std::for_each(lst.begin(), lst.end(),
-                              [this](const std::string& str)
-                              {
-                              add(str);
-                              }
-                             );
+                for (auto & str : lst)
+                    add(str);
             }
 
             int add(const std::string &name)
@@ -120,11 +119,8 @@ namespace vle {
             {
                 empty = true;
 
-                std::for_each(ports.begin(), ports.end(),
-                              [](Values& v)
-                              {
-                              v.clear();
-                              });
+                for (auto & values : ports)
+                    values.clear();
             }
 
             bool is_empty() const
@@ -143,7 +139,7 @@ namespace vle {
             {
                 child.start(begin);
 
-                while (child.tn <end) {
+                while (child.tn < end) {
                     child.output(child.tn);
                     child.transition(child.tn);
                 }
@@ -174,177 +170,6 @@ namespace vle {
                 return child.tn < end;
             }
         };
-
-    template <typename Time, typename Value, typename ModelPtr >
-        struct Simulator
-        {
-            ModelPtr model;
-            typename Time::type tl, tn;
-
-            Simulator(ModelPtr model)
-                : model(model), tl(-888), tn(888)
-            {
-            }
-
-            void start(typename Time::type t)
-            {
-                tl = t;
-                tn = t + model->start(t);
-            }
-
-            void transition(typename Time::type time)
-            {
-                assert(tl <= time && time <= tn);
-
-                if (time < tn and model->x.is_empty())
-                    return;
-
-                tn = time + model->transition(time - tl);
-                tl = time;
-            }
-
-            void output(typename Time::type time)
-            {
-                if (time == tn)
-                    model->output();
-            }
-        };
-
-    template <typename Time, typename Value, typename GraphManager >
-        struct NetworkSimulator
-        {
-            typedef Simulator <Time, Value, typename GraphManager::Model> Child;
-
-            GraphManager gm;
-            std::vector <Child> children;
-            typename Time::type tl, tn;
-
-            NetworkSimulator()
-                : tl(-9), tn(+9)
-            {
-                std::for_each(gm.children.begin(),
-                              gm.children.end(),
-                              [this] (typename GraphManager::Model &mdl)
-                              {
-                              children.push_back(Child(mdl));
-                              }
-                             );
-            }
-
-            void start(typename Time::type t)
-            {
-                tl = t;
-                tn = Time::infinity;
-
-                std::for_each(children.begin(), children.end(),
-                              [this, t](Child &child)
-                              {
-                              child.start(t);
-                              if (child.tn < tn)
-                              tn = child.tn;
-                              });
-            }
-
-            void transition(typename Time::type time)
-            {
-                assert(tl <= time && time <= tn);
-
-                typename Time::type next = Time::infinity;
-                std::for_each(children.begin(), children.end(),
-                              [this, time, &next](Child &child)
-                              {
-                              if (not child.model->x.is_empty() or time == tn) {
-                              child.transition(time);
-
-                              if (child.tn < next)
-                              next = child.tn;
-
-                              }
-                              });
-
-                tn = next;
-            }
-
-            void output(typename Time::type time)
-            {
-                if (time == tn) {
-                    std::for_each(children.begin(), children.end(),
-                                  [time](Child &child)
-                                  {
-                                  child.output(time);
-                                  });
-
-                    gm.put();
-                }
-            }
-        };
-
-    template <typename Time, typename Value, typename GraphManager >
-        struct HierarchicalNetworkSimulator
-        {
-            typedef Simulator <Time, Value, typename GraphManager::Model> Child;
-
-            GraphManager gm;
-            std::vector <Child> children;
-            typename Time::type tl, tn;
-
-            HierarchicalNetworkSimulator()
-                : tl(-9), tn(+9)
-            {
-                std::for_each(gm.children.begin(),
-                              gm.children.end(),
-                              [this] (typename GraphManager::Model &mdl)
-                              {
-                              children.push_back(Child(mdl));
-                              }
-                             );
-            }
-
-            void start(typename Time::type t)
-            {
-                tl = t;
-                tn = Time::infinity;
-
-                std::for_each(children.begin(), children.end(),
-                              [this, t](Child &child)
-                              {
-                              child.start(t);
-                              if (child.tn < tn)
-                              tn = child.tn;
-                              });
-            }
-
-            void transition(typename Time::type time)
-            {
-                assert(tl <= time && time <= tn);
-
-                typename Time::type next = Time::infinity;
-                std::for_each(children.begin(), children.end(),
-                              [this, time, &next](Child &child)
-                              {
-                              if (not child.model->x.is_empty() or time == tn) {
-                              child.transition(time);
-
-                              if (child.tn < next)
-                              next = child.tn;
-
-                              }
-                              });
-
-                tn = next;
-            }
-
-            void output(typename Time::type time)
-            {
-                if (time == tn) {
-                    std::for_each(children.begin(), children.end(),
-                                  [time](Child &child)
-                                  {
-                                  child.output(time);
-                                  });
-
-                    gm.put();
-                }
-            }
-        };
 }
+
+#endif

@@ -30,7 +30,8 @@
 #include <vector>
 #include <iostream>
 #include <random>
-#include <vle/vle.hpp>
+#include <vle/dsde-classic.hpp>
+#include <vle/dsde-heap.hpp>
 #include "models.hpp"
 
 #define CATCH_CONFIG_MAIN
@@ -55,19 +56,26 @@ struct StaticFlat
         children = { &a, &b };
     }
 
-    void put()
+    void put(const std::vector <Model> &Y, std::vector <Model> &X)
     {
-        if (not a.y.is_empty())
+        assert(X.empty());
+        assert(Y.empty());
+        if (not a.y.is_empty()) {
             b.x[0] = a.y[0];
-        if (not b.y.is_empty())
+            X.push_back(&b);
+        }
+
+        if (not b.y.is_empty()) {
             a.x[0] = b.y[0];
+            X.push_back(&a);
+        }
 
         a.y.clear();
         b.y.clear();
     }
 };
 
-struct OnlyOne
+struct OnlyOneA
 {
     typedef ModelA* Model;
     vle::PortList < MyValue > x;
@@ -76,13 +84,39 @@ struct OnlyOne
 
     std::vector < ModelA* > children;
 
-    OnlyOne()
+    OnlyOneA()
     {
         children = {&a};
     }
 
-    void put()
+    void put(const std::vector <Model> &Y, std::vector <Model> &X)
     {
+        (void)X;
+        (void)Y;
+
+        a.y.clear();
+    }
+};
+
+struct OnlyOneB
+{
+    typedef ModelB* Model;
+    vle::PortList < MyValue > x;
+    vle::PortList < MyValue > y;
+    ModelB a;
+
+    std::vector < ModelB* > children;
+
+    OnlyOneB()
+    {
+        children = {&a};
+    }
+
+    void put(const std::vector <Model> &Y, std::vector <Model> &X)
+    {
+        (void)X;
+        (void)Y;
+
         a.y.clear();
     }
 };
@@ -102,10 +136,12 @@ struct StaticFlat2
         : children({ &g, &c })
     {}
 
-    void put()
+    void put(const std::vector <Model> &Y, std::vector <Model> &X)
     {
-        if (not g.y.is_empty())
+        if (not g.y.is_empty()) {
             c.x[0] = g.y[0];
+            X.push_back(&c);
+        }
 
         g.y.clear();
     }
@@ -125,97 +161,208 @@ struct StaticFlat3
 
     StaticFlat3()
         : children({ &g, &c1, &c2 })
-    {}
+        {}
 
-    void put()
+    void put(const std::vector <Model> &Y, std::vector <Model> &X)
     {
         if (not g.y.is_empty()) {
             c1.x[0] = g.y[0];
             c2.x[0] = g.y[0];
+
+            X.push_back(&c1);
+            X.push_back(&c2);
         }
 
         g.y.clear();
     }
 };
 
-TEST_CASE("main/synchronizer/NetworkSimulator/OnlyOne-1", "run O")
+TEST_CASE("dsde-classic/OnlyOneA-1", "run O")
 {
-    vle::Synchronizer < MyTime, std::string,
-        vle::NetworkSimulator < MyTime, std::string, OnlyOne > > a;
+    vle::Synchronizer < MyTime, MyValue,
+        vle::NetworkSimulator < MyTime, MyValue, OnlyOneA > > a;
 
     double final_date = a.run(-1., 1.);
 
-    REQUIRE(a.child.children[0].model->i == 2);
+    REQUIRE(a.child.gm.children[0]->observation() == "2");
 
     REQUIRE(final_date == 1.);
 }
 
-
-TEST_CASE("main/synchronizer/NetworkSimulator/OnlyOne-2", "run")
+TEST_CASE("dsde-classic/OnlyOneA-2", "run")
 {
-    vle::Synchronizer < MyTime, std::string,
-        vle::NetworkSimulator < MyTime, std::string, OnlyOne > > a;
+    vle::Synchronizer < MyTime, MyValue,
+        vle::NetworkSimulator < MyTime, MyValue, OnlyOneA > > a;
 
     double final_date = a.run(-1., 1000.);
 
-    REQUIRE(a.child.children[0].model->i == 1001);
+    REQUIRE(a.child.gm.children[0]->observation() == "1001");
 
     REQUIRE(final_date == 1000.);
 }
 
-TEST_CASE("main/synchronizer/networksimulator/StaticFlat-1", "run")
+TEST_CASE("dsde-classic/OnlyOneB-1", "run O")
 {
-    vle::Synchronizer < MyTime, std::string,
-                        vle::NetworkSimulator < MyTime, std::string,
-                                                StaticFlat > > a;
+    vle::Synchronizer < MyTime, MyValue,
+        vle::NetworkSimulator < MyTime, MyValue, OnlyOneB > > a;
 
     double final_date = a.run(-1., 1.);
 
-    REQUIRE(a.child.children[0].model->observation() == "2");
-    REQUIRE(a.child.children[1].model->observation() == "21");
+    REQUIRE(a.child.gm.children[0]->observation() == "21");
+
+    REQUIRE(final_date >= 0.9);
+    REQUIRE(final_date <= 1.1);
+}
+
+TEST_CASE("dsde-classic/OnlyOneB-2", "run")
+{
+    vle::Synchronizer < MyTime, MyValue,
+        vle::NetworkSimulator < MyTime, MyValue, OnlyOneB > > a;
+
+    double final_date = a.run(-1., 1000.);
+
+    REQUIRE(a.child.gm.children[0]->observation() == "10010");
+
+    REQUIRE(final_date >= 999);
+    REQUIRE(final_date <= 1001);
+}
+
+TEST_CASE("dsde-classic/StaticFlat-1", "run")
+{
+    vle::Synchronizer < MyTime, MyValue,
+        vle::NetworkSimulator < MyTime, MyValue,
+        StaticFlat > > a;
+
+    double final_date = a.run(-1., 1.);
+
+    REQUIRE(a.child.gm.children[0]->observation() == "2");
+    REQUIRE(a.child.gm.children[1]->observation() == "21");
 
     REQUIRE(final_date == 1.);
 }
 
-TEST_CASE("main/synchronizer/networksimulator/StaticFlat-2", "run")
+TEST_CASE("dsde-classic/StaticFlat-2", "run")
 {
-    vle::Synchronizer < MyTime, std::string,
-                        vle::NetworkSimulator < MyTime, std::string,
-                                                StaticFlat > > a;
+    vle::Synchronizer < MyTime, MyValue,
+        vle::NetworkSimulator < MyTime, MyValue,
+        StaticFlat > > a;
 
     double final_date = a.run(-1., 1000.);
 
-    REQUIRE(a.child.children[0].model->observation() == "1001");
-    REQUIRE(a.child.children[1].model->observation() == "10010");
+    REQUIRE(a.child.gm.children[0]->observation() == "1001");
+    REQUIRE(a.child.gm.children[1]->observation() == "10010");
 
     REQUIRE(final_date == 1000.);
 }
 
-TEST_CASE("main/synchronizer/networksimulator/generator-counter", "run")
+TEST_CASE("dsde-classic/generator-counter", "run")
 {
-    vle::Synchronizer < MyTime, std::string,
-                        vle::NetworkSimulator < MyTime, std::string,
-                                                StaticFlat2 > > a;
+    vle::Synchronizer < MyTime, MyValue,
+        vle::NetworkSimulator < MyTime, MyValue,
+        StaticFlat2 > > a;
 
     double final_date = a.run(-1., 1000.);
 
-    REQUIRE(a.child.children[1].model->observation() == "490");
-    REQUIRE(a.child.children[0].model->observation() == "245");
+    REQUIRE(a.child.gm.children[1]->observation() == "490");
+    REQUIRE(a.child.gm.children[0]->observation() == "245");
 
     REQUIRE(final_date >= 1000.);
 }
 
-TEST_CASE("main/synchronizer/networksimulator/generator-counters", "run") {
-    vle::SynchronizerLoop < MyTime, std::string,
-                        vle::NetworkSimulator < MyTime, std::string,
-                                                StaticFlat3 > > a(-1.);
+TEST_CASE("dsde-classic/generator-counters", "run")
+{
+    vle::SynchronizerLoop < MyTime, MyValue,
+        vle::NetworkSimulator < MyTime, MyValue,
+        StaticFlat3 > > a(-1.);
 
     int i = 0;
     while (a.loop(1000.))
         i++;
 
     REQUIRE(i == 244);
-    REQUIRE(a.child.children[2].model->observation() == "490");
-    REQUIRE(a.child.children[1].model->observation() == "490");
-    REQUIRE(a.child.children[0].model->observation() == "245");
+    REQUIRE(a.child.gm.children[2]->observation() == "490");
+    REQUIRE(a.child.gm.children[1]->observation() == "490");
+    REQUIRE(a.child.gm.children[0]->observation() == "245");
+}
+
+TEST_CASE("dsde-heap/OnlyOneA-1", "run O")
+{
+    vle::Synchronizer < MyTime, MyValue,
+        vle::dsde_heap::NetworkSimulator < MyTime, MyValue, OnlyOneA > > a;
+
+    double final_date = a.run(-1., 1.);
+
+    REQUIRE(a.child.gm.children[0]->observation() == "2");
+
+    REQUIRE(final_date == 1.);
+}
+
+TEST_CASE("dsde-heap/OnlyOneA-2", "run")
+{
+    vle::Synchronizer < MyTime, MyValue,
+        vle::dsde_heap::NetworkSimulator < MyTime, MyValue, OnlyOneA > > a;
+
+    double final_date = a.run(-1., 1000.);
+
+    REQUIRE(a.child.gm.children[0]->observation() == "1001");
+
+    REQUIRE(final_date == 1000.);
+}
+
+TEST_CASE("dsde-heap/StaticFlat-1", "run")
+{
+    vle::Synchronizer < MyTime, MyValue,
+        vle::dsde_heap::NetworkSimulator < MyTime, MyValue,
+        StaticFlat > > a;
+
+    double final_date = a.run(-1., 1.);
+
+    REQUIRE(a.child.gm.children[0]->observation() == "2");
+    REQUIRE(a.child.gm.children[1]->observation() == "21");
+
+    REQUIRE(final_date == 1.);
+}
+
+TEST_CASE("dsde-heap/StaticFlat-2", "run")
+{
+    vle::Synchronizer < MyTime, MyValue,
+        vle::dsde_heap::NetworkSimulator < MyTime, MyValue,
+        StaticFlat > > a;
+
+    double final_date = a.run(-1., 1000.);
+
+    REQUIRE(a.child.gm.children[0]->observation() == "1001");
+    REQUIRE(a.child.gm.children[1]->observation() == "10010");
+
+    REQUIRE(final_date == 1000.);
+}
+
+TEST_CASE("dsde-heap/generator-counter", "run")
+{
+    vle::Synchronizer < MyTime, MyValue,
+        vle::dsde_heap::NetworkSimulator < MyTime, MyValue,
+        StaticFlat2 > > a;
+
+    double final_date = a.run(-1., 1000.);
+
+    REQUIRE(a.child.gm.children[1]->observation() == "490");
+    REQUIRE(a.child.gm.children[0]->observation() == "245");
+
+    REQUIRE(final_date >= 1000.);
+}
+
+TEST_CASE("dsde-heap/generator-counters", "run")
+{
+    vle::SynchronizerLoop < MyTime, MyValue,
+        vle::dsde_heap::NetworkSimulator < MyTime, MyValue,
+        StaticFlat3 > > a(-1.);
+
+    int i = 0;
+    while (a.loop(1000.))
+        i++;
+
+    REQUIRE(i == 244);
+    REQUIRE(a.child.gm.children[2]->observation() == "490");
+    REQUIRE(a.child.gm.children[1]->observation() == "490");
+    REQUIRE(a.child.gm.children[0]->observation() == "245");
 }

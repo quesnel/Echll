@@ -30,7 +30,7 @@
 #include <vector>
 #include <iostream>
 #include <random>
-#include <vle/vle.hpp>
+#include <vle/dsde-classic.hpp>
 #include "models.hpp"
 
 #define CATCH_CONFIG_MAIN
@@ -55,12 +55,17 @@ struct StaticHierarchy
         children = { &a, &b };
     }
 
-    void put()
+    void put(std::vector <Model> &X, std::vector <Model> &Y)
     {
-        if (not a.y.is_empty())
+        if (not a.y.is_empty()) {
             b.x[0] = a.y[0];
-        if (not b.y.is_empty())
+            X.push_back(&b);
+        }
+
+        if (not b.y.is_empty()) {
             a.x[0] = b.y[0];
+            X.push_back(&a);
+        }
 
         a.y.clear();
         b.y.clear();

@@ -28,13 +28,16 @@
 #ifndef VLE_2_MODELS_HPP
 #define VLE_2_MODELS_HPP
 
-struct double_infinity
+#include <limits>
+
+template < typename T >
+struct Infinity 
 {
-    static constexpr double negative = -HUGE_VAL;
-    static constexpr double positive = HUGE_VAL;
+    static constexpr T negative = -std::numeric_limits<T>::infinity();
+    static constexpr T positive = std::numeric_limits<T>::infinity();
 };
 
-typedef vle::Time < double, double_infinity > MyTime;
+typedef vle::Time <double, Infinity<double>> MyTime;
 
 struct MyValueNull
 {
@@ -50,21 +53,25 @@ struct Dynamics
 {
     vle::PortList < MyValue > x;
     vle::PortList < MyValue > y;
+    void *simulator; // TOO BAD DESIGN
 
     Dynamics()
+        : simulator(nullptr)
     {
     }
 
     Dynamics(std::initializer_list < std::string > lst_x,
              std::initializer_list < std::string > lst_y)
-        : x(lst_x), y(lst_y)
+        : x(lst_x), y(lst_y), simulator(nullptr)
     {
     }
 
     virtual ~Dynamics() {}
 
     virtual double start(double t) = 0;
+
     virtual double transition(double e) = 0;
+
     virtual void output() = 0;
 
     virtual std::string observation() const = 0;
@@ -78,10 +85,10 @@ struct ModelB : Dynamics
         : Dynamics({"in"}, {"out"})
     {}
 
-    virtual ~ModelB()
+    virtual ~ModelB() override
     {}
 
-    virtual double start(double t)
+    virtual double start(double t) override
     {
         (void)t;
 
@@ -90,7 +97,7 @@ struct ModelB : Dynamics
         return 0.;
     }
 
-    virtual double transition(double e)
+    virtual double transition(double e) override
     {
         (void)e;
 
@@ -99,10 +106,10 @@ struct ModelB : Dynamics
         return .1;
     }
 
-    virtual void output()
+    virtual void output() override
     {}
 
-    virtual std::string observation() const
+    virtual std::string observation() const override
     {
         return std::to_string(i);
     }
@@ -119,10 +126,10 @@ struct ModelA : Dynamics
         y.add("out");
     }
 
-    virtual ~ModelA()
+    virtual ~ModelA() override
     {}
 
-    virtual double start(double t)
+    virtual double start(double t) override
     {
         (void)t;
 
@@ -131,7 +138,7 @@ struct ModelA : Dynamics
         return 0.;
     }
 
-    virtual double transition(double e)
+    virtual double transition(double e) override
     {
         (void)e;
 
@@ -140,10 +147,10 @@ struct ModelA : Dynamics
         return 1.;
     }
 
-    virtual void output()
+    virtual void output() override
     {}
 
-    virtual std::string observation() const
+    virtual std::string observation() const override
     {
         return std::to_string(i);
     }
@@ -164,7 +171,7 @@ struct Counter : Dynamics
     {
         (void)t;
 
-        return double_infinity::positive;
+        return Infinity<double>::positive;
     }
 
     virtual double transition(double e)
@@ -173,7 +180,7 @@ struct Counter : Dynamics
 
         i += x[0].size();
 
-        return double_infinity::positive;
+        return Infinity<double>::positive;
     }
 
     virtual void output()
