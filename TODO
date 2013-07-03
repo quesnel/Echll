@@ -10,8 +10,5 @@ Here's a short list of things we can do:
 
   - Add x and y children list to the GraphManager::put to efficiently manage
     output and external transition.
-  - Use boost::heap to manage scheduller?
 
 - Project
-
-  - Use autotools to manage source code.
