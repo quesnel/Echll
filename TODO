@@ -8,7 +8,5 @@ Here's a short list of things we can do:
 
 - NetworkSimulator
 
-  - Add x and y children list to the GraphManager::put to efficiently manage
-    output and external transition.
 
 - Project
