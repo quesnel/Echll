@@ -2,11 +2,27 @@ Here's a short list of things we can do:
 
 - Values
 
-  - Add static constant expression for Value?
+  - Add static constant expression for Value ?
   - Add management of pointer in Value? How manage delete of pointer? May be in
-    specialized template.
+    specialized template. But when calling the destructor ? Perhaps a best
+    practice is to use a std::shared_ptr ?
+
+- Simulator
+
+  - Add an observation function, but when call it ? We can provide several
+    methods: timed (at the end of the simulation or following a time step) and
+    event (when a model produce an output).
 
 - NetworkSimulator
 
+  - Manage hierarchy of NetworkSimulator in NetworkSimulator.
+
+- Synchronizer
+
+  - Add the possibility to clone a simulation to produce recursive simulation.
+    Perhaps, just use to copy constructor of the Synchronizer, NetworkSimulator
+    and Simulator ?
 
 - Project
+
+  - Cleanup unit test.
