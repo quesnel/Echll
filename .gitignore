@@ -88,5 +88,6 @@ src/tests/flatnetwork
 src/tests/flatnetwork.o
 src/tests/recursivenetwork
 src/tests/recursivenetwork.o
+test-driver
 stamp-h1
 vle-2.0.pc
