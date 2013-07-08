@@ -27,6 +27,7 @@
 
 #include <vle/environment.hpp>
 #include <vle/path.hpp>
+#include "i18n.hpp"
 #include "config.h"
 #include <cstdio>
 #include <cstdarg>
@@ -97,8 +98,7 @@ Environment::Environment(EnvironmentLogOptions opt)
         if (stream)
             m->logstream = stream;
         else
-            warning("Failed to initialize log file `%s'\n",
-                    path.c_str());
+            warning(_("Failed to initialize log file `%s'\n"), path.c_str());
     }
 }
 
@@ -132,9 +132,9 @@ void Environment::warning(const char *format, ...)
 void Environment::warning(const char *format, va_list ap)
 {
     if (m->logstream != stderr || m->logstream != stdout)
-        std::fprintf(m->logstream, "\033[31mWarning: \033[m");
+        std::fprintf(m->logstream, _("\033[31mWarning: \033[m"));
     else
-        std::fprintf(m->logstream, "Warning: ");
+        std::fprintf(m->logstream, _("Warning: "));
 
     std::vfprintf(m->logstream, format, ap);
 }

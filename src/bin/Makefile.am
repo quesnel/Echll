@@ -9,3 +9,5 @@ AM_CPPFLAGS = -include $(top_builddir)/config.h \
 bin_PROGRAMS = vle
 
 vle_SOURCES = vle.cpp
+
+vle_LDADD = $(top_builddir)/src/lib/libvle-2.0.la

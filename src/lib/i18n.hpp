@@ -25,6 +25,9 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef __VLE_KERNEL_I18N_HPP__
+#define __VLE_KERNEL_I18N_HPP__
+
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
@@ -37,22 +40,4 @@
 #endif
 #define _(x)                 dgettext(PACKAGE, x)
 
-#include <vle/environment.hpp>
-#include <cstdio>
-
-
-int main (int argc, char const* argv[])
-{
-    std::setlocale(LC_ALL, "");
-
-#ifdef ENABLE_NLS
-    ::bindtextdomain(PACKAGE, LOCALE_DIR);
-    ::bind_textdomain_codeset(PACKAGE, "UTF-8");
 #endif
-
-    vle::EnvironmentPtr env(new vle::Environment(vle::ENVIRONMENT_LOG_STDOUT));
-
-    env->warning("VLE\n");
-
-    return 0;
-}

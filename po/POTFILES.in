@@ -1,3 +1,2 @@
 src/lib/environment.cpp
-src/lib/path.cpp
 src/bin/vle.cpp
