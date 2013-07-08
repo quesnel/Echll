@@ -1,5 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 
+AM_MAKEFLAGS = --no-print-directory
+
 SUBDIRS = src
 
 if HAVE_PO

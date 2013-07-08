@@ -36,33 +36,33 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
-struct Coupled
-{
-    typedef Dynamics* Model;
+//struct Coupled
+//{
+    //typedef Dynamics* Model;
 
-    vle::PortList < MyValue > x;
-    vle::PortList < MyValue > y;
-    Generator g;
-    Counter c;
+    //vle::PortList < MyValue > x;
+    //vle::PortList < MyValue > y;
+    //Generator g;
+    //Counter c;
 
-    std::vector < Dynamics* > children;
+    //std::vector < Dynamics* > children;
 
-    StaticFlat2()
-        : children({ &g, &c })
-    {}
+    //Coupled()
+        //: children({ &g, &c })
+    //{}
 
-    void put(const std::vector <Model> &Y, std::vector <Model> &X)
-    {
-        if (not g.y.is_empty()) {
-            c.x[0] = g.y[0];
-            y[0] = g.y[0];
-            X.push_back(&c);
-            X.push_back(this);
-        }
+    //void put(const std::vector <Model> &Y, std::vector <Model> &X)
+    //{
+        //if (not g.y.is_empty()) {
+            //c.x[0] = g.y[0];
+            //y[0] = g.y[0];
+            //X.push_back(&c);
+            //X.push_back(this);
+        //}
 
-        g.y.clear();
-    }
-};
+        //g.y.clear();
+    //}
+//};
 
 struct StaticHierarchy
 {
@@ -72,7 +72,7 @@ struct StaticHierarchy
     vle::PortList < MyValue > y;
     ModelA a;
     ModelB b;
-    Coupled c;
+    //Coupled c;
 
     std::vector < Dynamics* > children;
 

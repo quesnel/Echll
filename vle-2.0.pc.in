@@ -12,4 +12,4 @@ Description: A Discrete Event and Polymorphic Simulation Kernel
 Version: @VERSION@
 Libs: -L${libdir} -lvle
 Libs.private: -lm
-Cflags: -I${includedir}/vle
+Cflags: -I${includedir}/vle-2.0
