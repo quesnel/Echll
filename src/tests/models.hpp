@@ -29,9 +29,12 @@
 #define VLE_2_MODELS_HPP
 
 #include <limits>
+#include <vle/vle.hpp>
+#include <vle/dbg.hpp>
+#include <boost/format.hpp>
 
 template < typename T >
-struct Infinity 
+struct Infinity
 {
     static constexpr T negative = -std::numeric_limits<T>::infinity();
     static constexpr T positive = std::numeric_limits<T>::infinity();
@@ -49,64 +52,30 @@ struct MyValueNull
 
 typedef vle::Value < std::string, MyValueNull > MyValue;
 
-struct Dynamics
-{
-    vle::PortList < MyValue > x;
-    vle::PortList < MyValue > y;
-    void *simulator; // TOO BAD DESIGN
-
-    Dynamics()
-        : simulator(nullptr)
-    {
-    }
-
-    Dynamics(std::initializer_list < std::string > lst_x,
-             std::initializer_list < std::string > lst_y)
-        : x(lst_x), y(lst_y), simulator(nullptr)
-    {
-    }
-
-    virtual ~Dynamics() {}
-
-    virtual double start(double t) = 0;
-
-    virtual double transition(double e) = 0;
-
-    virtual void output() = 0;
-
-    virtual std::string observation() const = 0;
-};
-
-struct ModelB : Dynamics
+struct ModelB : vle::Dynamics <MyTime, MyValue>
 {
     int i;
 
     ModelB()
-        : Dynamics({"in"}, {"out"})
+        : vle::Dynamics <MyTime, MyValue> ({"in"}, {"out"})
     {}
 
     virtual ~ModelB() override
     {}
 
-    virtual double start(double t) override
+    virtual double start(double) override
     {
-        (void)t;
-
         i = 0;
-
         return 0.;
     }
 
-    virtual double transition(double e) override
+    virtual double transition(double) override
     {
-        (void)e;
-
         i++;
-
         return .1;
     }
 
-    virtual void output() override
+    virtual void output() const override
     {}
 
     virtual std::string observation() const override
@@ -115,12 +84,12 @@ struct ModelB : Dynamics
     }
 };
 
-struct ModelA : Dynamics
+struct ModelA : vle::Dynamics <MyTime, MyValue>
 {
     int i;
 
     ModelA()
-        : Dynamics()
+        : vle::Dynamics <MyTime, MyValue>()
     {
         x.add("in");
         y.add("out");
@@ -129,25 +98,19 @@ struct ModelA : Dynamics
     virtual ~ModelA() override
     {}
 
-    virtual double start(double t) override
+    virtual double start(double) override
     {
-        (void)t;
-
         i = 0;
-
         return 0.;
     }
 
-    virtual double transition(double e) override
+    virtual double transition(double) override
     {
-        (void)e;
-
         i++;
-
         return 1.;
     }
 
-    virtual void output() override
+    virtual void output() const override
     {}
 
     virtual std::string observation() const override
@@ -156,81 +119,297 @@ struct ModelA : Dynamics
     }
 };
 
-struct Counter : Dynamics
+struct Counter : vle::Dynamics <MyTime, MyValue>
 {
     int i;
 
     Counter()
-        : Dynamics({"in"}, {}), i(0)
+        : vle::Dynamics <MyTime, MyValue> ({"in"}, {}), i(0)
     {}
 
     virtual ~Counter()
     {}
 
-    virtual double start(double t)
+    virtual double start(double) override
     {
-        (void)t;
-
         return Infinity<double>::positive;
     }
 
-    virtual double transition(double e)
+    virtual double transition(double) override
     {
-        (void)e;
+        dWarning("Counter make a transition");
 
         i += x[0].size();
-
         return Infinity<double>::positive;
     }
 
-    virtual void output()
+    virtual void output() const override
     {}
 
-    virtual std::string observation() const
+    virtual std::string observation() const override
     {
         return std::to_string(i);
     }
 };
 
-struct Generator : Dynamics
+struct Generator : vle::Dynamics <MyTime, MyValue>
 {
+    unsigned int timestep;
     int i;
     std::mt19937 prng;
     std::normal_distribution < double > dist;
 
-    Generator()
-        : Dynamics({}, {"out"}), i(0), prng(1234), dist(0., 5.)
+    Generator(unsigned int timestep = 1)
+        : vle::Dynamics <MyTime, MyValue>({}, {"out"}),
+        timestep(timestep), i(0), prng(1234), dist(0., 5.)
     {}
 
     virtual ~Generator()
     {}
 
-    virtual double start(double t)
+    virtual double start(double) override
     {
-        (void)t;
-
-        return std::abs(dist(prng));
+        return timestep; // return std::abs(dist(prng));
     }
 
-    virtual double transition(double e)
+    virtual double transition(double) override
     {
-        (void)e;
-
+        dWarning("Generator transition");
         i++;
-
-        return std::abs(dist(prng));
+        return timestep; // return std::abs(dist(prng));
     }
 
-    virtual void output()
+    virtual void output() const override
     {
+        dWarning("Generator send output");
         y[0] = { std::string("msg"), std::string("msg2") };
     }
 
-    virtual std::string observation() const
+    virtual std::string observation() const override
     {
         return std::to_string(i);
     }
 };
 
+struct MyModel : vle::Dynamics <MyTime, MyValue>
+{
+    MyModel() : vle::Dynamics <MyTime, MyValue> () {}
+    virtual ~MyModel() {}
+
+    virtual double start(double t) override
+    {
+        return 0.0;
+    }
+
+    virtual double transition(double e) override
+    {
+        return 1;
+    }
+
+    virtual void output() const override
+    {
+    }
+
+    virtual std::string observation() const override
+    {
+        return std::string();
+    }
+};
+
+struct MyNetwork : vle::NetworkDynamics <MyTime, MyValue>
+{
+    Generator gen1, gen2;
+    Counter cpt;
+
+    MyNetwork() :
+        vle::NetworkDynamics <MyTime, MyValue>()
+    {}
+
+    MyNetwork(unsigned int timestep1, unsigned int timestep2)
+        : vle::NetworkDynamics <MyTime, MyValue>(), gen1(timestep1),
+        gen2(timestep2)
+    {}
+
+    virtual ~MyNetwork() {}
+
+    virtual std::vector <Child <MyTime, MyValue>*> children() override
+    {
+        return {&gen1, &gen2, &cpt};
+    }
+
+    virtual std::string observation() const override
+    {
+        std::string ret = cpt.observation() + " " + gen1.observation() + " " +
+            gen2.observation();
+
+        return ret;
+    }
+
+    virtual void post(const vle::UpdatedPort <MyTime, MyValue> &y,
+                      vle::UpdatedPort <MyTime, MyValue> &x) const override
+    {
+        if (y.count(&gen1) + y.count(&gen2) > 0) {
+            x.emplace(&cpt);
+            cpt.x[0] = gen1.y[0];
+            cpt.x[0].insert(cpt.x[0].end(),
+                            gen2.y[0].begin(),
+                            gen2.y[0].end());
+        }
+    }
+};
+
+struct MyGenNetwork : vle::NetworkDynamics <MyTime, MyValue>
+{
+    Generator gen;
+
+    MyGenNetwork(unsigned int timestep)
+        : vle::NetworkDynamics <MyTime, MyValue>({}, {"out"}), gen(timestep)
+    {}
+
+    virtual ~MyGenNetwork() {}
+
+    virtual std::vector <Child <MyTime, MyValue>*> children() override
+    {
+        return {&gen};
+    }
+
+    virtual std::string observation() const override
+    {
+        return gen.observation();
+    }
+
+    virtual void post(const vle::UpdatedPort <MyTime, MyValue> &out,
+                      vle::UpdatedPort <MyTime, MyValue> &in) const override
+    {
+        dWarning("MyGenNetwork::post out.is_emtpy=", out.empty());
+
+        if (!out.empty())
+            y[0] = gen.y[0];
+    }
+};
+
+struct MyCptNetwork : vle::NetworkDynamics <MyTime, MyValue>
+{
+    Counter cpt;
+
+    MyCptNetwork()
+        : vle::NetworkDynamics <MyTime, MyValue>({"in"}, {}), cpt()
+    {}
+
+    virtual ~MyCptNetwork() {}
+
+    virtual std::vector <Child <MyTime, MyValue>*> children() override
+    {
+        return {&cpt};
+    }
+
+    virtual std::string observation() const override
+    {
+        return cpt.observation();
+    }
+
+    virtual void post(const vle::UpdatedPort <MyTime, MyValue> &out,
+                      vle::UpdatedPort <MyTime, MyValue> &in) const override
+    {
+        dWarning("MyCptNetwork::post out.is_emtpy=", out.empty());
+
+        if (!x[0].empty()) {
+            cpt.x[0] = x[0];
+            in.emplace(&cpt);
+        }
+    }
+};
+
+struct MyGlobalNetwork : vle::NetworkDynamics <MyTime, MyValue>
+{
+    MyGenNetwork gen1;
+    MyGenNetwork gen2;
+    MyCptNetwork cpt;
+
+    MyGlobalNetwork(unsigned int timestep1, unsigned int timestep2)
+        : vle::NetworkDynamics <MyTime, MyValue>(), gen1(timestep1),
+        gen2(timestep2), cpt()
+    {}
+
+    virtual ~MyGlobalNetwork() {}
+
+    virtual std::vector <Child <MyTime, MyValue>*> children() override
+    {
+        return {&cpt, &gen1, &gen2};
+    }
+
+    virtual std::string observation() const override
+    {
+        return (boost::format("%1% %2% %3%") % cpt.observation()
+            % gen1.observation() % gen2.observation()).str();
+    }
+
+    virtual void post(const vle::UpdatedPort <MyTime, MyValue> &out,
+                      vle::UpdatedPort <MyTime, MyValue> &in) const override
+    {
+        dWarning("MyGlobalNetwork::post out.is_emtpy=", out.empty(),
+                 " event:", out.count(&gen1), ", ", out.count(&gen2));
+
+        if (out.count(&gen1) + out.count(&gen2) > 0) {
+            in.emplace(&cpt);
+            cpt.x[0] = gen1.y[0];
+            cpt.x[0].insert(cpt.x[0].end(),
+                            gen2.y[0].begin(),
+                            gen2.y[0].end());
+
+            dWarning("MyGlobalNetwork::post message to cpt");
+        }
+    }
+};
+
+
+//struct MyExecutive : vle::Executive <MyTime, MyValue>
+//{
+    //std::shared_ptr <vle::Dynamics <MyTime, MyValue>> mymodel;
+
+    //MyExecutive()
+        //: vle::Executive <MyTime, MyValue>({"in"}, {"out"}),
+        //mymodel(new MyModel())
+    //{}
+
+    //virtual ~MyExecutive()
+    //{}
+
+    //virtual double start(double t) override
+    //{
+        ////std::printf("MyExecutive::stara %pt\n", parent.get());
+
+        ////std::shared_ptr <vle::Simulator <MyTime, MyValue>> (
+            ////new vle::Simulator <MyTime, MyValue>(mymodel));
+
+        //////=
+            //////std::shared_ptr <vle::Simulator <MyTime, MyValue>>(mymodel);
+
+        ////push <mymodel> (mymodel);
+
+            //////std::make_shared <vle::NetworkElement <MyTime, MyValue>>(mymodel));
+
+        //return MyTime::infinity;
+    //}
+
+    //virtual double transition(double e) override
+    //{
+        //return MyTime::infinity;
+    //}
+
+    //virtual void output() const override
+    //{
+    //}
+
+    //virtual std::string observation() const override
+    //{
+        //return std::string();
+    //}
+
+    //virtual void post(const vle::UpdatedPort <MyTime, MyValue> &y,
+                      //vle::UpdatedPort <MyTime, MyValue> &x) override
+    //{
+    //}
+//};
 
 #endif

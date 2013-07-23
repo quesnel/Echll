@@ -25,41 +25,38 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
+#ifndef __VLE_KERNEL_TIME_HPP__
+#define __VLE_KERNEL_TIME_HPP__
 
-#ifdef ENABLE_NLS
-# include <libintl.h>
-#else
-# define gettext(x)          (x)
-# define dgettext(domain, x) (x)
-#endif
-#define _(x)                 dgettext(PACKAGE, x)
+namespace vle {
 
-#include <vle/environment.hpp>
-#include <iostream>
-#include <functional>
+/**
+ * @class Time
+ * @brief Time
+ *
+ * The template parameter Type is the type to represent the time is the
+ * simulation. The template parameter Infinity defines a structure with
+ * constant representation of positive and negative infinity.
+ *
+ * @example
+ * template <typename T>
+ * struct Infinity
+ * {
+ *   static constexpr T negative = -std::numeric_limits<T>::infinity();
+ *   static constexpr T positive = std::numeric_limits<T>::infinity();
+ * };
+ *
+ * typedef vle::Time <double, Infinity<double>> MyTime;
+ * @endexample
+ */
+template <typename Type, typename Infinity>
+    struct Time
+    {
+        static constexpr Type negative_infinity = Infinity::negative;
+        static constexpr Type infinity = Infinity::positive;
+        typedef Type type;
+    };
 
-int main(int argc, char *argv[])
-{
-    std::setlocale(LC_ALL, "");
-
-#ifdef ENABLE_NLS
-    ::bindtextdomain(PACKAGE, LOCALE_DIR);
-    ::bind_textdomain_codeset(PACKAGE, "UTF-8");
-#endif
-
-    auto result = vle::Environment::create();
-    if (!std::get <0>(result)) {
-        std::cerr << _("Failed to initialize the environment: ")
-            << std::get <1>(result)
-            << std::endl;
-
-        return EXIT_FAILURE;
-    }
-
-    std::get <0>(result)->warning("VLE started");
-
-    return EXIT_SUCCESS;
 }
+
+#endif

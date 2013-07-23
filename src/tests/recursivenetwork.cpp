@@ -30,83 +30,78 @@
 #include <vector>
 #include <iostream>
 #include <random>
-#include <vle/dsde-classic.hpp>
+#include <vle/vle.hpp>
+#include <boost/format.hpp>
 #include "models.hpp"
 
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
-//struct Coupled
-//{
-    //typedef Dynamics* Model;
-
-    //vle::PortList < MyValue > x;
-    //vle::PortList < MyValue > y;
-    //Generator g;
-    //Counter c;
-
-    //std::vector < Dynamics* > children;
-
-    //Coupled()
-        //: children({ &g, &c })
-    //{}
-
-    //void put(const std::vector <Model> &Y, std::vector <Model> &X)
-    //{
-        //if (not g.y.is_empty()) {
-            //c.x[0] = g.y[0];
-            //y[0] = g.y[0];
-            //X.push_back(&c);
-            //X.push_back(this);
-        //}
-
-        //g.y.clear();
-    //}
-//};
-
-struct StaticHierarchy
+TEST_CASE("main/synchronizer/hierarchy/simple_model_api1", "run")
 {
-    typedef Dynamics* Model;
+    MyModel model;
+    vle::Synchronizer <MyTime, MyValue> a(&model);
 
-    vle::PortList < MyValue > x;
-    vle::PortList < MyValue > y;
-    ModelA a;
-    ModelB b;
-    //Coupled c;
+    double final_date = a.run(0, 10);
 
-    std::vector < Dynamics* > children;
+    REQUIRE(final_date == 10);
+}
 
-    StaticHierarchy()
-    {
-        x.add("input");
-        y.add("output");
+TEST_CASE("main/synchronizer/hierarchy/simple_model_api2", "run")
+{
+    MyModel model;
+    vle::SynchronizerBagCounter <MyTime, MyValue> a(&model);
 
-        children = { &a, &b };
-    }
+    double final_date = a.run(0, 10);
 
-    void put(std::vector <Model> &X, std::vector <Model> &Y)
-    {
-        if (not a.y.is_empty()) {
-            b.x[0] = a.y[0];
-            X.push_back(&b);
-        }
+    REQUIRE(final_date == 10);
+    REQUIRE(a.bag == 10);
+}
 
-        if (not b.y.is_empty()) {
-            a.x[0] = b.y[0];
-            X.push_back(&a);
-        }
+TEST_CASE("main/synchronizer/hierarchy/network-1", "run")
+{
+    MyNetwork small;
+    vle::Synchronizer <MyTime, MyValue> a(&small);
 
-        a.y.clear();
-        b.y.clear();
-    }
-};
+    double final_date = a.run(0.0, 10);
+    REQUIRE(final_date == 10.0);
 
-TEST_CASE("main/synchronizer/hierarchy/model", "run") {
-    vle::Synchronizer < MyTime, std::string,
-                        vle::NetworkSimulator < MyTime, std::string,
-                                                StaticHierarchy > > a;
+    std::string result = small.observation();
+    REQUIRE(result == "36 9 9");
+}
 
-    double final_date = a.run(0, 1);
+TEST_CASE("main/synchronizer/hierarchy/network-2", "run")
+{
+    MyNetwork small(1, 2);
+    vle::Synchronizer <MyTime, MyValue> a(&small);
 
-    REQUIRE(final_date == 1.0);
+    double final_date = a.run(0.0, 10);
+    REQUIRE(final_date == 10.0);
+
+    std::string result = small.observation();
+    REQUIRE(result == "26 9 4");
+}
+
+TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-1", "run")
+{
+    MyGlobalNetwork small(1, 1);
+    vle::Synchronizer <MyTime, MyValue> a(&small);
+
+    double final_date = a.run(0.0, 10);
+    REQUIRE(final_date == 10.0);
+
+    std::string result = small.observation();
+    REQUIRE(result == "36 9 9");
+}
+
+TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-2", "run")
+{
+    MyGlobalNetwork small(1, 2);
+    vle::Synchronizer <MyTime, MyValue> a(&small);
+
+    double final_date = a.run(0.0, 10);
+    REQUIRE(final_date == 10.0);
+
+    std::string result = small.observation();
+    REQUIRE(result == "26 9 4");
 }

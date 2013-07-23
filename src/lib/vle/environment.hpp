@@ -29,35 +29,35 @@
 #define __VLE_KERNEL_ENVIRONMENT_HPP__
 
 #include <vle/export.hpp>
-#include <vector>
+#include <boost/intrusive_ptr.hpp>
 #include <string>
 #include <memory>
-#include <cstdarg>
+#include <tuple>
 
 namespace vle {
 
-enum EnvironmentLogOptions
-{
-    ENVIRONMENT_LOG_FILE,
-    ENVIRONMENT_LOG_STDOUT
-};
+class Environment;
+
+typedef boost::intrusive_ptr <Environment> EnvironmentPtr;
 
 class VLE_API Environment
 {
 public:
-    Environment(EnvironmentLogOptions opt);
+    static std::tuple <EnvironmentPtr, std::string>
+        create();
+
+    static std::tuple <EnvironmentPtr, std::string>
+        create(const std::string &logfilepath);
 
     ~Environment();
 
     void get_version(int *major, int *minor, int *patch) const;
 
-    void print(const char *format, ...);
+    void print(const std::string &msg);
 
-    void print(const char *format, va_list ap);
+    void warning(const std::string &msg);
 
-    void warning(const char *format, ...);
-
-    void warning(const char *format, va_list ap);
+    void error(const std::string &msg);
 
     void set_verbose_level(int level);
 
@@ -71,16 +71,32 @@ public:
 
     std::string get_current_package_path() const;
 
+    /// @cond SKIP
+    long references;
+    /// @endcond
 private:
-    Environment(const Environment &rhs);
-    Environment& operator=(const Environment &rhs);
+    Environment();
+    Environment(const Environment &rhs) = delete;
+    Environment& operator=(const Environment &rhs) = delete;
 
+    /// @cond SKIP
     class Pimpl;
-    std::unique_ptr < Pimpl > m;
+    std::unique_ptr <Pimpl> m;
+    /// @endcond
 };
 
-typedef std::weak_ptr < Environment > EnvironmentWeakPtr;
-typedef std::shared_ptr < Environment > EnvironmentPtr;
+/// @cond
+inline void intrusive_ptr_add_ref(Environment* env)
+{
+    ++env->references;
+}
+
+inline void intrusive_ptr_release(Environment* env)
+{
+    if(--env->references == 0)
+        delete env;
+}
+/// @endcond
 
 }
 

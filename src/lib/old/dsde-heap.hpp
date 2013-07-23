@@ -25,17 +25,17 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DSDSE_HEAP_HPP__
-#define __VLE_KERNEL_DSDSE_HEAP_HPP__
+#ifndef __VLE_KERNEL_DSDE_HEAP_HPP__
+#define __VLE_KERNEL_DSDE_HEAP_HPP__
 
 #include <vle/vle.hpp>
 #include <boost/heap/fibonacci_heap.hpp>
 #include <set>
 
-namespace vle { namespace dsde_heap {
+namespace vle {
 
     template < typename Simulator >
-        struct SimulatorCompare
+        struct StaticFlatHeapSimulatorCompare
         : std::binary_function < Simulator, Simulator, bool >
         {
             bool operator()(const Simulator &lhs, const Simulator &rhs) const
@@ -45,7 +45,7 @@ namespace vle { namespace dsde_heap {
         };
 
     template < typename HandleType >
-        struct HandleTypeCompare
+        struct StaticFlatHeapHandleTypeCompare
         : std::binary_function < HandleType, HandleType, bool >
         {
             bool operator()(const HandleType &lhs, const HandleType &rhs) const
@@ -55,32 +55,32 @@ namespace vle { namespace dsde_heap {
         };
 
     template < typename Simulator >
-        struct Heap
+        struct StaticFlatHeapScheduler
         {
             typedef boost::heap::fibonacci_heap <
                 Simulator, boost::heap::compare <
-                SimulatorCompare < Simulator > > > Type;
+                StaticFlatHeapSimulatorCompare < Simulator > > > Type;
 
             typedef typename boost::heap::fibonacci_heap <
                 Simulator, boost::heap::compare <
-                SimulatorCompare < Simulator > > >::handle_type Handle;
+                StaticFlatHeapSimulatorCompare < Simulator > > >::handle_type Handle;
         };
 
     template < typename Time, typename Value, typename ModelPtr >
-        struct Simulator
+        struct StaticFlatHeapSimulator
         {
             ModelPtr model;
-            typename Heap < Simulator < Time, Value, ModelPtr >>::Handle heapid;
+            typename Heap < StaticFlatHeapSimulator < Time, Value, ModelPtr >>::Handle heapid;
             typename Time::type tl, tn;
 
-            Simulator(ModelPtr model)
+            StaticFlatHeapSimulator(ModelPtr model)
                 : model(model), tl(Time::negative_infinity),
                 tn(Time::infinity)
             {
                 model->simulator = reinterpret_cast <void*>(this);
             }
 
-            Simulator(const Simulator &other)
+            StaticFlatHeapSimulator(const StaticFlatHeapSimulator &other)
                 : model(other.model), tl(other.tn), tn(other.tn)
             {
                 model->simulator = reinterpret_cast <void*>(this);
@@ -111,12 +111,12 @@ namespace vle { namespace dsde_heap {
         };
 
     template < typename Time, typename Value, typename GraphManager >
-        struct NetworkSimulator
+        struct StaticFlatHeapNetworkSimulator
         {
-            typedef typename Heap < Simulator < Time, Value, typename
+            typedef typename Heap < StaticFlatHeapSimulator < Time, Value, typename
                 GraphManager::Model > > ::Type Scheduler;
 
-            typedef Simulator < Time, Value, typename
+            typedef StaticFlatHeapSimulator < Time, Value, typename
                 GraphManager::Model > Child;
 
             /* The scheduler stores all children of the NetworkSimulator. */
@@ -130,14 +130,14 @@ namespace vle { namespace dsde_heap {
                                         function. */
             typename Time::type tl, tn;
 
-            NetworkSimulator()
+            StaticFlatHeapNetworkSimulator()
                 : tl(Time::negative_infinity), tn(Time::infinity)
             {
                 last_output_list.reserve(gm.children.size());
 
                 for (auto & child : gm.children) {
-                    auto id = heap.push(Simulator < Time, Value, typename
-                                           GraphManager::Model >(child));
+                    auto id = heap.push(StaticFlatHeapSimulator < Time, Value,
+                                        typename GraphManager::Model >(child));
                     (*id).heapid = id;
                 }
             }
@@ -170,10 +170,11 @@ namespace vle { namespace dsde_heap {
                      * We use the std::set class to make sure that only one
                      * model appears in the bag.
                      */
-                    std::set <typename Heap <Simulator <Time, Value, typename
-                        GraphManager::Model>>::Handle, HandleTypeCompare<
-                        typename Heap <Simulator <Time, Value, typename
-                        GraphManager::Model>>::Handle>> bag;
+                    std::set <typename Heap <StaticFlatHeapSimulator <Time,
+                        Value, typename GraphManager::Model>>::Handle,
+                        StaticFlatHeapHandleTypeCompare <typename Heap
+                            <StaticFlatHeapSimulator <Time, Value, typename
+                            GraphManager::Model>>::Handle>> bag;
 
                     {
                         auto it = heap.ordered_begin();
@@ -230,6 +231,6 @@ namespace vle { namespace dsde_heap {
             }
         };
 
-}}
+}
 
 #endif

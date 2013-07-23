@@ -25,41 +25,42 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
+#ifndef __VLE_KERNEL_VALUE_HPP__
+#define __VLE_KERNEL_VALUE_HPP__
 
-#ifdef ENABLE_NLS
-# include <libintl.h>
-#else
-# define gettext(x)          (x)
-# define dgettext(domain, x) (x)
-#endif
-#define _(x)                 dgettext(PACKAGE, x)
+namespace vle {
 
-#include <vle/environment.hpp>
-#include <iostream>
-#include <functional>
+/**
+ * @class Value
+ * @brief Value
+ *
+ * The template parameter Type is the type to represent the data shared between
+ * models. The template parameter Null defines a struct to check if the data is
+ * empty.
+ *
+ * @example
+ * struct MyValueNull
+ * {
+ *     bool is_null(const std::string& value) const
+ *     {
+ *         return value.empty();
+ *     }
+ * };
+ *
+ * typedef vle::Value <std::string, MyValueNull> MyValue;
+ * @endexample
+ */
+template <typename Type, typename Null>
+    struct Value
+    {
+        bool is_null(const Type &t) const
+        {
+            return Null::is_null(t);
+        }
 
-int main(int argc, char *argv[])
-{
-    std::setlocale(LC_ALL, "");
+        typedef Type type;
+    };
 
-#ifdef ENABLE_NLS
-    ::bindtextdomain(PACKAGE, LOCALE_DIR);
-    ::bind_textdomain_codeset(PACKAGE, "UTF-8");
-#endif
-
-    auto result = vle::Environment::create();
-    if (!std::get <0>(result)) {
-        std::cerr << _("Failed to initialize the environment: ")
-            << std::get <1>(result)
-            << std::endl;
-
-        return EXIT_FAILURE;
-    }
-
-    std::get <0>(result)->warning("VLE started");
-
-    return EXIT_SUCCESS;
 }
+
+#endif

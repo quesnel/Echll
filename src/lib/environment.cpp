@@ -27,116 +27,173 @@
 
 #include <vle/environment.hpp>
 #include <vle/path.hpp>
+#include <vle/dbg.hpp>
+#include <iostream>
+#include <fstream>
+#include <thread>
+#include <mutex>
+#include <chrono>
 #include "i18n.hpp"
 #include "config.h"
-#include <cstdio>
-#include <cstdarg>
+#include <ctime>
 
 namespace vle {
 
 struct Environment::Pimpl
 {
     Pimpl()
-        : logstream(stderr), verbose_level(0)
+        : verbose_level(0)
     {
+    }
+
+    int init(const std::string &filepath)
+    {
+        char *home = NULL;
+
+        if ((home = ::getenv("VLE_HOME")) == NULL)
+            if ((home = ::getenv("HOME")) == NULL)
+                if ((home = ::getenv("PWD")) == NULL)
+                    home = ::getenv("TMP");
+
+        if (!home)
+            return -1;
+
+        std::vector < std::string > lst = { home, ".vle" };
+        prefix_path = vle::Path::make_path(lst.begin(), lst.end());
+
+        lst.push_back("pkgs-2.0");
+        pkgs_path = vle::Path::make_path(lst.begin(), lst.end());
+
+        if (!vle::Path::exist_directory(prefix_path))
+            if (!vle::Path::create_directories(prefix_path))
+                return -2;
+
+        if (!vle::Path::exist_directory(pkgs_path))
+            if (!vle::Path::create_directories(pkgs_path))
+                return -3;
+
+        logfilepath = filepath;
+        if (logfilepath.empty()) {
+            std::vector < std::string > lst = { prefix_path, "vle-2.0.log" };
+            logfilepath = vle::Path::make_path(lst.begin(), lst.end());
+        }
+
+        logfile.open(logfilepath);
+        if (!logfile.is_open())
+            return -4;
     }
 
     ~Pimpl()
     {
-        fclose(logstream);
     }
 
-    FILE *logstream;
+    typedef std::recursive_mutex lock_type;
+    typedef std::unique_lock <lock_type> scoped_lock_type;
+
+    lock_type mutex;
+    std::ofstream logfile;
+    std::string logfilepath;
     std::string prefix_path;
     std::string pkgs_path;
     std::string current_package;
     int verbose_level;
+#ifndef VLE_NDEBUG_MODE
+    std::chrono::time_point <std::chrono::system_clock> start;
+    std::chrono::time_point <std::chrono::system_clock> end;
+#endif
 };
 
-Environment::Environment(EnvironmentLogOptions opt)
-    : m(new Environment::Pimpl())
+std::tuple <EnvironmentPtr, std::string> Environment::create()
 {
-    char *home = NULL;
+    EnvironmentPtr ret = new vle::Environment();
+    int state = ret->m->init(std::string());
+    std::string msg;
 
-    if ((home = ::getenv("VLE_HOME")) == NULL)
-        if ((home = ::getenv("HOME")) == NULL)
-            if ((home = ::getenv("PWD")) == NULL)
-                home = ::getenv("TMP");
-
-    if (!home) {
-        warning("Failed to read VLE_HOME, HOME and TMP environment varaible\n");
-        exit(-1);
-    }
-
-    std::vector < std::string > lst = { home, ".vle" };
-    m->prefix_path = vle::Path::make_path(lst.begin(), lst.end());
-
-    lst.push_back("pkgs-2.0");
-    m->pkgs_path = vle::Path::make_path(lst.begin(), lst.end());
-
-    if (!vle::Path::exist_directory(m->prefix_path)) {
-        if (!vle::Path::create_directories(m->prefix_path)) {
-            warning("Failed to initialize VLE_HOME directory `%s'\n",
-                    m->prefix_path.c_str());
-            exit(-1);
+    if (state < 0) {
+        switch (state) {
+        case -1:
+            msg = _("Failed to read VLE_HOME, HOME and TMP environment"
+                    " variables");
+            break;
+        case -2:
+            msg = _("Failed to initialize VLE_HOME directory: ")
+                + ret->m->prefix_path;
+            break;
+        case -3:
+            msg = _("Failed to initialize packages directory: ")
+                + ret->m->pkgs_path;
+            break;
+        case -4:
+            msg = _("Failed to initialize log file: ") + ret->m->logfilepath;
+            break;
         }
+        ret.reset();
     }
+    return std::make_tuple(ret, msg);
+}
 
-    if (!vle::Path::exist_directory(m->pkgs_path)) {
-        if (!vle::Path::create_directories(m->pkgs_path)) {
-            warning("Failed to initialize packages directory `%s'\n",
-                    m->pkgs_path.c_str());
-            exit(-1);
+std::tuple <EnvironmentPtr, std::string> Environment::create(
+    const std::string &logfilepath)
+{
+    EnvironmentPtr ret = new vle::Environment();
+    int state = ret->m->init(logfilepath);
+    std::string msg;
+
+    if (state < 0) {
+        switch (state) {
+        case -1:
+            msg = _("Failed to read VLE_HOME, HOME and TMP environment"
+                    " variables");
+            break;
+        case -2:
+            msg = _("Failed to initialize VLE_HOME directory: ")
+                + ret->m->prefix_path;
+            break;
+        case -3:
+            msg = _("Failed to initialize packages directory: ")
+                + ret->m->pkgs_path;
+            break;
+        case -4:
+            msg = _("Failed to initialize log file: ") + ret->m->logfilepath;
+            break;
         }
+        ret.reset();
     }
+    return std::make_tuple(ret, msg);
+}
 
-    if (opt == ENVIRONMENT_LOG_FILE) {
-        std::vector < std::string > lst = { m->prefix_path, "vle.log" };
-        std::string path = vle::Path::make_path(lst.begin(), lst.end());
-
-        FILE *stream = fopen(path.c_str(), "w");
-        if (stream)
-            m->logstream = stream;
-        else
-            warning(_("Failed to initialize log file `%s'\n"), path.c_str());
-    }
+Environment::Environment()
+    : references(0), m(new Environment::Pimpl())
+{
+#ifndef VLE_NDEBUG_MODE
+    m->start = std::chrono::system_clock::now();
+    std::time_t end_time = std::chrono::system_clock::to_time_t(m->start);
+    dInfo("Environment is created at time", std::ctime(&end_time));
+#endif
 }
 
 Environment::~Environment()
 {
+#ifndef VLE_NDEBUG_MODE
+    m->end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = m->end - m->start;
+    dInfo("Environment is deleted. Elapsed time: ", elapsed_seconds.count(), "s");
+#endif
 }
 
-void Environment::print(const char *format, ...)
+void Environment::print(const std::string& msg)
 {
-    va_list ap;
-
-    va_start(ap, format);
-    print(format, ap);
-    va_end(ap);
+    m->logfile << msg << std::endl;
 }
 
-void Environment::print(const char *format, va_list ap)
+void Environment::warning(const std::string& msg)
 {
-    std::vfprintf(m->logstream, format, ap);
+    m->logfile << _("[Warning] ") << msg << std::endl;
 }
 
-void Environment::warning(const char *format, ...)
+void Environment::error(const std::string& msg)
 {
-    va_list ap;
-
-    va_start(ap, format);
-    warning(format, ap);
-    va_end(ap);
-}
-
-void Environment::warning(const char *format, va_list ap)
-{
-    if (m->logstream != stderr || m->logstream != stdout)
-        std::fprintf(m->logstream, _("\033[31mWarning: \033[m"));
-    else
-        std::fprintf(m->logstream, _("Warning: "));
-
-    std::vfprintf(m->logstream, format, ap);
+    m->logfile << _("[Error] ") << msg << std::endl;
 }
 
 void Environment::set_verbose_level(int level)
