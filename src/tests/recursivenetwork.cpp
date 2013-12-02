@@ -40,7 +40,7 @@
 TEST_CASE("main/synchronizer/hierarchy/simple_model_api1", "run")
 {
     MyModel model;
-    vle::Synchronizer <MyTime, MyValue> a(&model);
+    vle::Synchronizer <MyTime, std::string> a(&model);
 
     double final_date = a.run(0, 10);
 
@@ -50,7 +50,7 @@ TEST_CASE("main/synchronizer/hierarchy/simple_model_api1", "run")
 TEST_CASE("main/synchronizer/hierarchy/simple_model_api2", "run")
 {
     MyModel model;
-    vle::SynchronizerBagCounter <MyTime, MyValue> a(&model);
+    vle::SynchronizerBagCounter <MyTime, std::string> a(&model);
 
     double final_date = a.run(0, 10);
 
@@ -61,7 +61,7 @@ TEST_CASE("main/synchronizer/hierarchy/simple_model_api2", "run")
 TEST_CASE("main/synchronizer/hierarchy/network-1", "run")
 {
     MyNetwork small;
-    vle::Synchronizer <MyTime, MyValue> a(&small);
+    vle::Synchronizer <MyTime, std::string> a(&small);
 
     double final_date = a.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -73,7 +73,7 @@ TEST_CASE("main/synchronizer/hierarchy/network-1", "run")
 TEST_CASE("main/synchronizer/hierarchy/network-2", "run")
 {
     MyNetwork small(1, 2);
-    vle::Synchronizer <MyTime, MyValue> a(&small);
+    vle::Synchronizer <MyTime, std::string> a(&small);
 
     double final_date = a.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -85,7 +85,7 @@ TEST_CASE("main/synchronizer/hierarchy/network-2", "run")
 TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-1", "run")
 {
     MyGlobalNetwork small(1, 1);
-    vle::Synchronizer <MyTime, MyValue> a(&small);
+    vle::Synchronizer <MyTime, std::string> a(&small);
 
     double final_date = a.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -97,11 +97,20 @@ TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-1", "run")
 TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-2", "run")
 {
     MyGlobalNetwork small(1, 2);
-    vle::Synchronizer <MyTime, MyValue> a(&small);
+    vle::Synchronizer <MyTime, std::string> a(&small);
 
     double final_date = a.run(0.0, 10);
     REQUIRE(final_date == 10.0);
 
     std::string result = small.observation();
     REQUIRE(result == "26 9 4");
+}
+
+TEST_CASE("main/synchronizer/hierarchy/executive-network-1", "run")
+{
+    MyExecutive exe;
+    vle::Synchronizer <MyTime, std::string> a(&exe);
+
+    double final_date = a.run(0.0, 10);
+    REQUIRE(final_date == 10.0);
 }

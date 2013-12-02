@@ -68,7 +68,7 @@ struct assert_error: std::logic_error
 #define dPrint(...) do { vle::dbg_print(vle::DBG_LEVEL_NORMAL, __VA_ARGS__); } while (0)
 #define dAssert(condition_) \
     do { \
-        if (!condition_) { \
+        if (!(condition_)) { \
             dError("Assertion: ", _YELLOW, "`", #condition_, "'", _RED, \
                    " failed (value: ", _YELLOW, "`", (condition_), "')", _RED, \
                    " in file ", _YELLOW, __FILE__, _RED, " at line ", \
