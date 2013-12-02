@@ -28,7 +28,6 @@
 #ifndef __VLE_KERNEL_VLE_HPP__
 #define __VLE_KERNEL_VLE_HPP__
 
-#include <vle/value.hpp>
 #include <vle/time.hpp>
 #include <vle/port.hpp>
 #include <vle/heap.hpp>

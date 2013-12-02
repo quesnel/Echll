@@ -28,7 +28,6 @@
 #ifndef __VLE_KERNEL_PORT_HPP__
 #define __VLE_KERNEL_PORT_HPP__
 
-#include <vle/value.hpp>
 #include <algorithm>
 #include <map>
 #include <vector>
@@ -49,7 +48,7 @@ struct model_port_error : std::runtime_error
 template <typename Value>
     struct PortList
     {
-        typedef std::vector <typename Value::type> Values;
+        typedef std::vector <Value> Values;
 
         std::vector <Values> ports;
         std::map <std::string, int> accessor;

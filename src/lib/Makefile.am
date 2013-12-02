@@ -15,7 +15,6 @@ vleinclude_HEADERS = vle/dbg.hpp \
 		     vle/path.hpp \
 		     vle/port.hpp \
 		     vle/time.hpp \
-		     vle/value.hpp \
 		     vle/vle.hpp
 
 libvle_2_0_la_SOURCES = environment.cpp \
@@ -28,5 +27,4 @@ libvle_2_0_la_SOURCES = environment.cpp \
 			vle/path.hpp \
 			vle/port.hpp \
 			vle/time.hpp \
-			vle/value.hpp \
 			vle/vle.hpp

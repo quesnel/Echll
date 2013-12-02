@@ -42,15 +42,7 @@ struct Infinity
 
 typedef vle::Time <double, Infinity<double>> MyTime;
 
-struct MyValueNull
-{
-    bool is_null(const std::string& value) const
-    {
-        return value.empty();
-    }
-};
-
-typedef vle::Value < std::string, MyValueNull > MyValue;
+typedef std::string MyValue;
 
 struct ModelB : vle::Dynamics <MyTime, MyValue>
 {
