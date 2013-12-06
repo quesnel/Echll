@@ -1,28 +1,28 @@
 Here's a short list of things we can do:
 
-- Values
+- Kernel
 
-  - Add static constant expression for Value ?
-  - Add management of pointer in Value? How manage delete of pointer? May be in
-    specialized template. But when calling the destructor ? Perhaps a best
-    practice is to use a std::shared_ptr ?
+  - How to copy vle::Dynamics, vle::NetworkDynamics and vle::Executive? To avoid
+    segfault.
 
-- Simulator
+- Userspace (vle::Dynamics, vle::Executive, vle::NetworkDynamics):
+
+  - How to provide several simulation algorithms?
+
+  - Add a global identifier (size_t and/or std::string): size_t may be usefull
+    with PRNG but std::string for observation…
 
   - Add an observation function, but when call it ? We can provide several
     methods: timed (at the end of the simulation or following a time step) and
     event (when a model produce an output).
 
-- NetworkSimulator
-
-  - Manage hierarchy of NetworkSimulator in NetworkSimulator.
-
 - Synchronizer
 
   - Add the possibility to clone a simulation to produce recursive simulation.
-    Perhaps, just use to copy constructor of the Synchronizer, NetworkSimulator
-    and Simulator ?
+    Perhaps, just use to copy constructor of the Synchronizer, NetworkSimulator,
+    ExecutiveSimulator and Simulator or just for userspace objects?
 
 - Project
 
   - Cleanup unit test.
+  - Cleanup and simplify autotools scripts.
