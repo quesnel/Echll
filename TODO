@@ -16,6 +16,8 @@ Here's a short list of things we can do:
     methods: timed (at the end of the simulation or following a time step) and
     event (when a model produce an output).
 
+  - Add feature to avoid update of the scheduller in transition function.
+
 - Synchronizer
 
   - Add the possibility to clone a simulation to produce recursive simulation.
