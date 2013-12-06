@@ -1,30 +1,21 @@
 Here's a short list of things we can do:
 
 - Kernel
-
   - How to copy vle::Dynamics, vle::NetworkDynamics and vle::Executive? To avoid
     segfault.
-
-- Userspace (vle::Dynamics, vle::Executive, vle::NetworkDynamics):
-
+  - Synchronizer
+    - Add the possibility to clone a simulation to produce recursive simulation.
+      Perhaps, just use to copy constructor of the Synchronizer,
+      NetworkSimulator, ExecutiveSimulator and Simulator or just for userspace
+      objects?
+- Userspace (vle::Dynamics, vle::Executive, vle::NetworkDynamics, vle::Port):
   - How to provide several simulation algorithms?
-
   - Add a global identifier (size_t and/or std::string): size_t may be usefull
     with PRNG but std::string for observation…
-
   - Add an observation function, but when call it ? We can provide several
     methods: timed (at the end of the simulation or following a time step) and
     event (when a model produce an output).
-
   - Add feature to avoid update of the scheduller in transition function.
-
-- Synchronizer
-
-  - Add the possibility to clone a simulation to produce recursive simulation.
-    Perhaps, just use to copy constructor of the Synchronizer, NetworkSimulator,
-    ExecutiveSimulator and Simulator or just for userspace objects?
-
 - Project
-
   - Cleanup unit test.
   - Cleanup and simplify autotools scripts.
