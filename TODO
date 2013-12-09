@@ -1,13 +1,9 @@
 Here's a short list of things we can do:
 
 - Kernel
-  - How to copy vle::Dynamics, vle::NetworkDynamics and vle::Executive? To avoid
-    segfault.
-  - Synchronizer
-    - Add the possibility to clone a simulation to produce recursive simulation.
-      Perhaps, just use to copy constructor of the Synchronizer,
-      NetworkSimulator, ExecutiveSimulator and Simulator or just for userspace
-      objects?
+  - Add the copy assignable traits
+  - Add the move constructible traits
+  - Add the move assignable traits
 - Userspace (vle::Dynamics, vle::Executive, vle::NetworkDynamics, vle::Port):
   - How to provide several simulation algorithms?
   - Add a global identifier (size_t and/or std::string): size_t may be usefull

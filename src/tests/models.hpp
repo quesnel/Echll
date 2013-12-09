@@ -118,6 +118,10 @@ struct Counter : vle::Dynamics <MyTime, std::string>
         : vle::Dynamics <MyTime, std::string> ({"in"}, {}), i(0)
     {}
 
+    Counter(const Counter& other)
+        : vle::Dynamics <MyTime, std::string>(other), i(other.i)
+    {}
+
     virtual ~Counter()
     {}
 
@@ -153,6 +157,12 @@ struct Generator : vle::Dynamics <MyTime, std::string>
     Generator(unsigned int timestep = 1)
         : vle::Dynamics <MyTime, std::string>({}, {"out"}),
         timestep(timestep), i(0), prng(1234), dist(0., 5.)
+    {}
+
+    Generator(const Generator& other)
+        : vle::Dynamics <MyTime, std::string>(other),
+          timestep(other.timestep), i(other.i),
+          prng(other.prng), dist(other.dist)
     {}
 
     virtual ~Generator()
@@ -257,6 +267,10 @@ struct MyGenNetwork : vle::NetworkDynamics <MyTime, std::string>
         : vle::NetworkDynamics <MyTime, std::string>({}, {"out"}), gen(timestep)
     {}
 
+    MyGenNetwork(const MyGenNetwork& other)
+        : vle::NetworkDynamics <MyTime, std::string>(other), gen(other.gen)
+    {}
+
     virtual ~MyGenNetwork() {}
 
     virtual std::vector <Child <MyTime, std::string>*> children() override
@@ -285,6 +299,10 @@ struct MyCptNetwork : vle::NetworkDynamics <MyTime, std::string>
 
     MyCptNetwork()
         : vle::NetworkDynamics <MyTime, std::string>({"in"}, {}), cpt()
+    {}
+
+    MyCptNetwork(const MyCptNetwork& other)
+        : vle::NetworkDynamics <MyTime, std::string>(other), cpt(other.cpt)
     {}
 
     virtual ~MyCptNetwork() {}
@@ -320,6 +338,11 @@ struct MyGlobalNetwork : vle::NetworkDynamics <MyTime, std::string>
     MyGlobalNetwork(unsigned int timestep1, unsigned int timestep2)
         : vle::NetworkDynamics <MyTime, std::string>(), gen1(timestep1),
         gen2(timestep2), cpt()
+    {}
+
+    MyGlobalNetwork(const MyGlobalNetwork& other)
+        : vle::NetworkDynamics <MyTime, std::string>(other),
+          gen1(other.gen1), gen2(other.gen2), cpt(other.cpt)
     {}
 
     virtual ~MyGlobalNetwork() {}
@@ -374,10 +397,6 @@ struct MyExecutive : vle::Executive <MyTime, std::string>
         return {&cpt};
     }
 
-    //virtual std::string observation() const override
-    //{
-    //}
-
     virtual double start(double t) override
     {
         nb = 0;
@@ -414,7 +433,7 @@ struct MyExecutive : vle::Executive <MyTime, std::string>
 
     virtual std::string observation() const override
     {
-        return std::string();
+        return cpt.observation();
     }
 
     virtual void post(const vle::UpdatedPort <MyTime, std::string> &out,
@@ -422,65 +441,15 @@ struct MyExecutive : vle::Executive <MyTime, std::string>
     {
         dWarning("MyExecutive::post out.is_emtpy=", out.empty());
 
-        //if (out.count(&gen1) + out.count(&gen2) > 0) {
-            //in.emplace(&cpt);
-            //cpt.x[0] = gen1.y[0];
-            //cpt.x[0].insert(cpt.x[0].end(),
-                            //gen2.y[0].begin(),
-                            //gen2.y[0].end());
-
-            //dWarning("MyExecutive::post message to cpt");
-        //}
+        if (!out.empty()) {
+            for (const auto *child : out) {
+                cpt.x[0].insert(cpt.x[0].end(),
+                                child->y[0].begin(),
+                                child->y[0].end());
+            }
+            dWarning("MyExecutive::post message to cpt");
+        }
     }
 };
-
-//struct MyExecutive : vle::Executive <MyTime, std::string>
-//{
-    //std::shared_ptr <vle::Dynamics <MyTime, std::string>> mymodel;
-
-    //MyExecutive()
-        //: vle::Executive <MyTime, std::string>({"in"}, {"out"}),
-        //mymodel(new MyModel())
-    //{}
-
-    //virtual ~MyExecutive()
-    //{}
-
-    //virtual double start(double t) override
-    //{
-        ////std::printf("MyExecutive::stara %pt\n", parent.get());
-
-        ////std::shared_ptr <vle::Simulator <MyTime, std::string>> (
-            ////new vle::Simulator <MyTime, std::string>(mymodel));
-
-        //////=
-            //////std::shared_ptr <vle::Simulator <MyTime, std::string>>(mymodel);
-
-        ////push <mymodel> (mymodel);
-
-            //////std::make_shared <vle::NetworkElement <MyTime, std::string>>(mymodel));
-
-        //return MyTime::infinity;
-    //}
-
-    //virtual double transition(double e) override
-    //{
-        //return MyTime::infinity;
-    //}
-
-    //virtual void output() const override
-    //{
-    //}
-
-    //virtual std::string observation() const override
-    //{
-        //return std::string();
-    //}
-
-    //virtual void post(const vle::UpdatedPort <MyTime, std::string> &y,
-                      //vle::UpdatedPort <MyTime, std::string> &x) override
-    //{
-    //}
-//};
 
 #endif

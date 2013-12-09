@@ -106,11 +106,48 @@ TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-2", "run")
     REQUIRE(result == "26 9 4");
 }
 
-TEST_CASE("main/synchronizer/hierarchy/executive-network-1", "run")
+SCENARIO("User API can use copy constructor", "run")
 {
-    MyExecutive exe;
-    vle::Synchronizer <MyTime, std::string> a(&exe);
+    GIVEN("A simple simulation")
+    {
+        MyGlobalNetwork small(1, 1);
 
-    double final_date = a.run(0.0, 10);
-    REQUIRE(final_date == 10.0);
+        WHEN("I run a simulation") {
+            vle::Synchronizer <MyTime, std::string> a(&small);
+            double final_date = a.run(0.0, 10);
+            std::string result = small.observation();
+
+            THEN("The simulation results are correct") {
+                REQUIRE(final_date == 10.0);
+                REQUIRE(result == "36 9 9");
+            }
+        }
+
+        WHEN("I copy the NetworkDynamics") {
+            MyGlobalNetwork copy(small);
+            WHEN("I run a simulation") {
+                vle::Synchronizer <MyTime, std::string> a(&copy);
+                double final_date = a.run(0.0, 10);
+                std::string result = copy.observation();
+
+                THEN("The simulation results are the same") {
+                    REQUIRE(final_date == 10.0);
+                    REQUIRE(result == "36 9 9");
+                    REQUIRE(copy.element != small.element);
+                }
+            }
+        }
+    }
 }
+
+
+// TEST_CASE("main/synchronizer/hierarchy/executive-network-1", "run")
+// {
+//     MyExecutive exe;
+//     vle::Synchronizer <MyTime, std::string> a(&exe);
+
+//     double final_date = a.run(0.0, 10);
+//     REQUIRE(final_date == 10.0);
+
+//     REQUIRE(exe.observation() == "26");
+// }

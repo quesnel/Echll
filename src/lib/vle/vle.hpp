@@ -71,29 +71,46 @@ template <typename Time, typename Value>
         mutable vle::PortList <Value> x, y;
         NetworkElement <Time, Value>* element;
 
-        Child(NetworkElement <Time, Value>* element) noexcept
+        Child(NetworkElement <Time, Value> *element) noexcept
             : element(element)
         {}
 
         Child(std::initializer_list <std::string> lst_x,
               std::initializer_list <std::string> lst_y,
-              NetworkElement <Time, Value>* element) noexcept
+              NetworkElement <Time, Value> *element) noexcept
             : x(lst_x), y(lst_y), element(element)
         {}
 
-        Child(Child&& other) noexcept
-            : x(other.x), y(other.y), element(other.element)
-        {
-            // TODO we need to replace &other by this in the last_output_list of
-            // NetworkSimulator or ExecutiveSimulator.
-            other.element = nullptr;
-            other.x.clear(); // TODO normally, not necessary.
-            other.y.clear();
-        }
+        Child(Child&& other) = delete;
+        //     : x(other.x), y(other.y), element(other.element)
+        // {
+        //     if (other.element->parent)
+        //         other.element->parent->move(other.element, this);
 
-        Child(const Child& other) noexcept = delete;
+        //     // TODO we need to replace &other by this in the
+        //     // last_output_list of NetworkSimulator or
+        //     // ExecutiveSimulator.
+        //     other.element = nullptr;
+        //     other.x.clear(); // TODO normally, not necessary.
+        //     other.y.clear();
+        // }
+
+        Child(const Child& other) noexcept
+            : x(other.x), y(other.y), element(nullptr)
+        {}
+
         Child& operator=(const Child& other) = delete;
         Child& operator=(Child&& other) = delete;
+        // {
+        //     // TODO we need to replace &other by this in the last_output_list of
+        //     // NetworkSimulator or ExecutiveSimulator.
+
+        //     x = std::move(other.x);
+        //     y = std::move(other.y);
+        //     element = std::move(other.element);
+
+        //     return *this;
+        // }
 
         virtual ~Child()
         {
@@ -119,13 +136,16 @@ template <typename Time, typename Value>
             : tl(-Time::infinity), tn(Time::infinity), parent(nullptr)
         {}
 
-        virtual ~NetworkElement()
-        {
-            // TODO delete the simulator and the model:
-            // - from the scheduler
-            // - from the last_output_list
-            // => Perhaps: call a noexecpt function which do the job?
-        }
+        NetworkElement(const NetworkElement& other) = delete;
+        NetworkElement(NetworkElement&& other) = delete;
+        NetworkElement& operator=(const NetworkElement& other) = delete;
+        NetworkElement& operator=(NetworkElement&& other) = delete;
+
+        virtual ~NetworkElement() {}
+
+        virtual void push(Child <Time, Value> *new_child) = 0;
+
+        virtual void destroy(Child <Time, Value> *to_delete) = 0;
 
         virtual void start(typename Time::type t) = 0;
 
@@ -162,10 +182,21 @@ template <typename Time, typename Value>
         dAssert(model);
     }
 
-    Simulator(const Simulator&) = delete;
-    Simulator& operator=(const Simulator&) = delete;
+    virtual ~Simulator()
+    {
+        if (NetworkElement <Time, Value>::parent)
+            NetworkElement <Time, Value>::parent->destroy(model_);
+    }
 
-    virtual ~Simulator() {}
+    virtual void push(Child <Time, Value> *new_child) override
+    {
+        throw dsde_internal_error("Simulator can not push new model");
+    }
+
+    virtual void destroy(Child <Time, Value> *to_delete) override
+    {
+        throw dsde_internal_error("Simulator can not destroy model");
+    }
 
     virtual void start(typename Time::type t) override
     {
@@ -230,7 +261,13 @@ struct ExecutiveSimulator : NetworkElement <Time, Value>
         dAssert(model);
     }
 
-    void push(Child <Time, Value> *new_child)
+    virtual ~ExecutiveSimulator()
+    {
+        if (NetworkElement <Time, Value>::parent)
+            NetworkElement <Time, Value>::parent->destroy(model_);
+    }
+
+    virtual void push(Child <Time, Value> *new_child) override
     {
         dPrint(XS(this), "A model to push");
 
@@ -243,7 +280,7 @@ struct ExecutiveSimulator : NetworkElement <Time, Value>
         new_child->element->heapid = id;
     }
 
-    void destroy(Child <Time, Value> *to_delete)
+    virtual void destroy(Child <Time, Value> *to_delete) override
     {
         dPrint(XS(this), "A model to delete");
 
@@ -257,12 +294,6 @@ struct ExecutiveSimulator : NetworkElement <Time, Value>
 
         to_delete->element->parent = nullptr; /* finally, remove the parent. */
     }
-
-    ExecutiveSimulator(const ExecutiveSimulator&) = delete;
-    ExecutiveSimulator& operator=(const ExecutiveSimulator&) = delete;
-
-    virtual ~ExecutiveSimulator()
-    {}
 
     virtual void start(typename Time::type t) override
     {
@@ -438,12 +469,33 @@ struct NetworkSimulator : NetworkElement <Time, Value>
         dAssert(model);
     }
 
-    void destroy(Child <Time, Value> *to_delete)
+    virtual ~NetworkSimulator()
+    {
+        if (NetworkElement <Time, Value>::parent)
+            NetworkElement <Time, Value>::parent->destroy(model_);
+    }
+
+    virtual void push(Child <Time, Value> *new_child) override
+    {
+        dPrint(XS(this), "A model to push");
+
+        new_child->element->parent = this;
+        new_child->element->start(NetworkElement <Time, Value>::tn);
+
+        auto id = heap.emplace(new_child->element,
+                               NetworkElement <Time, Value>::tn);
+        (*id).heapid = id;
+        new_child->element->heapid = id;
+    }
+
+    virtual void destroy(Child <Time, Value> *to_delete) override
     {
         /*
          * TODO: perhaps not necessary since we delete all the children when we
          * delete the NetworkSimulator.
          */
+
+        dPrint(XS(this), "A model to delete");
 
         auto it = last_output_list.find(to_delete); /* remove the Child from the
                                                        next transition. */
@@ -455,9 +507,6 @@ struct NetworkSimulator : NetworkElement <Time, Value>
 
         to_delete->element->parent = nullptr; /* finally, remove the parent. */
     }
-
-    NetworkSimulator(const NetworkSimulator&) = delete;
-    NetworkSimulator& operator=(const NetworkSimulator&) = delete;
 
     virtual void start(typename Time::type t) override
     {
@@ -619,11 +668,28 @@ struct Dynamics : public Child <Time, Value>
         Child <Time, Value>(lst_x, lst_y, new Simulator <Time, Value>(this))
     {}
 
-    Dynamics(Dynamics&& other)
-        : Child <Time, Value>(other)
-    {}
+    Dynamics(Dynamics&& other) = delete;
+    //     : Child <Time, Value>(other)
+    // {}
 
-    Dynamics(const Dynamics& other) = delete;
+    Dynamics(const Dynamics& other)
+        : Child <Time, Value>(other)
+    {
+        if (other.element) {
+            Simulator <Time, Value> *sim(
+                new Simulator <Time, Value>(this));
+
+            sim->tl = other.element->tl;
+            sim->tn = other.element->tn;
+            sim->parent = other.element->parent;
+            sim->model_ = this;
+            Child <Time, Value>::element = sim;
+
+            if (sim->parent)
+                sim->parent->push(this);
+        }
+    }
+
     Dynamics& operator=(const Dynamics&) = delete;
 
     virtual ~Dynamics() {}
@@ -645,16 +711,33 @@ struct NetworkDynamics : public Child <Time, Value>
     {}
 
     NetworkDynamics(std::initializer_list <std::string> lst_x,
-                    std::initializer_list <std::string> lst_y) :
-        Child <Time, Value>(lst_x, lst_y,
-                            new NetworkSimulator <Time, Value>(this))
+                    std::initializer_list <std::string> lst_y)
+        : Child <Time, Value>(lst_x, lst_y,
+                              new NetworkSimulator <Time, Value>(this))
     {}
 
-    NetworkDynamics(NetworkDynamics&& other)
+    NetworkDynamics(NetworkDynamics&& other) = delete;
+    //     : Child <Time, Value>(other)
+    // {}
+
+    NetworkDynamics(const NetworkDynamics& other)
         : Child <Time, Value>(other)
-    {}
+    {
+        if (other.element) {
+            NetworkSimulator <Time, Value> *ns(
+                new NetworkSimulator <Time, Value>(this));
 
-    NetworkDynamics(const NetworkDynamics& other) = delete;
+            ns->tl = other.element->tl;
+            ns->tn = other.element->tn;
+            ns->parent = other.element->parent;
+            ns->model_ = this;
+            Child <Time, Value>::element = ns;
+
+            if (other.element->parent)
+                ns->parent->push(this);
+        }
+    }
+
     NetworkDynamics& operator=(const NetworkDynamics&) = delete;
 
     virtual ~NetworkDynamics() {}
@@ -692,11 +775,25 @@ struct Executive : public Child <Time, Value>
         xe(lst_xe), ye(lst_ye)
     {}
 
-    Executive(Executive&& other)
-        : Child <Time, Value>(other)
-    {}
+    Executive(Executive&& other) = delete;
+    //     : Child <Time, Value>(other)
+    // {}
 
-    Executive(const Executive& other) = delete;
+    Executive(const Executive& other)
+        : Child <Time, Value>(other)
+    {
+        if (other.element) {
+            ExecutiveSimulator <Time, Value> *es(
+                new ExecutiveSimulator <Time, Value>(this));
+
+            es->tl = other.element->tl;
+            es->tn = other.element->tn;
+            es->parent = other.element->parent;
+            es->model_ = this;
+            Child <Time, Value>::element = es;
+        }
+    }
+
     Executive& operator=(const Executive&) = delete;
 
     void push(Child <Time, Value>* new_child)
