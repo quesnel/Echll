@@ -132,7 +132,8 @@ struct Counter : vle::Dynamics <MyTime, std::string>
 
     virtual double transition(double) override
     {
-        dWarning("Counter make a transition");
+        dWarning("Counter make a transition with ", x[0].size(), " message(s)",
+                 " so, number of received message is ", i);
 
         i += x[0].size();
         return Infinity<double>::positive;
@@ -384,7 +385,6 @@ struct MyExecutive : vle::Executive <MyTime, std::string>
     // std::vector <MyGenNetwork> generators;
     MyCptNetwork cpt;
     double previous, next;
-    int nb;
 
     MyExecutive()
         : vle::Executive <MyTime, std::string>()
@@ -399,7 +399,6 @@ struct MyExecutive : vle::Executive <MyTime, std::string>
 
     virtual double start(double t) override
     {
-        nb = 0;
         previous = t;
         next = t + 1;
 
@@ -412,7 +411,7 @@ struct MyExecutive : vle::Executive <MyTime, std::string>
 
         if (next == previous) {
             dWarning("MyExecutive: previsous == next == ", next);
-            if (nb == 5) {
+            if (previous == 5.) {
                 dError("MyExecutive: destroy a model");
                 destroy(&generators.back());
                 generators.pop_back();
@@ -443,11 +442,13 @@ struct MyExecutive : vle::Executive <MyTime, std::string>
 
         if (!out.empty()) {
             for (const auto *child : out) {
+                dWarning("MyExecutive need to copy message from a child");
                 cpt.x[0].insert(cpt.x[0].end(),
                                 child->y[0].begin(),
                                 child->y[0].end());
             }
-            dWarning("MyExecutive::post message to cpt");
+            in.emplace(&cpt);
+            dWarning("MyExecutive::post `", cpt.x[0].size(),"' message to cpt");
         }
     }
 };

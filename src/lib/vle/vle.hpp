@@ -221,6 +221,7 @@ template <typename Time, typename Value>
         NetworkElement <Time, Value>::tn =
             t + model_->transition(t - NetworkElement <Time, Value>::tl);
         NetworkElement <Time, Value>::tl = t;
+        model_->x.clear();
     }
 
     virtual void output(typename Time::type t) override
@@ -388,10 +389,8 @@ struct ExecutiveSimulator : NetworkElement <Time, Value>
             heap.update(chi_heapid);
         }
 
-        // TODO verify, the push function use instead transition call the start
-        // function of the new Child
-
         NetworkElement <Time, Value>::tn = heap.top().tn;
+        model_->x.clear();
     }
 
     virtual void output(typename Time::type t) override
@@ -588,6 +587,7 @@ struct NetworkSimulator : NetworkElement <Time, Value>
         }
 
         NetworkElement <Time, Value>::tn = heap.top().tn;
+        model_->x.clear();
     }
 
     virtual void output(typename Time::type t) override

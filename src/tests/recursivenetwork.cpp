@@ -140,14 +140,36 @@ SCENARIO("User API can use copy constructor", "run")
     }
 }
 
+TEST_CASE("main/synchronizer/hierarchy/executive-network-1", "run")
+{
+    MyExecutive exe;
+    vle::Synchronizer <MyTime, std::string> a(&exe);
 
-// TEST_CASE("main/synchronizer/hierarchy/executive-network-1", "run")
-// {
-//     MyExecutive exe;
-//     vle::Synchronizer <MyTime, std::string> a(&exe);
+    double final_date = a.run(0.0, 10);
+    REQUIRE(final_date == 10.0);
 
-//     double final_date = a.run(0.0, 10);
-//     REQUIRE(final_date == 10.0);
+    /*
+     * 56 messages must be observed:
+     * - at time 0, no generator model
+     * - at time 1, 2, 3, 4, 6, 7, 8, 9, new model build
+     * - at time 5, a model is destroyed
+     * - generator send two message by output
+     * - generator send output after 1 time unit
+     *
+     *     time | nb model | nb message send
+     *        0      0          0
+     *        1      1          0
+     *        2      2          2
+     *        3      3          4
+     *        4      4          6
+     *        5      3          8
+     *        6      4          6
+     *        7      5          8
+     *        8      6          10
+     *        9      7          12
+     *   --------------------------
+     *                          56
+     */
 
-//     REQUIRE(exe.observation() == "26");
-// }
+    REQUIRE(exe.observation() == "56");
+}
