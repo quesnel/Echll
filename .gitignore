@@ -85,3 +85,4 @@ compile
 src/bin/vle
 src/tests/flatnetwork
 src/tests/recursivenetwork
+src/tests/utils

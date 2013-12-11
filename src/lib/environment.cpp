@@ -73,14 +73,14 @@ struct Environment::Pimpl
                 return -3;
 
         logfilepath = filepath;
-        if (logfilepath.empty()) {
-            std::vector < std::string > lst = { prefix_path, "vle-2.0.log" };
-            logfilepath = vle::Path::make_path(lst.begin(), lst.end());
-        }
+        if (logfilepath.empty())
+            logfilepath = vle::Path::make_path({ prefix_path, "vle-2.0.log" });
 
         logfile.open(logfilepath);
         if (!logfile.is_open())
             return -4;
+
+        return 0;
     }
 
     ~Pimpl()
@@ -240,9 +240,7 @@ std::string Environment::get_current_package() const
 
 std::string Environment::get_current_package_path() const
 {
-    std::vector < std::string > lst = { m->pkgs_path, m->current_package };
-
-    return vle::Path::make_path(lst.begin(), lst.end());
+    return Path::make_path({ m->pkgs_path, m->current_package});
 }
 
 }

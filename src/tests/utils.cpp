@@ -25,46 +25,23 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_PATH_HPP__
-#define __VLE_KERNEL_PATH_HPP__
+#include <vle/path.hpp>
 
-#include <initializer_list>
-#include <string>
-#include <algorithm>
+#define CATCH_CONFIG_MAIN
+#include "catch.hpp"
 
-namespace vle {
-
-struct Path
+TEST_CASE("try-make_path_api", "run")
 {
-    static bool exist_file(const std::string &filename);
+    std::string path = vle::Path::make_path({"A", "B", "C"});
 
-    static bool exist_directory(const std::string &dirname);
+    std::vector <std::string> lst({"A", "B", "C"});
+    std::string path2 = vle::Path::make_path(lst.begin(), lst.end());
 
-    static bool create_directories(const std::string &dirname);
-
-    template <typename Iterator>
-        static std::string make_path(Iterator first, Iterator last)
-        {
-            return std::accumulate(first, last, std::string(),
-                                   [](const std::string& a,
-                                      const std::string& b) -> std::string
-                                   {
-                                       if (a.empty())
-                                           return b;
 #ifdef _WIN32
-                                       return a + "\\" + b;
+    REQUIRE(path == "A\\B\\C");
 #else
-                                       return a + '/' + b;
+    REQUIRE(path == "A/B/C");
 #endif
-                                   });
-        }
 
-    static std::string make_path(std::initializer_list <std::string> lst)
-    {
-        return make_path(lst.begin(), lst.end());
-    }
-};
-
+    REQUIRE(path == path2);
 }
-
-#endif
