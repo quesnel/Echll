@@ -1,10 +1,13 @@
 Here's a short list of things we can do:
 
-- Kernel
+- Kernel (to clone simulation / build sub-simulation)
   - Add the copy assignable traits
   - Add the move constructible traits
   - Add the move assignable traits
-- Userspace (vle::Dynamics, vle::Executive, vle::NetworkDynamics, vle::Port):
+
+- Engine
+  - Add a parallel_dsde that use std::thread in transition function.
+  - Add a dtss.
   - How to provide several simulation algorithms?
   - Add a global identifier (size_t and/or std::string): size_t may be usefull
     with PRNG but std::string for observation…
@@ -12,6 +15,10 @@ Here's a short list of things we can do:
     methods: timed (at the end of the simulation or following a time step) and
     event (when a model produce an output).
   - Add feature to avoid update of the scheduller in transition function.
+
 - Project
   - Cleanup unit test.
   - Cleanup and simplify autotools scripts.
+
+- Utils
+  - Develop the package system as in VLE > 1.1
