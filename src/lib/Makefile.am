@@ -9,6 +9,7 @@ lib_LTLIBRARIES = libvle-2.0.la
 
 vleincludedir = $(includedir)/vle-$(v_maj).$(v_min)/vle
 vleinclude_HEADERS = vle/dbg.hpp \
+		     vle/dsde.hpp \
 		     vle/environment.hpp \
 		     vle/export.hpp \
 		     vle/heap.hpp \
@@ -21,6 +22,7 @@ libvle_2_0_la_SOURCES = environment.cpp \
 			i18n.hpp \
 			path.cpp \
 			vle/dbg.hpp \
+			vle/dsde.hpp \
 			vle/environment.hpp \
 			vle/export.hpp \
 			vle/heap.hpp \

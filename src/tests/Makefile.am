@@ -9,12 +9,13 @@ if VLE_ENABLE_TESTS
 #TESTS = flatnetwork recursivenetwork
 #noinst_PROGRAMS  = flatnetwork recursivenetwork
 #check_PROGRAMS = flatnetwork recursivenetwork
-TESTS = utils recursivenetwork
-noinst_PROGRAMS  = utils recursivenetwork
-check_PROGRAMS = utils recursivenetwork
+TESTS = utils recursivenetwork engines
+noinst_PROGRAMS  = utils recursivenetwork engines
+check_PROGRAMS = utils recursivenetwork engines
 #flatnetwork_SOURCES = flatnetwork.cpp models.hpp catch.hpp
 recursivenetwork_SOURCES = recursivenetwork.cpp models.hpp catch.hpp
 utils_SOURCES = utils.cpp catch.hpp
+engines_SOURCES = engines.cpp
 endif
 
 clean_local:

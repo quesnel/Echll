@@ -31,6 +31,7 @@
 #include <iostream>
 #include <random>
 #include <vle/vle.hpp>
+#include <vle/dbg.hpp>
 #include <boost/format.hpp>
 #include "models.hpp"
 
@@ -39,70 +40,78 @@
 
 TEST_CASE("main/synchronizer/hierarchy/simple_model_api1", "run")
 {
+    MyDSDE dsde_engine;
     MyModel model;
-    vle::Synchronizer <MyTime, std::string> a(&model);
+    vle::Simulation <MyDSDE> sim(dsde_engine, model);
 
-    double final_date = a.run(0, 10);
+    double final_date = sim.run(0, 10);
 
     REQUIRE(final_date == 10);
 }
 
 TEST_CASE("main/synchronizer/hierarchy/simple_model_api2", "run")
 {
+    MyDSDE dsde_engine;
     MyModel model;
-    vle::SynchronizerBagCounter <MyTime, std::string> a(&model);
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
 
-    double final_date = a.run(0, 10);
+    double final_date = sim.run(0, 10);
 
     REQUIRE(final_date == 10);
-    REQUIRE(a.bag == 10);
+    REQUIRE(sim.bag == 10);
 }
 
 TEST_CASE("main/synchronizer/hierarchy/network-1", "run")
 {
-    MyNetwork small;
-    vle::Synchronizer <MyTime, std::string> a(&small);
+    MyDSDE dsde_engine;
+    MyNetwork model;
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
 
-    double final_date = a.run(0.0, 10);
+    double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
 
-    std::string result = small.observation();
+    std::string result = model.observation();
     REQUIRE(result == "36 9 9");
 }
 
 TEST_CASE("main/synchronizer/hierarchy/network-2", "run")
 {
-    MyNetwork small(1, 2);
-    vle::Synchronizer <MyTime, std::string> a(&small);
+    MyDSDE dsde_engine;
+    MyNetwork model(1, 2);
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
 
-    double final_date = a.run(0.0, 10);
+    double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
 
-    std::string result = small.observation();
+    std::string result = model.observation();
     REQUIRE(result == "26 9 4");
 }
 
 TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-1", "run")
 {
-    MyGlobalNetwork small(1, 1);
-    vle::Synchronizer <MyTime, std::string> a(&small);
+    std::cerr << std::boolalpha;
 
-    double final_date = a.run(0.0, 10);
+    MyDSDE dsde_engine;
+    MyGlobalNetwork model(1, 1);
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+
+    double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
 
-    std::string result = small.observation();
+    std::string result = model.observation();
     REQUIRE(result == "36 9 9");
 }
 
 TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-2", "run")
 {
-    MyGlobalNetwork small(1, 2);
-    vle::Synchronizer <MyTime, std::string> a(&small);
+    MyDSDE dsde_engine;
+    MyGlobalNetwork model(1, 2);
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
 
-    double final_date = a.run(0.0, 10);
+    double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
 
-    std::string result = small.observation();
+    std::string result = model.observation();
     REQUIRE(result == "26 9 4");
 }
 
@@ -110,12 +119,13 @@ SCENARIO("User API can use copy constructor", "run")
 {
     GIVEN("A simple simulation")
     {
-        MyGlobalNetwork small(1, 1);
+        MyDSDE dsde_engine;
+        MyGlobalNetwork model(1, 1);
 
         WHEN("I run a simulation") {
-            vle::Synchronizer <MyTime, std::string> a(&small);
-            double final_date = a.run(0.0, 10);
-            std::string result = small.observation();
+            vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+            double final_date = sim.run(0.0, 10);
+            std::string result = model.observation();
 
             THEN("The simulation results are correct") {
                 REQUIRE(final_date == 10.0);
@@ -124,17 +134,27 @@ SCENARIO("User API can use copy constructor", "run")
         }
 
         WHEN("I copy the NetworkDynamics") {
-            MyGlobalNetwork copy(small);
+            MyGlobalNetwork copy(model);
             WHEN("I run a simulation") {
-                vle::Synchronizer <MyTime, std::string> a(&copy);
-                double final_date = a.run(0.0, 10);
+                vle::SimulationDbg <MyDSDE> sim(dsde_engine, copy);
+                double final_date = sim.run(0.0, 10);
                 std::string result = copy.observation();
 
                 THEN("The simulation results are the same") {
                     REQUIRE(final_date == 10.0);
                     REQUIRE(result == "36 9 9");
-                    REQUIRE(copy.element != small.element);
                 }
+            }
+        }
+
+        WHEN("I run a simulation with same object") {
+            vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+            double final_date = sim.run(0.0, 10);
+            std::string result = model.observation();
+
+            THEN("The simulation results are correct") {
+                REQUIRE(final_date == 10.0);
+                REQUIRE(result == "36 9 9");
             }
         }
     }
@@ -142,34 +162,35 @@ SCENARIO("User API can use copy constructor", "run")
 
 TEST_CASE("main/synchronizer/hierarchy/executive-network-1", "run")
 {
-    MyExecutive exe;
-    vle::Synchronizer <MyTime, std::string> a(&exe);
+    MyDSDE dsde_engine;
+    MyExecutive model;
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
 
-    double final_date = a.run(0.0, 10);
+    double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
 
     /*
-     * 56 messages must be observed:
-     * - at time 0, no generator model
-     * - at time 1, 2, 3, 4, 6, 7, 8, 9, new model build
-     * - at time 5, a model is destroyed
-     * - generator send two message by output
-     * - generator send output after 1 time unit
-     *
-     *     time | nb model | nb message send
-     *        0      0          0
-     *        1      1          0
-     *        2      2          2
-     *        3      3          4
-     *        4      4          6
-     *        5      3          8
-     *        6      4          6
-     *        7      5          8
-     *        8      6          10
-     *        9      7          12
-     *   --------------------------
-     *                          56
-     */
+     56 messages must be observed:
+     - at time 0, no generator model
+     - at time 1, 2, 3, 4, 6, 7, 8, 9, new model build
+     - at time 5, a model is destroyed
+     - generator send two message by output
+     - generator send output after 1 time unit
 
-    REQUIRE(exe.observation() == "56");
+         time | nb model | nb message send
+            0      0          0
+            1      1          0
+            2      2          2
+            3      3          4
+            4      4          6
+            5      3          8
+            6      4          6
+            7      5          8
+            8      6          10
+            9      7          12
+       --------------------------
+                              56
+       */
+
+    REQUIRE(model.observation() == "56");
 }

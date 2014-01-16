@@ -43,21 +43,17 @@ template <typename T>
     };
 
 template <typename Time, typename Value>
-    struct NetworkElement;
-
-template <typename Time, typename Value>
     struct HeapElement
     {
         typedef typename boost::heap::fibonacci_heap <HeapElement <Time, Value>,
               boost::heap::compare <HeapElementCompare <HeapElement <Time,
               Value>>>>::handle_type handle_t;
 
-        NetworkElement <Time, Value> *element;
+        void *element;
         handle_t heapid;
         typename Time::type tn;
 
-        HeapElement(NetworkElement <Time, Value> *elt,
-                    typename Time::type tn)
+        HeapElement(void *elt, typename Time::type tn)
             : element(elt), tn(tn)
         {}
     };
