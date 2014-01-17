@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vle 2.0.0\n"
 "Report-Msgid-Bugs-To: quesnel@users.sourceforge.net\n"
-"POT-Creation-Date: 2013-07-08 18:31+0200\n"
+"POT-Creation-Date: 2014-01-17 10:47+0100\n"
 "PO-Revision-Date: 2013-06-14 10:35+0200\n"
 "Last-Translator: Gauthier Quesnel <quesnel@users.sourceforge.net>\n"
 "Language-Team: French\n"
@@ -18,17 +18,47 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: src/lib/environment.cpp:101
-#, c-format
-msgid "Failed to initialize log file `%s'\n"
+#: src/lib/environment.cpp:115 src/lib/environment.cpp:145
+msgid "Failed to read VLE_HOME, HOME and TMP environment variables"
+msgstr ""
+"Impossibilité de lire les variables d'environnement VLE_HOME, HOME et TMP"
+
+#: src/lib/environment.cpp:119 src/lib/environment.cpp:149
+#, fuzzy
+msgid "Failed to initialize VLE_HOME directory: "
+msgstr "Impossibilité d'initialiser le dossier VLE_HOME : "
+
+#: src/lib/environment.cpp:123 src/lib/environment.cpp:153
+#, fuzzy
+msgid "Failed to initialize packages directory: "
+msgstr "Impossibilité d'initialiser le dossier des paquets : "
+
+#: src/lib/environment.cpp:127 src/lib/environment.cpp:157
+#, fuzzy
+msgid "Failed to initialize log file: "
+msgstr "Impossibilité d'initialiser le fichier journal : "
+
+#: src/lib/environment.cpp:171
+msgid "Environment is created at time: "
+msgstr "L'environnment est créé à la date : "
+
+#: src/lib/environment.cpp:180
+msgid "Environment is deleted. Elapsed time: "
+msgstr "L'environnement est détruit à la date : "
+
+#: src/lib/environment.cpp:191
+#, fuzzy
+msgid "[Warning] "
+msgstr "[Attention] "
+
+#: src/lib/environment.cpp:196
+msgid "[Error] "
+msgstr "[Erreur] "
+
+#: src/bin/vle.cpp:55
+#, fuzzy
+msgid "Failed to initialize the environment: "
 msgstr "Initialiation du fichier journal `%s'\n"
 
-#: src/lib/environment.cpp:135
-#, c-format
-msgid "[31mWarning: [m"
-msgstr "[31mAttention : [m"
-
-#: src/lib/environment.cpp:137
-#, c-format
-msgid "Warning: "
-msgstr "Attention : "
+#~ msgid "[31mWarning: [m"
+#~ msgstr "[31mAttention : [m"
