@@ -9,6 +9,7 @@ Here's a short list of things we can do
 - Engine
   - Add a **parallel_dsde** that use `std::thread` in transition
     function.
+  - Add a **devs** engine.
   - Add a **dtss** engine.
   - How to provide several simulation algorithms?
   - Add a global identifier (`size_t` and/or `std::string`): `size_t`
@@ -23,6 +24,8 @@ Here's a short list of things we can do
   - Cleanup and simplify autotools scripts.
   - Add a manager mode
   - Add a new vpz format
+    - Add an xml parser
+    - Add a vpz class which maintains the contents of the `vle::vpz`.
 
 - Utils
   - Update `make_path(std::initializer_list)` with a new templatized
@@ -32,3 +35,4 @@ Here's a short list of things we can do
   - Add the module system as in VLE > 1.1
     - Add the module system
     - Add a clean API module access to the environment
+  - Use classic appdirs directories
