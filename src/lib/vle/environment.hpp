@@ -40,6 +40,14 @@ class Environment;
 
 typedef boost::intrusive_ptr <Environment> EnvironmentPtr;
 
+enum PackageDirectoryType
+{
+    PACKAGE_DIRECTORY,
+    PACKAGE_DATA_DIRECTORY,
+    PACKAGE_EXP_DIRECTORY,
+    PACKAGE_SIMULATOR_DIRECTORY
+};
+
 class VLE_API Environment
 {
 public:
@@ -65,11 +73,18 @@ public:
 
     std::string get_prefix_path() const;
 
+    bool set_prefix_path(const std::string &path) const;
+
     std::string get_current_package() const;
 
     bool set_current_package(const std::string &package);
 
     std::string get_current_package_path() const;
+
+    std::string get_package_path(const std::string &package,
+                                 PackageDirectoryType type) const;
+
+    std::string get_package_path(PackageDirectoryType type) const;
 
     /// @cond SKIP
     long references;

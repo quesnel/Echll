@@ -25,9 +25,10 @@ Here's a short list of things we can do
   - Add a new vpz format
 
 - Utils
+  - Update `make_path(std::initializer_list)` with a new templatized
+    function like the `dbg_print` function.
   - Add the package system as in VLE > 1.1
     - Add a spawn system
-    - Add a clean API path access to the package
   - Add the module system as in VLE > 1.1
     - Add the module system
     - Add a clean API module access to the environment

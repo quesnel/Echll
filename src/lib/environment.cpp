@@ -39,10 +39,11 @@
 
 namespace vle {
 
-struct Environment::Pimpl
+class Environment::Pimpl
 {
+public:
     Pimpl()
-        : verbose_level(0)
+        : verbose_level(0), directories({"", "data", "exp", "simulators"})
     {
     }
 
@@ -58,27 +59,37 @@ struct Environment::Pimpl
         if (!home)
             return -1;
 
-        std::vector < std::string > lst = { home, ".vle" };
-        prefix_path = vle::Path::make_path(lst.begin(), lst.end());
+        prefix_path = vle::Path::make_path({home, ".vle"});
 
-        lst.push_back("pkgs-2.0");
-        pkgs_path = vle::Path::make_path(lst.begin(), lst.end());
-
-        if (!vle::Path::exist_directory(prefix_path))
-            if (!vle::Path::create_directories(prefix_path))
-                return -2;
-
-        if (!vle::Path::exist_directory(pkgs_path))
-            if (!vle::Path::create_directories(pkgs_path))
-                return -3;
+        int ret = prefix_init(prefix_path);
+        if (ret)
+            return ret;
 
         logfilepath = filepath;
         if (logfilepath.empty())
-            logfilepath = vle::Path::make_path({ prefix_path, "vle-2.0.log" });
+            logfilepath = vle::Path::make_path({prefix_path, "vle-2.0.log"});
 
         logfile.open(logfilepath);
         if (!logfile.is_open())
             return -4;
+
+        return 0;
+    }
+
+    int prefix_init(const std::string &prefix)
+    {
+        std::string pkgs = vle::Path::make_path({prefix, "pkgs-2.0"});
+
+        if (!vle::Path::exist_directory(prefix))
+            if (!vle::Path::create_directories(prefix))
+                return -2;
+
+        if (!vle::Path::exist_directory(pkgs))
+            if (!vle::Path::create_directories(pkgs))
+                return -3;
+
+        pkgs_path = pkgs;
+        prefix_path = prefix;
 
         return 0;
     }
@@ -97,6 +108,7 @@ struct Environment::Pimpl
     std::string pkgs_path;
     std::string current_package;
     int verbose_level;
+    std::vector <std::string> directories;
 #ifndef VLE_NDEBUG_MODE
     std::chrono::time_point <std::chrono::system_clock> start;
     std::chrono::time_point <std::chrono::system_clock> end;
@@ -223,6 +235,17 @@ std::string Environment::get_prefix_path() const
     return m->prefix_path;
 }
 
+bool Environment::set_prefix_path(const std::string &path) const
+{
+    int ret = m->prefix_init(path);
+    if (ret)
+        return false;
+
+    m->prefix_path = path;
+
+    return true;
+}
+
 bool Environment::set_current_package(const std::string &package)
 {
     if (package.empty())
@@ -240,7 +263,26 @@ std::string Environment::get_current_package() const
 
 std::string Environment::get_current_package_path() const
 {
-    return Path::make_path({ m->pkgs_path, m->current_package});
+    return vle::Path::make_path({m->pkgs_path,
+                                m->current_package
+                                });
+}
+
+std::string Environment::get_package_path(const std::string &package,
+                                          PackageDirectoryType type) const
+{
+    return vle::Path::make_path({m->pkgs_path,
+                                package,
+                                m->directories[static_cast <int>(type)]
+                                });
+}
+
+std::string Environment::get_package_path(PackageDirectoryType type) const
+{
+    return vle::Path::make_path({m->pkgs_path,
+                                m->current_package,
+                                m->directories[static_cast <int>(type)]
+                                });
 }
 
 }

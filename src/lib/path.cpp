@@ -87,4 +87,20 @@ bool Path::create_directories(const std::string &dirname)
     return true;
 }
 
+std::string Path::get_temporary_path()
+{
+    const char *names[] = { "TMPDIR", "TMP", "TEMP" };
+    const int names_size = sizeof(names) / sizeof(names[0]);
+
+    for (int i = 0; i != names_size; ++i)
+        if (::getenv(names[i]) && exist_directory(::getenv(names[i])))
+            return names[i];
+
+#ifdef _WIN32
+    return "c:\\";
+#else
+    return "/tmp";
+#endif
+}
+
 }

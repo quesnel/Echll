@@ -15,6 +15,7 @@ check_PROGRAMS = utils recursivenetwork engines
 #flatnetwork_SOURCES = flatnetwork.cpp models.hpp catch.hpp
 recursivenetwork_SOURCES = recursivenetwork.cpp models.hpp catch.hpp
 utils_SOURCES = utils.cpp catch.hpp
+utils_LDADD = $(top_srcdir)/src/lib/libvle-2.0.la
 engines_SOURCES = engines.cpp
 endif
 

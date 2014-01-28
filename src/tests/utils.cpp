@@ -26,6 +26,7 @@
  */
 
 #include <vle/path.hpp>
+#include <vle/environment.hpp>
 
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
@@ -44,4 +45,23 @@ TEST_CASE("try-make_path_api", "run")
 #endif
 
     REQUIRE(path == path2);
+}
+
+TEST_CASE("try-environment-package-path", "run")
+{
+    auto ret = vle::Environment::create();
+    vle::EnvironmentPtr env = std::get <0>(ret);
+
+    REQUIRE(env);
+
+    std::string tmp_path = vle::Path::get_temporary_path();
+    env->set_prefix_path(tmp_path);
+
+    REQUIRE(env->get_prefix_path() == tmp_path);
+    REQUIRE(env->get_package_path("test", vle::PACKAGE_DATA_DIRECTORY) ==
+            vle::Path::make_path({tmp_path, "pkgs-2.0", "test", "data"}));
+    REQUIRE(env->get_package_path("test", vle::PACKAGE_EXP_DIRECTORY) ==
+            vle::Path::make_path({tmp_path, "pkgs-2.0", "test", "exp"}));
+    REQUIRE(env->get_package_path("test", vle::PACKAGE_SIMULATOR_DIRECTORY) ==
+            vle::Path::make_path({tmp_path, "pkgs-2.0", "test", "simulators"}));
 }

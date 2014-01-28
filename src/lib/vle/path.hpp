@@ -49,12 +49,12 @@ struct Path
                                    [](const std::string& a,
                                       const std::string& b) -> std::string
                                    {
-                                       if (a.empty())
-                                           return b;
+                                   if (a.empty())
+                                   return b;
 #ifdef _WIN32
-                                       return a + "\\" + b;
+                                   return a + "\\" + b;
 #else
-                                       return a + '/' + b;
+                                   return a + '/' + b;
 #endif
                                    });
         }
@@ -63,6 +63,8 @@ struct Path
     {
         return make_path(lst.begin(), lst.end());
     }
+
+    static std::string get_temporary_path();
 };
 
 }
