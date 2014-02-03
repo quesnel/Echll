@@ -66,11 +66,15 @@ EXTRA_DIST = AUTHORS \
 	     README \
 	     autogen.sh \
 	     vle-2.0.pc.in \
+	     m4/ax_cxx_compile_stdcxx_11.m4 \
+	     m4/boost.m4 \
+	     m4/gcov.m4 \
 	     m4/vle_compiler_flag.m4 \
-	     m4/vle_compiler.m4 \
-	     m4/vle_coverage.m4 \
 	     m4/vle_doxygen.m4 \
 	     m4/vle_tests.m4
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = vle-2.0.pc
 
 if HAVE_PO
 MAINTAINERCLEANFILES += po/boldquot.sed \
@@ -84,31 +88,26 @@ MAINTAINERCLEANFILES += po/boldquot.sed \
 			po/Rules-quot
 endif
 
-# Coverage report
-if VLE_ENABLE_COVERAGE
-lcov-reset:
-	@rm -rf $(top_builddir)/coverage
-	@find $(top_builddir) -name "*.gcda" -delete
-	@lcov --zerocounters --directory $(top_builddir)
+if HAVE_GCOV
+.PHONY: clean-gcda
+clean-gcda:
+	@echo Removing old coverage results
+	-find -name '*.gcda' -print | xargs -r rm
 
-lcov-report:
-	@mkdir $(top_builddir)/coverage
-	lcov --capture --compat-libtool --output-file $(top_builddir)/coverage/coverage.info --directory $(top_builddir)
-	lcov --remove $(top_builddir)/coverage/coverage.info '*.h' --output-file $(top_builddir)/coverage/coverage.cleaned.info
-	genhtml -t "$(PACKAGE_STRING)" -o $(top_builddir)/coverage/html $(top_builddir)/coverage/coverage.cleaned.info
-	@echo "Coverage Report at $(top_builddir)/coverage/html"
+.PHONY: coverage-html generate-coverage-html clean-coverage-html
+coverage-html: clean-gcda
+	-$(MAKE) $(AM_MAKEFLAGS) -k check
+	$(MAKE) $(AM_MAKEFLAGS) generate-coverage-html
 
-coverage:
-	@$(MAKE) lcov-reset
-	@$(MAKE) check
-	@$(MAKE) lcov-report
-else
-	lcov-reset:
-	@echo "reconfigure with --enable-coverage"
+generate-coverage-html:
+	@echo Collecting coverage data
+	$(LCOV) --directory $(top_builddir) --capture --output-file coverage.info --no-checksum --compat-libtool
+	LANG=C $(GENHTML) --prefix $(top_builddir) --output-directory coveragereport --title "Code Coverage" --legend --show-details coverage.info
 
-lcov-report:
-	@echo "reconfigure with --enable-coverage"
+clean-coverage-html: clean-gcda
+	-$(LCOV) --directory $(top_builddir) -z
+	-rm -rf coverage.info coveragereport
 
-coverage:
-	@echo "reconfigure with --enable-tests --enable-coverage"
-endif
+clean-local: clean-coverage-html
+
+endif # HAVE_GCOV

@@ -25,5 +25,5 @@ echo "For a system installation:"
 echo "./configure CXXFLAGS='-g -O2' CFLAGS='-g -O2' $args"
 echo ""
 echo "For a user installation:"
-echo "./configure CXXFLAGS='-g -O2' CFLAGS='-g -O2' --prefix=$HOME/usr"
+echo "./configure CXXFLAGS='-g -O2' CFLAGS='-g -O2' --enable-gcov --prefix=$HOME/usr"
 echo

@@ -7,9 +7,11 @@ AM_CPPFLAGS = -include $(top_builddir)/config.h \
 
 lib_LTLIBRARIES = libvle-2.0.la
 
-vleincludedir = $(includedir)/vle-$(v_maj).$(v_min)/vle
+vleincludedir = $(includedir)/vle-2.0/vle
 vleinclude_HEADERS = vle/dbg.hpp \
+		     vle/devs.hpp \
 		     vle/dsde.hpp \
+		     vle/dtss.hpp \
 		     vle/environment.hpp \
 		     vle/export.hpp \
 		     vle/heap.hpp \
@@ -23,7 +25,9 @@ libvle_2_0_la_SOURCES = environment.cpp \
 			path.cpp \
 			path.hpp \
 			vle/dbg.hpp \
+			vle/devs.hpp \
 			vle/dsde.hpp \
+			vle/dtss.hpp \
 			vle/environment.hpp \
 			vle/export.hpp \
 			vle/heap.hpp \
@@ -31,3 +35,6 @@ libvle_2_0_la_SOURCES = environment.cpp \
 			vle/time.hpp \
 		        vle/utils.hpp \
 			vle/vle.hpp
+
+libvle_2_0_la_CXXFLAGS = $(COVERAGE_CXXFLAGS)
+libvle_2_0_la_LDFLAGS = $(COVERAGE_LDFLAGS)

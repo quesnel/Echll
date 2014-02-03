@@ -43,32 +43,14 @@ struct dsde_internal_error : std::runtime_error
     {}
 };
 
-/*
- * The synchronizer is the root coordinator in the DEVS terminology.
- *
- * @code
- * vle::Engine <dsde_engine <double, std::string>> engine;
- *
- * struct MyModel : vle::Engine <dsde_engine <double, std::string>>::model
- * {
- *   // [...]
- * };
- * MyModel model;
- * vle::Simulation sim(model, engine);
- * sim.run(0.0, 100.0);
- * sim.run(-1.0, 1.0);
- * sim.run_until(100.);
- * @encode
- */
-
-template <typename Time, typename Value>
-struct dsde
+namespace dsde
 {
-    typedef typename Time::type time_type;
-    typedef Value value_type;
-
+    template <typename Time, typename Value>
     struct Model
     {
+        typedef typename Time::type time_type;
+        typedef Value value_type;
+
         Model()
             : tl(-Time::infinity), tn(Time::infinity), parent(nullptr)
         {}
@@ -92,21 +74,29 @@ struct dsde
         virtual void output(const time_type& time) = 0;
     };
 
-    using Bag = std::set <Model*>;
-    using UpdatedPort = std::set <const Model*>;
+    template <typename Time, typename Value>
+    using Bag = std::set <Model <Time, Value>*>;
 
-    struct AtomicModel : Model
+    template <typename Time, typename Value>
+    using UpdatedPort = std::set <const Model <Time, Value>*>;
+
+    template <typename Time, typename Value>
+    struct AtomicModel : Model <Time, Value>
     {
+        typedef typename Time::type time_type;
+        typedef Value value_type;
+
         virtual time_type init(const time_type& time) = 0;
         virtual time_type delta(const time_type& time) = 0;
         virtual void lambda() const = 0;
 
         AtomicModel()
+            : Model <Time, Value>()
         {}
 
         AtomicModel(std::initializer_list <std::string> lst_x,
                     std::initializer_list <std::string> lst_y)
-            : Model(lst_x, lst_y)
+            : Model <Time, Value>(lst_x, lst_y)
         {}
 
         virtual ~AtomicModel()
@@ -114,37 +104,41 @@ struct dsde
 
         virtual void start(const time_type& time) override final
         {
-            Model::tl = time;
-            Model::tn = time + init(time);
+            Model <Time, Value>::tl = time;
+            Model <Time, Value>::tn = time + init(time);
         }
 
         virtual void transition(const time_type& time) override final
         {
 #ifndef VLE_OPTIMIZE
-            if (!(Model::tl <= time && time <= Model::tn))
-                throw dsde_internal_error("Simulator::transition");
+            if (!(Model <Time, Value>::tl <= time && time <= Model <Time, Value>::tn))
+                throw dsde_internal_error("Synchronization error");
 
-            if (time < Model::tn and Model::x.is_empty())
+            if (time < Model <Time, Value>::tn and Model <Time, Value>::x.is_empty())
                 return;
 #endif
-            Model::tn = time + delta(time - Model::tl);
-            Model::tl = time;
-            Model::x.clear();
+            Model <Time, Value>::tn = time + delta(time - Model <Time, Value>::tl);
+            Model <Time, Value>::tl = time;
+            Model <Time, Value>::x.clear();
         }
 
         virtual void output(const time_type& time) override final
         {
-            if (time == Model::tn)
+            if (time == Model <Time, Value>::tn)
                 lambda();
         }
     };
 
-    struct CoupledModel : Model
+    template <typename Time, typename Value>
+    struct CoupledModel : Model <Time, Value>
     {
-        HeapType <Time, Value> heap;
-        UpdatedPort last_output_list;
+        typedef typename Time::type time_type;
+        typedef Value value_type;
 
-        typedef std::vector <Model*> children_t;
+        HeapType <Time, Value> heap;
+        UpdatedPort <Time, Value> last_output_list;
+
+        typedef std::vector <Model <Time, Value>*> children_t;
 
         /**
          * @brief Get the children of the @e CoupledModel.
@@ -156,15 +150,16 @@ struct dsde
          */
         virtual children_t children() = 0;
 
-        virtual void post(const UpdatedPort &out, UpdatedPort &in) const = 0;
+        virtual void post(const UpdatedPort <Time, Value> &out,
+                          UpdatedPort <Time, Value> &in) const = 0;
 
         CoupledModel()
-            : Model()
+            : Model <Time, Value>()
         {}
 
         CoupledModel(std::initializer_list <std::string> lst_x,
                      std::initializer_list <std::string> lst_y)
-            : Model(lst_x, lst_y)
+            : Model <Time, Value>(lst_x, lst_y)
         {}
 
         virtual ~CoupledModel()
@@ -174,7 +169,7 @@ struct dsde
         {
             auto cs = children();
             std::for_each(cs.begin(), cs.end(),
-                          [=](Model *child)
+                          [=](Model <Time, Value>* child)
                           {
                               child->parent = this;
                               child->start(time);
@@ -184,80 +179,84 @@ struct dsde
                               (*id).heapid = id;
                           });
 
-            Model::tl = time;
-            Model::tn = heap.top().tn;
+            Model <Time, Value>::tl = time;
+            Model <Time, Value>::tn = heap.top().tn;
         }
 
         virtual void transition(const time_type& time) override final
         {
 #ifndef VLE_OPTIMIZE
-            if (!(Model::tl <= time && time <= Model::tn))
-                throw dsde_internal_error("NetworkSimulator::transition");
+            if (!(Model <Time, Value>::tl <= time && time <= Model <Time, Value>::tn))
+                throw dsde_internal_error("Synchronization error");
 
-            if (time < Model::tn && Model::x.is_empty())
+            if (time < Model <Time, Value>::tn && Model <Time, Value>::x.is_empty())
                 return;
 #endif
-            Bag bag;
+            Bag <Time, Value> bag;
 
             {
                 auto it = heap.ordered_begin();
                 auto et = heap.ordered_end();
 
                 for (; it != et && (*it).tn == time; ++it)
-                    bag.insert(reinterpret_cast <Model*>((*it).element));
+                    bag.insert(
+                        reinterpret_cast <Model <Time, Value>*>(
+                            (*it).element));
             }
 
             {
-                if (not Model::x.is_empty())
+                if (not Model <Time, Value>::x.is_empty())
                     post({this}, last_output_list);
 
                 for (auto &child : last_output_list)
-                    bag.insert(const_cast <Model*>(child));
+                    bag.insert(const_cast <Model <Time, Value>*>(child));
 
                 last_output_list.clear();
             }
 
             std::for_each(bag.begin(), bag.end(),
-                          [=](Model *child)
+                          [=](Model <Time, Value> *child)
                           {
                               child->transition(time);
                               (*child->heapid).tn = child->tn;
                               heap.update(child->heapid);
                           });
 
-            Model::tl = time;
-            Model::tn = heap.top().tn;
-            Model::x.clear();
+            Model <Time, Value>::tl = time;
+            Model <Time, Value>::tn = heap.top().tn;
+            Model <Time, Value>::x.clear();
         }
 
         virtual void output(const time_type& time) override final
         {
 #ifndef VLE_OPTIMIZE
             if (!(time == heap.top().tn))
-                throw dsde_internal_error("NetworkSimulator::transition");
+                throw dsde_internal_error("Synchronization error");
 
-            if (!(Model::tn == heap.top().tn))
-                throw dsde_internal_error("NetworkSimulator::transition");
+            if (!(Model <Time, Value>::tn == heap.top().tn))
+                throw dsde_internal_error("Synchronization error");
 #endif
-            if (time == Model::tn && not heap.empty()) {
-                UpdatedPort lst;
+            if (time == Model <Time, Value>::tn && not heap.empty()) {
+                UpdatedPort <Time, Value> lst;
                 auto it = heap.ordered_begin();
                 auto et = heap.ordered_end();
 
                 do {
                     auto id = (*it).heapid;
-                    Model *mdl = reinterpret_cast <Model*>((*id).element);
+                    Model <Time, Value> *mdl =
+                        reinterpret_cast <Model <Time, Value>*>(
+                            (*id).element);
 
                     mdl->output(time);
                     if (!(mdl->y.is_empty()))
                         lst.emplace(mdl);
                     ++it;
-                } while (it != et && it->tn == Model::tn);
+                } while (it != et && it->tn == Model <Time, Value>::tn);
 
                 post(lst, last_output_list);
 
                 std::for_each(lst.begin(), lst.end(),
-                              [](const Model *child)
+                              [](const Model <Time, Value> *child)
                               {
                                   child->y.clear();
                               });
@@ -265,12 +264,16 @@ struct dsde
         }
     };
 
-    struct Executive : Model
+    template <typename Time, typename Value>
+    struct Executive : Model <Time, Value>
     {
-        HeapType <Time, Value> heap;
-        UpdatedPort last_output_list;
+        typedef typename Time::type time_type;
+        typedef Value value_type;
 
-        typedef std::vector <Model*> children_t;
+        HeapType <Time, Value> heap;
+        UpdatedPort <Time, Value> last_output_list;
+
+        typedef std::vector <Model <Time, Value>*> children_t;
         time_type chi_tl, chi_tn;
         typename HeapType <Time, Value>::handle_type chi_heapid;
         mutable vle::PortList <Value> chi_x, chi_y;
@@ -279,29 +282,30 @@ struct dsde
         virtual time_type init(const time_type& time) = 0;
         virtual time_type delta(const time_type& time) = 0;
         virtual void lambda() const = 0;
-        virtual void post(const UpdatedPort &y, UpdatedPort &x) const = 0;
+        virtual void post(const UpdatedPort <Time, Value> &y,
+                          UpdatedPort <Time, Value> &x) const = 0;
 
         Executive()
-            : Model()
+            : Model <Time, Value>()
         {}
 
         Executive(std::initializer_list <std::string> lst_x,
                   std::initializer_list <std::string> lst_y)
-            : Model(lst_x, lst_y)
+            : Model <Time, Value>(lst_x, lst_y)
         {}
 
         Executive(std::initializer_list <std::string> lst_x,
                   std::initializer_list <std::string> lst_y,
                   std::initializer_list <std::string> chi_lst_x,
                   std::initializer_list <std::string> chi_lst_y)
-            : Model(lst_x, lst_y), chi_tl(-Time::infinity),
+            : Model <Time, Value>(lst_x, lst_y), chi_tl(-Time::infinity),
             chi_tn(Time::infinity), chi_x(chi_lst_x), chi_y(chi_lst_y)
         {}
 
         virtual ~Executive()
         {}
 
-        void insert(Model *mdl)
+        void insert(Model <Time, Value> *mdl)
         {
             dWarning("Executive insert a new model");
             mdl->parent = this;
@@ -312,7 +316,7 @@ struct dsde
             (*id).heapid = id;
         }
 
-        void erase(Model *mdl)
+        void erase(Model <Time, Value >*mdl)
         {
             dWarning("Execute erase a model");
             last_output_list.erase(mdl);
@@ -330,7 +334,7 @@ struct dsde
 
             auto cs = children();
             std::for_each(cs.begin(), cs.end(),
-                          [=](Model *child)
+                          [=](Model <Time, Value> *child)
                           {
                               child->parent = this;
                               child->start(time);
@@ -340,21 +344,21 @@ struct dsde
                               child->heapid = id;
                           });
 
-            Model::tl = time;
-            Model::tn = heap.top().tn;
-            Model::x.clear();
+            Model <Time, Value>::tl = time;
+            Model <Time, Value>::tn = heap.top().tn;
+            Model <Time, Value>::x.clear();
         }
 
         virtual void transition(const time_type &time) override final
         {
 #ifndef VLE_OPTIMIZE
-            if (!(Model::tl <= time && time <= Model::tn))
-                throw dsde_internal_error("Executive::transition");
+            if (!(Model <Time, Value>::tl <= time && time <= Model <Time, Value>::tn))
+                throw dsde_internal_error("Synchronization error");
 
-            if (time < Model::tn && Model::x.is_empty())
+            if (time < Model <Time, Value>::tn && Model <Time, Value>::x.is_empty())
                 return;
 #endif
-            Bag bag;
+            Bag <Time, Value> bag;
             bool have_chi = false;
 
             {
@@ -365,26 +369,28 @@ struct dsde
                     if ((*it).element == this)
                         have_chi = true;
                     else
-                        bag.insert(reinterpret_cast <Model*>((*it).element));
+                        bag.insert(
+                            reinterpret_cast <Model <Time, Value>*>(
+                                (*it).element));
                 }
             }
 
             {
-                if (not Model::x.is_empty())
+                if (not Model <Time, Value>::x.is_empty())
                     post({this}, last_output_list);
 
                 for (auto &child : last_output_list) {
                     if (child == this)
                         have_chi = true;
                     else
-                        bag.insert(const_cast <Model*>(child));
+                        bag.insert(const_cast <Model <Time, Value>*>(child));
                 }
 
                 last_output_list.clear();
             }
 
             std::for_each(bag.begin(), bag.end(),
-                          [=](Model *child)
+                          [=](Model <Time, Value> *child)
                           {
                               child->transition(time);
                               (*child->heapid).tn = child->tn;
@@ -399,28 +405,29 @@ struct dsde
                 heap.update(chi_heapid);
             }
 
-            Model::tn = heap.top().tn;
-            Model::tl = time;
-            Model::x.clear();
+            Model <Time, Value>::tn = heap.top().tn;
+            Model <Time, Value>::tl = time;
+            Model <Time, Value>::x.clear();
         }
 
         virtual void output(const time_type &time) override final
         {
 #ifndef VLE_OPTIMIZE
             if (!(time == heap.top().tn))
-                throw dsde_internal_error("Executive::transition");
+                throw dsde_internal_error("Synchronization error");
 
-            if (!(Model::tn == heap.top().tn))
-                throw dsde_internal_error("Executive::transition");
+            if (!(Model <Time, Value>::tn == heap.top().tn))
+                throw dsde_internal_error("Synchronization error");
 #endif
-            if (time == Model::tn && not heap.empty()) {
-                UpdatedPort lst;
+            if (time == Model <Time, Value>::tn && not heap.empty()) {
+                UpdatedPort <Time, Value> lst;
                 auto it = heap.ordered_begin();
                 auto et = heap.ordered_end();
 
                 do {
                     auto id = (*it).heapid;
-                    Model *mdl = reinterpret_cast <Model*>((*id).element);
+                    Model <Time, Value> *mdl =
+                        reinterpret_cast <Model <Time, Value>*>((*id).element);
 
                     if (mdl == this) {
                         lambda();
@@ -430,12 +437,12 @@ struct dsde
                     if (!(mdl->y.is_empty()))
                         lst.emplace(mdl);
                     ++it;
-                } while (it != et && it->tn == Model::tn);
+                } while (it != et && it->tn == Model <Time, Value>::tn);
 
                 post(lst, last_output_list);
 
                 std::for_each(lst.begin(), lst.end(),
-                              [](const Model *child)
+                              [](const Model <Time, Value> *child)
                               {
                                 child->y.clear();
                               });
@@ -443,16 +450,21 @@ struct dsde
         }
     };
 
-    template <typename Model>
-        time_type pre(Model &model, const time_type& time)
+    template <typename Time, typename Value>
+    struct Engine
+    {
+        typedef typename Time::type time_type;
+        typedef Value value_type;
+        typedef Model <Time, Value> model_type;
+
+        time_type pre(model_type& model, const time_type& time)
         {
             model.start(time);
 
             return model.tn;
         }
 
-    template <typename Model>
-        time_type run(Model &model, const time_type& time)
+        time_type run(model_type& model, const time_type& time)
         {
             model.output(time);
             model.transition(time);
@@ -460,12 +472,12 @@ struct dsde
             return model.tn;
         }
 
-    template <typename Model>
-        void post(Model& model, const time_type& time)
+        void post(model_type& model, const time_type& time)
         {
             (void)model;
             (void)time;
         }
+    };
 };
 
 };

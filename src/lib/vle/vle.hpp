@@ -32,43 +32,18 @@
 
 namespace vle {
 
-//template <typename LocalEngine>
-//struct Engine
-//{
-    //typedef typename LocalEngine::Time time_type;
-    //typedef typename LocalEngine::Value value_type;
-    //LocalEngine engine;
-
-    //Engine(LocalEngine engine, typename LocalEngine::AtomicModel &model)
-        //: engine(engine, model)
-    //{}
-
-    //time_type pre(const time_type& time)
-    //{
-        //return engine.start(time);
-    //}
-
-    //time_type run(const time_type& time)
-    //{
-        //return engine.run(time);
-    //}
-
-    //void post(const time_type& time)
-    //{
-        //engine.post(time);
-    //}
-//};
-
 template <typename Engine>
 struct Simulation
 {
+    typedef Engine engine_type;
     typedef typename Engine::time_type time_type;
     typedef typename Engine::value_type value_type;
+    typedef typename Engine::model_type model_type;
 
-    Engine &engine;
-    typename Engine::Model &model;
+    engine_type& engine;
+    model_type& model;
 
-    Simulation(Engine& engine, typename Engine::Model& model)
+    Simulation(engine_type& engine, model_type& model)
         : engine(engine), model(model)
     {}
 
@@ -88,14 +63,16 @@ struct Simulation
 template <typename Engine>
 struct SimulationDbg
 {
+    typedef Engine engine_type;
     typedef typename Engine::time_type time_type;
     typedef typename Engine::value_type value_type;
+    typedef typename Engine::model_type model_type;
 
-    Engine &engine;
-    typename Engine::Model &model;
+    engine_type& engine;
+    model_type& model;
     unsigned long int bag;
 
-    SimulationDbg(Engine& engine, typename Engine::Model& model)
+    SimulationDbg(engine_type& engine, model_type& model)
         : engine(engine), model(model)
     {}
 

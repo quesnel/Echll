@@ -24,17 +24,19 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef VLE_2_MODELS_HPP
-#define VLE_2_MODELS_HPP
-
+#include <string>
+#include <cmath>
+#include <vector>
+#include <iostream>
+#include <random>
 #include <limits>
-#include <vle/dsde.hpp>
 #include <vle/vle.hpp>
+#include <vle/dsde.hpp>
 #include <vle/dbg.hpp>
 #include <boost/format.hpp>
 #include <list>
 
-template < typename T >
+template <typename T>
 struct Infinity
 {
     static constexpr T negative = -std::numeric_limits<T>::infinity();
@@ -42,14 +44,19 @@ struct Infinity
 };
 
 typedef vle::Time <double, Infinity<double>> MyTime;
-typedef vle::dsde <MyTime, std::string> MyDSDE;
+typedef vle::dsde::Engine <MyTime, std::string> MyDSDE;
 
-struct ModelB : MyDSDE::AtomicModel
+using UpdatedPort = vle::dsde::UpdatedPort <MyTime, std::string>;
+using AtomicModel = vle::dsde::AtomicModel <MyTime, std::string>;
+using CoupledModel = vle::dsde::CoupledModel <MyTime, std::string>;
+using Executive = vle::dsde::Executive <MyTime, std::string>;
+
+struct ModelB : AtomicModel
 {
     int i;
 
     ModelB()
-        : MyDSDE::AtomicModel({"in"}, {"out"})
+        : AtomicModel({"in"}, {"out"})
     {}
 
     virtual ~ModelB()
@@ -76,12 +83,12 @@ struct ModelB : MyDSDE::AtomicModel
     }
 };
 
-struct ModelA : MyDSDE::AtomicModel
+struct ModelA : AtomicModel
 {
     int i;
 
     ModelA()
-        : MyDSDE::AtomicModel()
+        : AtomicModel()
     {
         x.add("in");
         y.add("out");
@@ -111,16 +118,16 @@ struct ModelA : MyDSDE::AtomicModel
     }
 };
 
-struct Counter : MyDSDE::AtomicModel
+struct Counter : AtomicModel
 {
     int i;
 
     Counter()
-        : MyDSDE::AtomicModel({"in"}, {}), i(0)
+        : AtomicModel({"in"}, {}), i(0)
     {}
 
     Counter(const Counter& other)
-        : MyDSDE::AtomicModel(other), i(other.i)
+        : AtomicModel(other), i(other.i)
     {}
 
     virtual ~Counter()
@@ -150,7 +157,7 @@ struct Counter : MyDSDE::AtomicModel
     }
 };
 
-struct Generator : MyDSDE::AtomicModel
+struct Generator : AtomicModel
 {
     unsigned int timestep;
     int i;
@@ -158,12 +165,12 @@ struct Generator : MyDSDE::AtomicModel
     std::normal_distribution < double > dist;
 
     Generator(unsigned int timestep = 1)
-        : MyDSDE::AtomicModel({}, {"out"}),
+        : AtomicModel({}, {"out"}),
         timestep(timestep), i(0), prng(1234), dist(0., 5.)
     {}
 
     Generator(const Generator& other)
-        : MyDSDE::AtomicModel(other),
+        : AtomicModel(other),
           timestep(other.timestep), i(other.i),
           prng(other.prng), dist(other.dist)
     {}
@@ -195,9 +202,9 @@ struct Generator : MyDSDE::AtomicModel
     }
 };
 
-struct MyModel : MyDSDE::AtomicModel
+struct MyModel : AtomicModel
 {
-    MyModel() : MyDSDE::AtomicModel() {}
+    MyModel() : AtomicModel() {}
     virtual ~MyModel() {}
 
     virtual double init(const double& t) override final
@@ -220,23 +227,23 @@ struct MyModel : MyDSDE::AtomicModel
     }
 };
 
-struct MyNetwork : MyDSDE::CoupledModel
+struct MyNetwork : CoupledModel
 {
     Generator gen1, gen2;
     Counter cpt;
 
     MyNetwork() :
-        MyDSDE::CoupledModel()
+        CoupledModel()
     {}
 
     MyNetwork(unsigned int timestep1, unsigned int timestep2)
-        : MyDSDE::CoupledModel(), gen1(timestep1),
+        : CoupledModel(), gen1(timestep1),
         gen2(timestep2)
     {}
 
     virtual ~MyNetwork() {}
 
-    virtual MyDSDE::CoupledModel::children_t children() override final
+    virtual CoupledModel::children_t children() override final
     {
         return {&gen1, &gen2, &cpt};
     }
@@ -249,8 +256,8 @@ struct MyNetwork : MyDSDE::CoupledModel
         return ret;
     }
 
-    virtual void post(const MyDSDE::UpdatedPort &out,
-                      MyDSDE::UpdatedPort &in) const override final
+    virtual void post(const UpdatedPort &out,
+                      UpdatedPort &in) const override final
     {
         if (out.count(&gen1) + out.count(&gen2) > 0) {
             in.emplace(&cpt);
@@ -262,21 +269,21 @@ struct MyNetwork : MyDSDE::CoupledModel
     }
 };
 
-struct MyGenNetwork : MyDSDE::CoupledModel
+struct MyGenNetwork : CoupledModel
 {
     Generator gen;
 
     MyGenNetwork(unsigned int timestep)
-        : MyDSDE::CoupledModel({}, {"out"}), gen(timestep)
+        : CoupledModel({}, {"out"}), gen(timestep)
     {}
 
     MyGenNetwork(const MyGenNetwork& other)
-        : MyDSDE::CoupledModel(other), gen(other.gen)
+        : CoupledModel(other), gen(other.gen)
     {}
 
     virtual ~MyGenNetwork() {}
 
-    virtual MyDSDE::CoupledModel::children_t children() override final
+    virtual CoupledModel::children_t children() override final
     {
         return {&gen};
     }
@@ -286,8 +293,8 @@ struct MyGenNetwork : MyDSDE::CoupledModel
         return gen.observation();
     }
 
-    virtual void post(const MyDSDE::UpdatedPort &out,
-                      MyDSDE::UpdatedPort &in) const override final
+    virtual void post(const UpdatedPort &out,
+                      UpdatedPort &in) const override final
     {
         if (!out.empty()) {
             y[0] = gen.y[0];
@@ -295,21 +302,21 @@ struct MyGenNetwork : MyDSDE::CoupledModel
     }
 };
 
-struct MyCptNetwork : MyDSDE::CoupledModel
+struct MyCptNetwork : CoupledModel
 {
     Counter cpt;
 
     MyCptNetwork()
-        : MyDSDE::CoupledModel({"in"}, {}), cpt()
+        : CoupledModel({"in"}, {}), cpt()
     {}
 
     MyCptNetwork(const MyCptNetwork& other)
-        : MyDSDE::CoupledModel(other), cpt(other.cpt)
+        : CoupledModel(other), cpt(other.cpt)
     {}
 
     virtual ~MyCptNetwork() {}
 
-    virtual MyDSDE::CoupledModel::children_t children() override final
+    virtual CoupledModel::children_t children() override final
     {
         return {&cpt};
     }
@@ -319,8 +326,8 @@ struct MyCptNetwork : MyDSDE::CoupledModel
         return cpt.observation();
     }
 
-    virtual void post(const MyDSDE::UpdatedPort &out,
-                      MyDSDE::UpdatedPort &in) const override final
+    virtual void post(const UpdatedPort &out,
+                      UpdatedPort &in) const override final
     {
         if (!out.empty()) {
             cpt.x[0] = x[0];
@@ -329,25 +336,25 @@ struct MyCptNetwork : MyDSDE::CoupledModel
     }
 };
 
-struct MyGlobalNetwork : MyDSDE::CoupledModel
+struct MyGlobalNetwork : CoupledModel
 {
     MyGenNetwork gen1;
     MyGenNetwork gen2;
     MyCptNetwork cpt;
 
     MyGlobalNetwork(unsigned int timestep1, unsigned int timestep2)
-        : MyDSDE::CoupledModel(), gen1(timestep1),
+        : CoupledModel(), gen1(timestep1),
         gen2(timestep2), cpt()
     {}
 
     MyGlobalNetwork(const MyGlobalNetwork& other)
-        : MyDSDE::CoupledModel(other),
+        : CoupledModel(other),
           gen1(other.gen1), gen2(other.gen2), cpt(other.cpt)
     {}
 
     virtual ~MyGlobalNetwork() {}
 
-    virtual MyDSDE::CoupledModel::children_t children() override final
+    virtual CoupledModel::children_t children() override final
     {
         return {&cpt, &gen1, &gen2};
     }
@@ -358,8 +365,8 @@ struct MyGlobalNetwork : MyDSDE::CoupledModel
             % gen1.observation() % gen2.observation()).str();
     }
 
-    virtual void post(const MyDSDE::UpdatedPort &out,
-                      MyDSDE::UpdatedPort &in) const override final
+    virtual void post(const UpdatedPort &out,
+                      UpdatedPort &in) const override final
     {
         dWarning("MyGlobalNetwork::post out.is_empty=", out.empty(),
                  " event:", out.count(&gen1), ", ", out.count(&gen2));
@@ -382,7 +389,7 @@ struct MyGlobalNetwork : MyDSDE::CoupledModel
     }
 };
 
-struct MyExecutive : MyDSDE::Executive
+struct MyExecutive : Executive
 {
     std::list <MyGenNetwork> generators;
 
@@ -392,12 +399,12 @@ struct MyExecutive : MyDSDE::Executive
     double previous, next;
 
     MyExecutive()
-        : MyDSDE::Executive()
+        : Executive()
     {}
 
     virtual ~MyExecutive() {}
 
-    virtual MyDSDE::Executive::children_t children() override final
+    virtual Executive::children_t children() override final
     {
         return {&cpt};
     }
@@ -442,8 +449,8 @@ struct MyExecutive : MyDSDE::Executive
         return cpt.observation();
     }
 
-    virtual void post(const MyDSDE::UpdatedPort &out,
-                      MyDSDE::UpdatedPort &in) const override final
+    virtual void post(const UpdatedPort &out,
+                      UpdatedPort &in) const override final
     {
         dWarning("MyExecutive::post out.is_emtpy=", out.empty());
 
@@ -460,4 +467,162 @@ struct MyExecutive : MyDSDE::Executive
     }
 };
 
-#endif
+#define CATCH_CONFIG_MAIN
+#include "catch.hpp"
+
+TEST_CASE("main/synchronizer/hierarchy/simple_model_api1", "run")
+{
+    MyDSDE dsde_engine;
+    MyModel model;
+    vle::Simulation <MyDSDE> sim(dsde_engine, model);
+
+    double final_date = sim.run(0, 10);
+
+    REQUIRE(final_date == 10);
+}
+
+TEST_CASE("main/synchronizer/hierarchy/simple_model_api2", "run")
+{
+    MyDSDE dsde_engine;
+    MyModel model;
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+
+    double final_date = sim.run(0, 10);
+
+    REQUIRE(final_date == 10);
+    REQUIRE(sim.bag == 10);
+}
+
+TEST_CASE("main/synchronizer/hierarchy/network-1", "run")
+{
+    MyDSDE dsde_engine;
+    MyNetwork model;
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+
+    double final_date = sim.run(0.0, 10);
+    REQUIRE(final_date == 10.0);
+
+    std::string result = model.observation();
+    REQUIRE(result == "36 9 9");
+}
+
+TEST_CASE("main/synchronizer/hierarchy/network-2", "run")
+{
+    MyDSDE dsde_engine;
+    MyNetwork model(1, 2);
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+
+    double final_date = sim.run(0.0, 10);
+    REQUIRE(final_date == 10.0);
+
+    std::string result = model.observation();
+    REQUIRE(result == "26 9 4");
+}
+
+TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-1", "run")
+{
+    std::cerr << std::boolalpha;
+
+    MyDSDE dsde_engine;
+    MyGlobalNetwork model(1, 1);
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+
+    double final_date = sim.run(0.0, 10);
+    REQUIRE(final_date == 10.0);
+
+    std::string result = model.observation();
+    REQUIRE(result == "36 9 9");
+}
+
+TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-2", "run")
+{
+    MyDSDE dsde_engine;
+    MyGlobalNetwork model(1, 2);
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+
+    double final_date = sim.run(0.0, 10);
+    REQUIRE(final_date == 10.0);
+
+    std::string result = model.observation();
+    REQUIRE(result == "26 9 4");
+}
+
+SCENARIO("User API can use copy constructor", "run")
+{
+    GIVEN("A simple simulation")
+    {
+        MyDSDE dsde_engine;
+        MyGlobalNetwork model(1, 1);
+
+        WHEN("I run a simulation") {
+            vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+            double final_date = sim.run(0.0, 10);
+            std::string result = model.observation();
+
+            THEN("The simulation results are correct") {
+                REQUIRE(final_date == 10.0);
+                REQUIRE(result == "36 9 9");
+            }
+        }
+
+        WHEN("I copy the NetworkDynamics") {
+            MyGlobalNetwork copy(model);
+            WHEN("I run a simulation") {
+                vle::SimulationDbg <MyDSDE> sim(dsde_engine, copy);
+                double final_date = sim.run(0.0, 10);
+                std::string result = copy.observation();
+
+                THEN("The simulation results are the same") {
+                    REQUIRE(final_date == 10.0);
+                    REQUIRE(result == "36 9 9");
+                }
+            }
+        }
+
+        WHEN("I run a simulation with same object") {
+            vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+            double final_date = sim.run(0.0, 10);
+            std::string result = model.observation();
+
+            THEN("The simulation results are correct") {
+                REQUIRE(final_date == 10.0);
+                REQUIRE(result == "36 9 9");
+            }
+        }
+    }
+}
+
+TEST_CASE("main/synchronizer/hierarchy/executive-network-1", "run")
+{
+    MyDSDE dsde_engine;
+    MyExecutive model;
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+
+    double final_date = sim.run(0.0, 10);
+    REQUIRE(final_date == 10.0);
+
+    /*
+     56 messages must be observed:
+     - at time 0, no generator model
+     - at time 1, 2, 3, 4, 6, 7, 8, 9, new model build
+     - at time 5, a model is destroyed
+     - generator send two message by output
+     - generator send output after 1 time unit
+
+         time | nb model | nb message send
+            0      0          0
+            1      1          0
+            2      2          2
+            3      3          4
+            4      4          6
+            5      3          8
+            6      4          6
+            7      5          8
+            8      6          10
+            9      7          12
+       --------------------------
+                              56
+       */
+
+    REQUIRE(model.observation() == "56");
+}

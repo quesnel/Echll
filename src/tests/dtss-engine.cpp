@@ -24,53 +24,29 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <vle/dsde.hpp>
+#include <string>
+#include <cmath>
+#include <vector>
+#include <iostream>
+#include <random>
+#include <limits>
+#include <vle/vle.hpp>
+#include <vle/dtss.hpp>
+#include <vle/dbg.hpp>
+#include <boost/format.hpp>
+#include <list>
 
-
-namespace test {
-
-    template < typename T > struct Infinity
-    {
-        static constexpr T negative = -std::numeric_limits<T>::infinity();
-        static constexpr T positive = std::numeric_limits<T>::infinity();
-    };
-
-    typedef vle::Time <double, Infinity<double>> MyTime;
-
-    typedef vle::Engine <vle::dsde_engine <MyTime, std::string>> myengine;
-
-    struct AtomicModel : myengine::AtomicModel <MyTime, std::string>
-    {
-        int i;
-
-        AtomicModel()
-            : myengine::AtomicModel <MyTime, std::string>({"in"}, {"out"})
-            {}
-
-        virtual double init(const double time) override
-        {
-            (void)time;
-            i = 0;
-
-            return 0.;
-        }
-
-        virtual double delta(const double time) override
-        {
-            i++;
-            return .1;
-        }
-
-        virtual void output() const override
-        {
-        }
-    };
-}
-
-TEST_CASE("engince/dsde_atomicmodel", "run")
+template < typename T > struct Infinity
 {
-    test::myengine eng;
-    test::AtomicModel mdl;
+    static constexpr T negative = -std::numeric_limits<T>::infinity();
+    static constexpr T positive = std::numeric_limits<T>::infinity();
+};
 
-    vle::Simulation(eng, mdl);
+typedef vle::Time <int, Infinity<int>> MyTime;
+
+#define CATCH_CONFIG_MAIN
+#include "catch.hpp"
+
+TEST_CASE("engine/dtss/model_a", "run")
+{
 }

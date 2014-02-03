@@ -10,6 +10,6 @@ docdir=@docdir@
 Name: vle
 Description: A Discrete Event and Polymorphic Simulation Kernel
 Version: @VERSION@
-Libs: -L${libdir} -lvle
+Libs: -L${libdir} -lvle-2.0
 Libs.private: -lm
 Cflags: -I${includedir}/vle-2.0

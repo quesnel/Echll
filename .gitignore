@@ -13,6 +13,8 @@ config.rpath
 config.status
 config.sub
 configure
+coverage.info
+coveragereport
 depcomp
 install-sh
 libtool
@@ -65,6 +67,7 @@ po/fr.gmo
 po/insert-header.sin
 po/quot.sed
 po/remove-potcdate.sin
+po/remove-potcdate.sed
 po/stamp-po
 po/vle.pot
 src/Makefile
@@ -74,6 +77,8 @@ src/Makefile.in
 Makefile
 Makefile.in
 *.o
+*.gcno
+*.gcda
 *.la
 *.lo
 *.trs
@@ -81,6 +86,7 @@ Makefile.in
 src/bin/vle
 src/tests/devs-engine
 src/tests/dsde-engine
+src/tests/dtss-engine
 src/tests/utils
 stamp-h1
 test-driver

@@ -17,6 +17,8 @@ Here's a short list of things we can do
     function.
   - Add a **devs** engine.
   - Add a **dtss** engine.
+    - Use the `std::is_integral <Time::type>::value` to ensure type of the
+      template.
   - How to provide several simulation algorithms?
   - Add a global identifier (`size_t` and/or `std::string`): `size_t`
     may be useful with PRNG but std::string for observation…

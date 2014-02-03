@@ -76,12 +76,10 @@ fi
 AM_CONDITIONAL([HAVE_PO], [test "x${have_po}" = "xyes"])
 
 ### Default options with respect to host
-
 AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
 
 # dependencies and options
-
 AC_LANG([C++])
 AC_PROG_CXX
 AX_CXX_COMPILE_STDCXX_11([noext], [mandatory])
@@ -107,13 +105,12 @@ BOOST_REQUIRE
 
 VLE_CHECK_TESTS([enable_tests="yes"], [enable_tests="no"])
 
-VLE_CHECK_COVERAGE([${enable_tests}], [enable_coverage="yes"],
-		   [enable_coverage="no"])
-CFLAGS="${CFLAGS} ${VLE_COVERAGE_CFLAGS}"
-ECORE_LIBS="${ECORE_LIBS} ${VLE_COVERAGE_LIBS}"
-if test "x$enable_coverage" = "xyes" ; then
-   CFLAGS="${CFLAGS} ${VLE_DEBUG_CFLAGS}"
-fi
+# Check coverage
+m4_include([m4/gcov.m4])
+AC_TDD_GCOV
+AC_SUBST(COVERAGE_CFLAGS)
+AC_SUBST(COVERAGE_CXXFLAGS)
+AC_SUBST(COVERAGE_LDFLAGS)
 
 AC_CONFIG_FILES([Makefile
 		 vle-2.0.pc
@@ -130,6 +127,7 @@ echo
 echo "$PACKAGE $VERSION"
 echo
 echo "Tests..................: ${enable_tests}"
+echo "Coverage...............: ${enable_gcov}"
 echo "Documentation..........: ${build_doc}"
 echo "Examples...............: ${enable_build_examples}"
 echo "Examples installed.....: ${enable_install_examples}"

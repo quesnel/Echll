@@ -28,6 +28,8 @@
 #define __VLE_KERNEL_UTILS_HPP__
 
 #include <functional>
+#include <limits>
+#include <cmath>
 
 namespace vle
 {
@@ -68,6 +70,13 @@ namespace vle
     private:
         std::function<void (void)> fct;
     };
+
+    template <typename T>
+    bool is_almost_equal(const T a, const T b)
+    {
+        const T scale = (std::abs(a) + std::abs(b)) / T(2.0);
+        return std::abs(a - b) <= (scale * std::numeric_limits<T>::epsilon());
+    }
 }
 
 #endif
