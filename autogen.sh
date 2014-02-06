@@ -21,5 +21,9 @@ echo "----------------------------------------------------------------"
 echo "Initialized build system. For a common configuration please run:"
 echo "----------------------------------------------------------------"
 echo
-echo "./configure CXXFLAGS='-g -O0' CFLAGS='-g -O0' $args"
+echo "For a system installation:"
+echo "./configure CXXFLAGS='-g -O2' CFLAGS='-g -O2' $args"
+echo ""
+echo "For a user installation:"
+echo "./configure CXXFLAGS='-g -O2' CFLAGS='-g -O2' --prefix=$HOME/usr"
 echo
