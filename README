@@ -1,29 +1,34 @@
-=========
 VLE 2.0.0
 =========
 
-:Info See <http://www.vle-project.org/> for introductory docs.
-:Author: Gauthier Quesnel <quesnel@users.sourceforge.net>
+**VLE2** is a tiny library designed to quickly develop DEVS, DTSS, DSDE and
+multicomponent simulator.
 
-VLE2 is a tiny library designed to quickly develop DEVS, DSDE simulator.
+See <http://www.vle-project.org/vle-Z.0> for introductory docs.
+
+Gauthier Quesnel <gauthier.quesnel@toulouse.inra.fr>
+
 
 Requirements
 ------------
 
 Must have:
 
-- c++ compiler (support for C++11)
-- libc++ or libstdc++ (support for C++11)
+- c++ compiler (gcc or clang with C++11)
+- libc++ or libstdc++
 - boost (1.49 or better)
-
-Optional requirements:
-
-- libarchive (3 or better)
 
 Compiling and installing
 ------------------------
 
-  ./configure
-  make
-(do this as root unless you are installing in your users directories):
-  make install
+Do this as root:
+
+    ./configure --prefix=/usr --sysdir=/etc
+    make
+    sudo make install
+
+Unless you are installing in your users directories:
+
+    ./configure --prefix=$HOME
+    make
+    make install
