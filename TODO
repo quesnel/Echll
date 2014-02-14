@@ -20,6 +20,10 @@ Here's a short list of things we can do
   - Add feature to avoid update of the scheduler in transition function.
 
 - Project
+  - Change the name of VLE
+  - Hide any boost type from public API
+    - Hide boost::intrusive_ptr
+    - Hide boost::fibonacci_heap
   - Cleanup unit test.
   - Cleanup and simplify autotools scripts.
   - Add a manager mode
@@ -36,3 +40,4 @@ Here's a short list of things we can do
     - Add the module system
     - Add a clean API module access to the environment
   - Use classic appdirs directories
+  - Add classical path function: dirname(), basename(), extension(), etc.
