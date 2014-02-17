@@ -22,7 +22,6 @@ Here's a short list of things we can do
 - Project
   - Change the name of VLE
   - Hide any boost type from public API
-    - Hide boost::intrusive_ptr
     - Hide boost::fibonacci_heap
   - Cleanup unit test.
   - Cleanup and simplify autotools scripts.

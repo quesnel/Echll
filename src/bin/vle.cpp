@@ -39,10 +39,12 @@
 
 #include <vle/environment.hpp>
 #include <iostream>
-#include <functional>
 
 int main(int argc, char *argv[])
 {
+    (void)argc;
+    (void)argv;
+
     std::setlocale(LC_ALL, "");
 
 #ifdef ENABLE_NLS
@@ -50,16 +52,28 @@ int main(int argc, char *argv[])
     ::bind_textdomain_codeset(PACKAGE, "UTF-8");
 #endif
 
-    auto result = vle::Environment::create();
-    if (!std::get <0>(result)) {
-        std::cerr << _("Failed to initialize the environment: ")
-            << std::get <1>(result)
-            << std::endl;
-
+    vle::EnvironmentPtr env = std::make_shared<vle::Environment>();
+    switch (env->init()) {
+    case -1:
+        std::cerr << _("Failed to read VLE_HOME, HOME and TMP environment "
+                       "variables");
+        return EXIT_FAILURE;
+    case -2:
+        std::cerr << _("Failed to initialize VLE_HOME directory: ");
+        return EXIT_FAILURE;
+    case -3:
+        std::cerr << _("Failed to initialize packages directory: ");
+        return EXIT_FAILURE;
+    case -4:
+        std::cerr << _("Failed to initialize log file: ");
         return EXIT_FAILURE;
     }
 
-    std::get <0>(result)->warning("VLE started");
+#ifdef HAVE_CONFIG_H
+    env->warning(_(PACKAGE_NAME " " VERSION " started"));
+#else
+    env->warning(_("VLE started"));
+#endif
 
     return EXIT_SUCCESS;
 }

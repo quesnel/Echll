@@ -49,10 +49,8 @@ TEST_CASE("try-make_path_api", "run")
 
 TEST_CASE("try-environment-package-path", "run")
 {
-    auto ret = vle::Environment::create();
-    vle::EnvironmentPtr env = std::get <0>(ret);
-
-    REQUIRE(env);
+    vle::EnvironmentPtr env = std::make_shared<vle::Environment>();
+    REQUIRE(env->init());
 
     std::string tmp_path = vle::Path::get_temporary_path();
     env->set_prefix_path(tmp_path);

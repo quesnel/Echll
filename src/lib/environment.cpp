@@ -115,67 +115,8 @@ public:
 #endif
 };
 
-std::tuple <EnvironmentPtr, std::string> Environment::create()
-{
-    EnvironmentPtr ret = new vle::Environment();
-    int state = ret->m->init(std::string());
-    std::string msg;
-
-    if (state < 0) {
-        switch (state) {
-        case -1:
-            msg = _("Failed to read VLE_HOME, HOME and TMP environment"
-                    " variables");
-            break;
-        case -2:
-            msg = _("Failed to initialize VLE_HOME directory: ")
-                + ret->m->prefix_path;
-            break;
-        case -3:
-            msg = _("Failed to initialize packages directory: ")
-                + ret->m->pkgs_path;
-            break;
-        case -4:
-            msg = _("Failed to initialize log file: ") + ret->m->logfilepath;
-            break;
-        }
-        ret.reset();
-    }
-    return std::make_tuple(ret, msg);
-}
-
-std::tuple <EnvironmentPtr, std::string> Environment::create(
-    const std::string &logfilepath)
-{
-    EnvironmentPtr ret = new vle::Environment();
-    int state = ret->m->init(logfilepath);
-    std::string msg;
-
-    if (state < 0) {
-        switch (state) {
-        case -1:
-            msg = _("Failed to read VLE_HOME, HOME and TMP environment"
-                    " variables");
-            break;
-        case -2:
-            msg = _("Failed to initialize VLE_HOME directory: ")
-                + ret->m->prefix_path;
-            break;
-        case -3:
-            msg = _("Failed to initialize packages directory: ")
-                + ret->m->pkgs_path;
-            break;
-        case -4:
-            msg = _("Failed to initialize log file: ") + ret->m->logfilepath;
-            break;
-        }
-        ret.reset();
-    }
-    return std::make_tuple(ret, msg);
-}
-
 Environment::Environment()
-    : references(0), m(new Environment::Pimpl())
+    : m(new Environment::Pimpl())
 {
 #ifndef VLE_NDEBUG_MODE
     m->start = std::chrono::system_clock::now();
@@ -191,6 +132,13 @@ Environment::~Environment()
     std::chrono::duration<double> elapsed_seconds = m->end - m->start;
     dInfo(_("Environment is deleted. Elapsed time: "), elapsed_seconds.count(), "s");
 #endif
+}
+
+int Environment::init()
+{
+    std::string logfilepath = "vle.log";
+
+    return m->init(logfilepath);
 }
 
 void Environment::print(const std::string& msg)

@@ -29,16 +29,14 @@
 #define __VLE_KERNEL_ENVIRONMENT_HPP__
 
 #include <vle/export.hpp>
-#include <boost/intrusive_ptr.hpp>
 #include <string>
 #include <memory>
-#include <tuple>
 
 namespace vle {
 
 class Environment;
 
-typedef boost::intrusive_ptr <Environment> EnvironmentPtr;
+typedef std::shared_ptr <Environment> EnvironmentPtr;
 
 enum PackageDirectoryType
 {
@@ -51,13 +49,15 @@ enum PackageDirectoryType
 class VLE_API Environment
 {
 public:
-    static std::tuple <EnvironmentPtr, std::string>
-        create();
+    Environment();
 
-    static std::tuple <EnvironmentPtr, std::string>
-        create(const std::string &logfilepath);
+    Environment(const Environment &rhs) = delete;
+
+    Environment& operator=(const Environment &rhs) = delete;
 
     ~Environment();
+
+    int init();
 
     void get_version(int *major, int *minor, int *patch) const;
 
@@ -86,32 +86,12 @@ public:
 
     std::string get_package_path(PackageDirectoryType type) const;
 
-    /// @cond SKIP
-    long references;
-    /// @endcond
 private:
-    Environment();
-    Environment(const Environment &rhs) = delete;
-    Environment& operator=(const Environment &rhs) = delete;
-
     /// @cond SKIP
     class Pimpl;
     std::unique_ptr <Pimpl> m;
     /// @endcond
 };
-
-/// @cond
-inline void intrusive_ptr_add_ref(Environment* env)
-{
-    ++env->references;
-}
-
-inline void intrusive_ptr_release(Environment* env)
-{
-    if(--env->references == 0)
-        delete env;
-}
-/// @endcond
 
 }
 
