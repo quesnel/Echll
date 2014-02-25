@@ -31,8 +31,6 @@ Here's a short list of things we can do
     - Add a vpz class which maintains the contents of the `vle::vpz`.
 
 - Utils
-  - Update `make_path(std::initializer_list)` with a new templatized
-    function like the `dbg_print` function.
   - Add the package system as in VLE > 1.1
     - Add a spawn system
   - Add the module system as in VLE > 1.1

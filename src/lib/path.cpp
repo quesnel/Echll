@@ -25,8 +25,9 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <vle/path.hpp>
+#include <algorithm>
 #include <cstdio>
+#include "path.hpp"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -96,11 +97,20 @@ std::string Path::get_temporary_path()
         if (::getenv(names[i]) && exist_directory(::getenv(names[i])))
             return names[i];
 
-#ifdef _WIN32
-    return "c:\\";
-#else
     return "/tmp";
-#endif
+}
+
+std::string Path::get_home_path()
+{
+    char *home = nullptr;
+
+    if ((home = ::getenv("VLE_HOME")) == nullptr)
+        if ((home = ::getenv("HOME")) == nullptr)
+            if ((home = ::getenv("PWD")) == nullptr)
+                if ((home = ::getenv("TMP")) == nullptr)
+                    return std::string();
+
+    return std::string(home);
 }
 
 }

@@ -26,14 +26,15 @@
  */
 
 #include <vle/environment.hpp>
-#include <vle/path.hpp>
 #include <vle/dbg.hpp>
 #include <iostream>
 #include <fstream>
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <vector>
 #include "i18n.hpp"
+#include "path.hpp"
 #include "config.h"
 #include <ctime>
 
@@ -45,21 +46,34 @@ public:
     Pimpl()
         : verbose_level(0), directories({"", "data", "exp", "simulators"})
     {
+        std::string home = vle::Path::make_path(Path::get_home_path(),
+                                                "vle");
+        set_current_home(home);
+    }
+
+    void set_current_home(const std::string& home_path)
+    {
+        if (!vle::Path::exist_directory(home_path)) {
+            if (!vle::Path::create_directories(home_path)) {
+                dWarning("Failed to build home path ", home_path);
+                throw std::runtime_error("make home path");
+            }
+        }
+
+        std::string pkgs = vle::Path::make_path(home_path, "pkgs-2.0");
+        if (!vle::Path::exist_directory(pkgs)) {
+            if (!vle::Path::create_directories(pkgs)) {
+                dWarning("Failed to build package path ", pkgs);
+                throw std::runtime_error("make package path");
+            }
+        }
+
+        pkgs_path = pkgs;
+        prefix_path = prefix_path;
     }
 
     int init(const std::string &filepath)
     {
-        char *home = NULL;
-
-        if ((home = ::getenv("VLE_HOME")) == NULL)
-            if ((home = ::getenv("HOME")) == NULL)
-                if ((home = ::getenv("PWD")) == NULL)
-                    home = ::getenv("TMP");
-
-        if (!home)
-            return -1;
-
-        prefix_path = vle::Path::make_path({home, ".vle"});
 
         int ret = prefix_init(prefix_path);
         if (ret)
@@ -67,7 +81,7 @@ public:
 
         logfilepath = filepath;
         if (logfilepath.empty())
-            logfilepath = vle::Path::make_path({prefix_path, "vle-2.0.log"});
+            logfilepath = vle::Path::make_path(prefix_path, "vle-2.0.log");
 
         logfile.open(logfilepath);
         if (!logfile.is_open())
@@ -78,7 +92,7 @@ public:
 
     int prefix_init(const std::string &prefix)
     {
-        std::string pkgs = vle::Path::make_path({prefix, "pkgs-2.0"});
+        std::string pkgs = vle::Path::make_path(prefix, "pkgs-2.0");
 
         if (!vle::Path::exist_directory(prefix))
             if (!vle::Path::create_directories(prefix))
@@ -211,26 +225,22 @@ std::string Environment::get_current_package() const
 
 std::string Environment::get_current_package_path() const
 {
-    return vle::Path::make_path({m->pkgs_path,
-                                m->current_package
-                                });
+    return vle::Path::make_path(m->pkgs_path, m->current_package);
 }
 
 std::string Environment::get_package_path(const std::string &package,
                                           PackageDirectoryType type) const
 {
-    return vle::Path::make_path({m->pkgs_path,
+    return vle::Path::make_path(m->pkgs_path,
                                 package,
-                                m->directories[static_cast <int>(type)]
-                                });
+                                m->directories[static_cast <int>(type)]);
 }
 
 std::string Environment::get_package_path(PackageDirectoryType type) const
 {
-    return vle::Path::make_path({m->pkgs_path,
+    return vle::Path::make_path(m->pkgs_path,
                                 m->current_package,
-                                m->directories[static_cast <int>(type)]
-                                });
+                                m->directories[static_cast <int>(type)]);
 }
 
 }

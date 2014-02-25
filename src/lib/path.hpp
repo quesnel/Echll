@@ -28,9 +28,8 @@
 #ifndef __VLE_KERNEL_PATH_HPP__
 #define __VLE_KERNEL_PATH_HPP__
 
-#include <initializer_list>
 #include <string>
-#include <algorithm>
+#include <vle/export.hpp>
 
 namespace vle {
 
@@ -42,29 +41,34 @@ struct Path
 
     static bool create_directories(const std::string &dirname);
 
-    template <typename Iterator>
-        static std::string make_path(Iterator first, Iterator last)
+    template <typename T, typename... ArgTypes>
+        static std::string make_path_impl(const T& first,
+                                          const ArgTypes&... args)
         {
-            return std::accumulate(first, last, std::string(),
-                                   [](const std::string& a,
-                                      const std::string& b) -> std::string
-                                   {
-                                   if (a.empty())
-                                   return b;
-#ifdef _WIN32
-                                   return a + "\\" + b;
-#else
-                                   return a + '/' + b;
-#endif
-                                   });
+            using expand_variadic_pack = int[];
+            std::string out(first);
+
+            (void)expand_variadic_pack{0,
+                ((out.append("/"), out.append(args)), void(), 0)...};
+
+            return out;
         }
 
-    static std::string make_path(std::initializer_list <std::string> lst)
-    {
-        return make_path(lst.begin(), lst.end());
-    }
+    template <typename T>
+        static std::string make_path_impl(const T& arg)
+        {
+            return arg;
+        }
+
+    template <typename... ArgTypes>
+        static std::string make_path(const ArgTypes&... args)
+        {
+            return make_path_impl(args...);
+        }
 
     static std::string get_temporary_path();
+
+    static std::string get_home_path();
 };
 
 }

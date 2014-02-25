@@ -13,7 +13,6 @@ vleinclude_HEADERS = vle/dbg.hpp \
 		     vle/environment.hpp \
 		     vle/export.hpp \
 		     vle/heap.hpp \
-		     vle/path.hpp \
 		     vle/port.hpp \
 		     vle/time.hpp \
 		     vle/vle.hpp
@@ -21,12 +20,12 @@ vleinclude_HEADERS = vle/dbg.hpp \
 libvle_2_0_la_SOURCES = environment.cpp \
 			i18n.hpp \
 			path.cpp \
+			path.hpp \
 			vle/dbg.hpp \
 			vle/dsde.hpp \
 			vle/environment.hpp \
 			vle/export.hpp \
 			vle/heap.hpp \
-			vle/path.hpp \
 			vle/port.hpp \
 			vle/time.hpp \
 			vle/vle.hpp
