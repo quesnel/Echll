@@ -28,6 +28,7 @@
 #ifndef __VLE_KERNEL_PORT_HPP__
 #define __VLE_KERNEL_PORT_HPP__
 
+#include <vle/utils.hpp>
 #include <algorithm>
 #include <map>
 #include <vector>
@@ -70,8 +71,18 @@ template <typename Value>
 
         int add(const std::string &name)
         {
-            accessor[name] = ports.size();
+            bool success = false;
+
             ports.push_back(Values());
+            ScopeExit on_exit([&success, this](void)
+                              {
+                                  if (!success)
+                                      ports.pop_back();
+                              });
+
+            accessor.emplace(name, ports.size() - 1);
+            success = true;
+
             return ports.size() - 1;
         }
 
