@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2013 INRA
- * Copyright (C) 2013 ULCO
+ * Copyright (C) 2014 INRA
  *
  * All rights reserved.
  *
