@@ -30,6 +30,7 @@
 #include <vle/export.hpp>
 #include <string>
 #include <memory>
+#include <stdexcept>
 
 namespace vle {
 
@@ -45,6 +46,13 @@ enum PackageDirectoryType
     PACKAGE_SIMULATOR_DIRECTORY
 };
 
+struct environment_init_error : std::runtime_error
+{
+    explicit environment_init_error(const std::string& msg)
+        : std::runtime_error(msg)
+    {}
+};
+
 class VLE_API Environment
 {
 public:
@@ -55,8 +63,6 @@ public:
     Environment& operator=(const Environment &rhs) = delete;
 
     ~Environment();
-
-    int init();
 
     void get_version(int *major, int *minor, int *patch) const;
 
@@ -72,7 +78,7 @@ public:
 
     std::string get_prefix_path() const;
 
-    bool set_prefix_path(const std::string &path) const;
+    void set_prefix_path(const std::string &path) const;
 
     std::string get_current_package() const;
 

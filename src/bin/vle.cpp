@@ -51,20 +51,11 @@ int main(int argc, char *argv[])
     ::bind_textdomain_codeset(PACKAGE, "UTF-8");
 #endif
 
-    vle::EnvironmentPtr env = std::make_shared<vle::Environment>();
-    switch (env->init()) {
-    case -1:
-        std::cerr << _("Failed to read VLE_HOME, HOME and TMP environment "
-                       "variables");
-        return EXIT_FAILURE;
-    case -2:
-        std::cerr << _("Failed to initialize VLE_HOME directory: ");
-        return EXIT_FAILURE;
-    case -3:
-        std::cerr << _("Failed to initialize packages directory: ");
-        return EXIT_FAILURE;
-    case -4:
-        std::cerr << _("Failed to initialize log file: ");
+    vle::EnvironmentPtr env;
+    try {
+        env = std::make_shared<vle::Environment>();
+    } catch (const std::exception& e) {
+        std::cerr << _("Failed to initialize VLE: "), e.what();
         return EXIT_FAILURE;
     }
 
