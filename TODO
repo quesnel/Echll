@@ -6,7 +6,13 @@ Here's a short list of things we can do
   - Add the move constructible traits
   - Add the move assignable traits
 
+- Parallel kernel
+  - How to define parallel vle::Simulation class ?
+
 - Engine
+  - Initialization system:
+    - Add a generic init system for all engines/models in CTOR?
+    - Provides an experimental frames manager.
   - Add a **parallel_dsde** that use `std::thread` in transition
     function.
   - Add a **devs** engine.
