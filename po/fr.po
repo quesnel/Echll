@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vle 2.0.0\n"
 "Report-Msgid-Bugs-To: quesnel@users.sourceforge.net\n"
-"POT-Creation-Date: 2014-01-17 10:47+0100\n"
+"POT-Creation-Date: 2014-03-04 14:27+0100\n"
 "PO-Revision-Date: 2013-06-14 10:35+0200\n"
 "Last-Translator: Gauthier Quesnel <quesnel@users.sourceforge.net>\n"
 "Language-Team: French\n"
@@ -18,47 +18,46 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: src/lib/environment.cpp:115 src/lib/environment.cpp:145
-msgid "Failed to read VLE_HOME, HOME and TMP environment variables"
-msgstr ""
-"Impossibilité de lire les variables d'environnement VLE_HOME, HOME et TMP"
+#: src/lib/environment.cpp:57
+msgid "Fail to build home directory"
+msgstr "Impossibilité d'initialiser le dossier maison"
 
-#: src/lib/environment.cpp:119 src/lib/environment.cpp:149
+#: src/lib/environment.cpp:61
 #, fuzzy
-msgid "Failed to initialize VLE_HOME directory: "
-msgstr "Impossibilité d'initialiser le dossier VLE_HOME : "
+msgid "Fail to build pkgs directory"
+msgstr "Impossibilité d'initialiser le dossier des paquets"
 
-#: src/lib/environment.cpp:123 src/lib/environment.cpp:153
+#: src/lib/environment.cpp:72
 #, fuzzy
-msgid "Failed to initialize packages directory: "
-msgstr "Impossibilité d'initialiser le dossier des paquets : "
+msgid "Failed to open log file"
+msgstr "Impossibilité d'initialiser le fichier journal"
 
-#: src/lib/environment.cpp:127 src/lib/environment.cpp:157
-#, fuzzy
-msgid "Failed to initialize log file: "
-msgstr "Impossibilité d'initialiser le fichier journal : "
-
-#: src/lib/environment.cpp:171
+#: src/lib/environment.cpp:125
 msgid "Environment is created at time: "
 msgstr "L'environnment est créé à la date : "
 
-#: src/lib/environment.cpp:180
+#: src/lib/environment.cpp:134
 msgid "Environment is deleted. Elapsed time: "
 msgstr "L'environnement est détruit à la date : "
 
-#: src/lib/environment.cpp:191
+#: src/lib/environment.cpp:147
 #, fuzzy
 msgid "[Warning] "
 msgstr "[Attention] "
 
-#: src/lib/environment.cpp:196
+#: src/lib/environment.cpp:153
 msgid "[Error] "
 msgstr "[Erreur] "
 
-#: src/bin/vle.cpp:55
+#: src/bin/vle.cpp:58
 #, fuzzy
-msgid "Failed to initialize the environment: "
-msgstr "Initialiation du fichier journal `%s'\n"
+msgid "Failed to initialize VLE: "
+msgstr "Impossibilité d'initialiser VLE : "
 
-#~ msgid "[31mWarning: [m"
-#~ msgstr "[31mAttention : [m"
+#: src/bin/vle.cpp:63
+msgid " "
+msgstr " "
+
+#: src/bin/vle.cpp:65
+msgid "VLE started"
+msgstr "VLE démarré"
