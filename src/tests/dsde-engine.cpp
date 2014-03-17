@@ -217,11 +217,13 @@ struct MyModel : AtomicModel
 
     virtual double init(const double& t) override final
     {
+        (void)t;
         return 0.0;
     }
 
     virtual double delta(const double& e) override final
     {
+        (void)e;
         return 1;
     }
 
@@ -388,6 +390,8 @@ struct MyGenNetwork : CoupledModel
     virtual void post(const UpdatedPort &out,
                       UpdatedPort &in) const override final
     {
+        (void)in;
+
         if (!out.empty()) {
             y[0] = gen.y[0];
         }

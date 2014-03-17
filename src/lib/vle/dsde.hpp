@@ -189,7 +189,7 @@ namespace dsde
                 (*child->heapid).tn = child->tn;
                 heap.update(child->heapid);
             } else {
-                for (int i = 0; i < pool.size(); ++i) {
+                for (size_t i = 0; i < pool.size(); ++i) {
                     pool[i] = std::thread(&TransitionPolicyThread::work, this,
                                           std::ref(bag), time, i);
                 }
@@ -208,7 +208,8 @@ namespace dsde
         }
     };
 
-    template <typename Time, typename Value, typename Policy = TransitionPolicyThread <Time, Value>>
+    template <typename Time, typename Value,
+             typename Policy = TransitionPolicyThread <Time, Value>>
     struct CoupledModel : Model <Time, Value>
     {
         typedef typename Time::type time_type;
