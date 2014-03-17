@@ -11,8 +11,8 @@ noinst_PROGRAMS  = utils dsde-engine devs-engine dtss-engine
 check_PROGRAMS = utils dsde-engine devs-engine dtss-engine
 
 dsde_engine_SOURCES = dsde-engine.cpp catch.hpp
-dsde_engine_CXXFLAGS = $(COVERAGE_CXXFLAGS)
-dsde_engine_LDFLAGS = $(COVERAGE_LDFLAGS)
+dsde_engine_CXXFLAGS = $(COVERAGE_CXXFLAGS) $(PTHREAD_CFLAGS)
+dsde_engine_LDFLAGS = $(COVERAGE_LDFLAGS) $(PTHREAD_LIBS)
 
 devs_engine_SOURCES = devs-engine.cpp catch.hpp
 devs_engine_CXXFLAGS = $(COVERAGE_CXXFLAGS)

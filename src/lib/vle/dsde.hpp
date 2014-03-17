@@ -30,9 +30,10 @@
 #include <vle/time.hpp>
 #include <vle/port.hpp>
 #include <vle/heap.hpp>
+#include <vle/dbg.hpp>
 #include <memory>
 #include <set>
-#include <vle/dbg.hpp>
+#include <thread>
 
 namespace vle {
 
@@ -130,13 +131,93 @@ namespace dsde
     };
 
     template <typename Time, typename Value>
+    struct TransitionPolicyDefault
+    {
+        typedef typename Time::type time_type;
+
+        void operator()(Bag <Time, Value>& bag, const time_type& time,
+                        HeapType <Time, Value> &heap)
+        {
+            std::for_each(bag.begin(), bag.end(),
+                          [&time, &heap](Model <Time, Value> *child)
+                          {
+                              child->transition(time);
+                              (*child->heapid).tn = child->tn;
+                              heap.update(child->heapid);
+                          });
+        }
+    };
+
+    template <typename Time, typename Value>
+    struct TransitionPolicyThread
+    {
+        typedef typename Time::type time_type;
+
+        std::vector <std::thread> pool;
+
+        TransitionPolicyThread()
+            : pool(std::thread::hardware_concurrency())
+        {}
+
+        TransitionPolicyThread(const TransitionPolicyThread& /*other*/)
+            : pool(std::thread::hardware_concurrency())
+        {}
+
+        void work(Bag <Time, Value>& bag, const time_type& time, const int idx)
+        {
+            auto it = bag.begin();
+            int job = bag.size() - idx;
+
+            if (job > 0) {
+                std::advance(it, idx);
+
+                while (job > 0) {
+                    (*it)->transition(time);
+                    job -= pool.size();
+                    std::advance(it, pool.size());
+                }
+            }
+        }
+
+        void operator()(Bag <Time,Value>& bag, const time_type& time,
+                        HeapType <Time, Value> &heap)
+        {
+            if (bag.size() == 1) {
+                Model <Time, Value>* child = (*bag.begin());
+
+                child->transition(time);
+                (*child->heapid).tn = child->tn;
+                heap.update(child->heapid);
+            } else {
+                for (int i = 0; i < pool.size(); ++i) {
+                    pool[i] = std::thread(&TransitionPolicyThread::work, this,
+                                          std::ref(bag), time, i);
+                }
+
+                for (auto& worker : pool)
+                    if (worker.get_id() != std::thread::id())
+                        worker.join();
+
+                std::for_each(bag.begin(), bag.end(),
+                             [&heap](Model <Time, Value> *child)
+                             {
+                                (*child->heapid).tn = child->tn;
+                                heap.update(child->heapid);
+                             });
+            }
+        }
+    };
+
+    template <typename Time, typename Value, typename Policy = TransitionPolicyThread <Time, Value>>
     struct CoupledModel : Model <Time, Value>
     {
         typedef typename Time::type time_type;
         typedef Value value_type;
+        typedef Policy transition_policy;
 
         HeapType <Time, Value> heap;
         UpdatedPort <Time, Value> last_output_list;
+        transition_policy policy;
 
         typedef std::vector <Model <Time, Value>*> children_t;
 
@@ -214,13 +295,7 @@ namespace dsde
                 last_output_list.clear();
             }
 
-            std::for_each(bag.begin(), bag.end(),
-                          [=](Model <Time, Value> *child)
-                          {
-                              child->transition(time);
-                              (*child->heapid).tn = child->tn;
-                              heap.update(child->heapid);
-                          });
+            policy(bag, time, heap);
 
             Model <Time, Value>::tl = time;
             Model <Time, Value>::tn = heap.top().tn;
@@ -264,11 +339,13 @@ namespace dsde
         }
     };
 
-    template <typename Time, typename Value>
+    template <typename Time, typename Value,
+             typename Policy = TransitionPolicyThread <Time, Value>>
     struct Executive : Model <Time, Value>
     {
         typedef typename Time::type time_type;
         typedef Value value_type;
+        typedef Policy transition_policy;
 
         HeapType <Time, Value> heap;
         UpdatedPort <Time, Value> last_output_list;
@@ -277,6 +354,7 @@ namespace dsde
         time_type chi_tl, chi_tn;
         typename HeapType <Time, Value>::handle_type chi_heapid;
         mutable vle::PortList <Value> chi_x, chi_y;
+        transition_policy policy;
 
         virtual children_t children() = 0;
         virtual time_type init(const time_type& time) = 0;
@@ -389,13 +467,7 @@ namespace dsde
                 last_output_list.clear();
             }
 
-            std::for_each(bag.begin(), bag.end(),
-                          [=](Model <Time, Value> *child)
-                          {
-                              child->transition(time);
-                              (*child->heapid).tn = child->tn;
-                              heap.update(child->heapid);
-                          });
+            policy(bag, time, heap);
 
             if (have_chi) {
                 time_type e = time - chi_tl;

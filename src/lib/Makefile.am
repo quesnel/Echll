@@ -36,5 +36,5 @@ libvle_2_0_la_SOURCES = environment.cpp \
 		        vle/utils.hpp \
 			vle/vle.hpp
 
-libvle_2_0_la_CXXFLAGS = $(COVERAGE_CXXFLAGS)
-libvle_2_0_la_LDFLAGS = $(COVERAGE_LDFLAGS)
+libvle_2_0_la_CXXFLAGS = $(COVERAGE_CXXFLAGS) $(PTHREAD_CFLAGS)
+libvle_2_0_la_LDFLAGS = $(COVERAGE_LDFLAGS) $(PTHREAD_LIBS)

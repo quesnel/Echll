@@ -26,6 +26,8 @@
 
 #include <string>
 #include <cmath>
+#include <chrono>
+#include <ctime>
 #include <vector>
 #include <iostream>
 #include <random>
@@ -49,6 +51,8 @@ typedef vle::dsde::Engine <MyTime, std::string> MyDSDE;
 using UpdatedPort = vle::dsde::UpdatedPort <MyTime, std::string>;
 using AtomicModel = vle::dsde::AtomicModel <MyTime, std::string>;
 using CoupledModel = vle::dsde::CoupledModel <MyTime, std::string>;
+using CoupledModelMono = vle::dsde::CoupledModel <MyTime, std::string, vle::dsde::TransitionPolicyDefault <MyTime, std::string>>;
+
 using Executive = vle::dsde::Executive <MyTime, std::string>;
 
 struct ModelB : AtomicModel
@@ -265,6 +269,90 @@ struct MyNetwork : CoupledModel
             cpt.x[0].insert(cpt.x[0].end(),
                             gen2.y[0].begin(),
                             gen2.y[0].end());
+        }
+    }
+};
+
+struct MyBigNetworkMono : CoupledModelMono
+{
+    std::vector <Generator> gens;
+    Counter cpt;
+
+    MyBigNetworkMono() :
+        CoupledModel(), gens(1000)
+    {}
+
+    virtual ~MyBigNetworkMono() {}
+
+    virtual CoupledModel::children_t children() override final
+    {
+        CoupledModel::children_t cs;
+
+        for (auto& gen : gens)
+            cs.push_back(&gen);
+
+        cs.push_back(&cpt);
+
+        return cs;
+    }
+
+    virtual std::string observation() const
+    {
+        return std::string();
+    }
+
+    virtual void post(const UpdatedPort &/*out*/,
+                      UpdatedPort &in) const override final
+    {
+        for (auto& gen : gens) {
+            if (gen.y[0].size())
+                in.emplace(&cpt);
+
+            cpt.x[0].insert(cpt.x[0].end(),
+                            gen.y[0].begin(),
+                            gen.y[0].end());
+        }
+    }
+};
+
+struct MyBigNetwork : CoupledModel
+{
+    std::vector <Generator> gens;
+    Counter cpt;
+
+    MyBigNetwork() :
+        CoupledModel(), gens(1000)
+    {}
+
+    virtual ~MyBigNetwork() {}
+
+    virtual CoupledModel::children_t children() override final
+    {
+        CoupledModel::children_t cs;
+
+        for (auto& gen : gens)
+            cs.push_back(&gen);
+
+        cs.push_back(&cpt);
+
+        return cs;
+    }
+
+    virtual std::string observation() const
+    {
+        return std::string();
+    }
+
+    virtual void post(const UpdatedPort &/*out*/,
+                      UpdatedPort &in) const override final
+    {
+        for (auto& gen : gens) {
+            if (gen.y[0].size())
+                in.emplace(&cpt);
+
+            cpt.x[0].insert(cpt.x[0].end(),
+                            gen.y[0].begin(),
+                            gen.y[0].end());
         }
     }
 };
@@ -504,6 +592,38 @@ TEST_CASE("main/synchronizer/hierarchy/network-1", "run")
 
     std::string result = model.observation();
     REQUIRE(result == "36 9 9");
+}
+
+TEST_CASE("main/synchronizer/hierarchy/bignetwork-1-thread", "run")
+{
+    auto mstart = std::chrono::system_clock::now();
+
+    MyDSDE dsde_engine;
+    MyBigNetwork model;
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+
+    double final_date = sim.run(0.0, 10);
+    REQUIRE(final_date == 10.0);
+
+    auto mend = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = mend - mstart;
+    dInfo("MyBigNetworkThread elapsed time: ", elapsed_seconds.count(), "s");
+}
+
+TEST_CASE("main/synchronizer/hierarchy/bignetwork-1-mono", "run")
+{
+    auto mstart = std::chrono::system_clock::now();
+
+    MyDSDE dsde_engine;
+    MyBigNetworkMono model;
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+
+    double final_date = sim.run(0.0, 10);
+    REQUIRE(final_date == 10.0);
+
+    auto mend = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = mend - mstart;
+    dInfo("MyBigNetworkMono elapsed time: ", elapsed_seconds.count(), "s");
 }
 
 TEST_CASE("main/synchronizer/hierarchy/network-2", "run")

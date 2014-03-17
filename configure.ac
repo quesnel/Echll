@@ -103,6 +103,11 @@ AC_CHECK_HEADERS([ctime cstring cstdio cstdlib])
 
 BOOST_REQUIRE
 
+AX_PTHREAD([entable_pthread="ok"], [AC_MSG_ERROR([
+	    The pthread library and header file
+	    required to build vle. Stopping...
+	    Check 'config.log' for more information.])])
+
 VLE_CHECK_TESTS([enable_tests="yes"], [enable_tests="no"])
 
 # Check coverage
