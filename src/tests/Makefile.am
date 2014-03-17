@@ -1,6 +1,6 @@
 MAINTAIRNERCLEANFILES = Makefile.in
 
-AM_CPPFLAGS = -include $(top_builddir)/config.h \
+AM_CPPFLAGS = -I$(top_builddir) \
 	      -DSYSCONFDIR=\""$(sysconfdir)"\" \
 	      -DLIBEXECDIR=\""$(libexecdir)"\" \
 	      -I${top_srcdir}/src/lib

@@ -24,6 +24,10 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
+
 #include <vle/environment.hpp>
 #include <vle/dbg.hpp>
 #include <fstream>
@@ -35,10 +39,6 @@
 #include "i18n.hpp"
 #include "path.hpp"
 #include <ctime>
-
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
 
 namespace vle {
 

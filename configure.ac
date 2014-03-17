@@ -108,6 +108,14 @@ AX_PTHREAD([entable_pthread="ok"], [AC_MSG_ERROR([
 	    required to build vle. Stopping...
 	    Check 'config.log' for more information.])])
 
+AC_ARG_ENABLE([debug],
+	      [AS_HELP_STRING([--enable-debug],
+			      [enable debug code (default is no)])],
+			      [debug="$withval"], [debug=no])
+
+AS_IF([test "x$debug" = xno],
+      [AC_DEFINE([VLE_NDEBUG], [1], [Define to disable VLE debug features])])
+
 VLE_CHECK_TESTS([enable_tests="yes"], [enable_tests="no"])
 
 # Check coverage
@@ -131,11 +139,10 @@ AC_OUTPUT
 echo
 echo "$PACKAGE $VERSION"
 echo
+echo "Debug Build............: $debug"
 echo "Tests..................: ${enable_tests}"
 echo "Coverage...............: ${enable_gcov}"
 echo "Documentation..........: ${build_doc}"
-echo "Examples...............: ${enable_build_examples}"
-echo "Examples installed.....: ${enable_install_examples}"
 echo
 echo "Compilation............: make (or gmake)"
 echo "  CPPFLAGS.............: $CPPFLAGS"
