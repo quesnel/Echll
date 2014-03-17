@@ -87,13 +87,6 @@ AX_CXX_COMPILE_STDCXX_11([noext], [mandatory])
 # doxygen program for documentation building
 VLE_CHECK_DOXYGEN([build_doc="yes"], [build_doc="no"])
 
-m4_ifdef([v_mic],
-   [
-    VLE_COMPILER_FLAG([-Wall])
-    VLE_COMPILER_FLAG([-Wextra])
-    VLE_COMPILER_FLAG([-std=c++11])
-   ])
-
 ### Checks for compiler characteristics
 AC_PROG_CC_STDC
 AC_C_CONST

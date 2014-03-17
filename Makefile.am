@@ -69,7 +69,6 @@ EXTRA_DIST = AUTHORS \
 	     m4/ax_cxx_compile_stdcxx_11.m4 \
 	     m4/boost.m4 \
 	     m4/gcov.m4 \
-	     m4/vle_compiler_flag.m4 \
 	     m4/vle_doxygen.m4 \
 	     m4/vle_tests.m4
 
