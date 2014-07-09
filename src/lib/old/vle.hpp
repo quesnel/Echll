@@ -36,10 +36,10 @@
 
 namespace vle {
 
-struct dsde_internal_error : std::runtime_error
+struct dsde_internal_error : std::logic_error
 {
     explicit dsde_internal_error(const std::string& msg)
-        : std::runtime_error(msg)
+        : std::logic_error(msg)
     {}
 };
 

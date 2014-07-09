@@ -36,10 +36,10 @@
 
 namespace vle {
 
-struct devs_internal_error : std::runtime_error
+struct devs_internal_error : std::logic_error
 {
     explicit devs_internal_error(const std::string& msg)
-        : std::runtime_error(msg)
+        : std::logic_error(msg)
     {}
 };
 

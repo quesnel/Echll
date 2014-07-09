@@ -34,14 +34,14 @@
 
 namespace vle {
 
-struct model_port_error : std::runtime_error
+struct model_port_error : std::invalid_argument
 {
     model_port_error(int port)
-        : std::runtime_error(std::to_string(port))
+        : std::invalid_argument(std::to_string(port))
     {}
 
     model_port_error(const std::string &port)
-        : std::runtime_error(port)
+        : std::invalid_argument(port)
     {}
 };
 

@@ -46,10 +46,10 @@ enum PackageDirectoryType
     PACKAGE_SIMULATOR_DIRECTORY
 };
 
-struct environment_init_error : std::runtime_error
+struct environment_init_error : std::logic_error
 {
     explicit environment_init_error(const std::string& msg)
-        : std::runtime_error(msg)
+        : std::logic_error(msg)
     {}
 };
 
