@@ -70,7 +70,7 @@ struct ModelB : AtomicModel
     virtual ~ModelB()
     {}
 
-    virtual double init(const double&) override final
+    virtual double init(const vle::Common&, const double&) override final
     {
         i = 0;
         return 0.;
@@ -105,7 +105,7 @@ struct ModelA : AtomicModel
     virtual ~ModelA() override
     {}
 
-    virtual double init(const double&) override final
+    virtual double init(const vle::Common&, const double&) override final
     {
         i = 0;
         return 0.;
@@ -141,7 +141,7 @@ struct Counter : AtomicModel
     virtual ~Counter()
     {}
 
-    virtual double init(const double&) override final
+    virtual double init(const vle::Common&, const double&) override final
     {
         i = 0;
         return Infinity<double>::positive;
@@ -186,7 +186,7 @@ struct Generator : AtomicModel
     virtual ~Generator()
     {}
 
-    virtual double init(const double&) override final
+    virtual double init(const vle::Common&, const double&) override final
     {
         return timestep; // return std::abs(dist(prng));
     }
@@ -215,7 +215,7 @@ struct MyModel : AtomicModel
     MyModel() : AtomicModel() {}
     virtual ~MyModel() {}
 
-    virtual double init(const double& t) override final
+    virtual double init(const vle::Common&, const double& t) override final
     {
         (void)t;
         return 0.0;
@@ -253,7 +253,7 @@ struct MyNetwork : CoupledModel
 
     virtual ~MyNetwork() {}
 
-    virtual CoupledModel::children_t children() override final
+    virtual CoupledModel::children_t children(const vle::Common&) override final
     {
         return {&gen1, &gen2, &cpt};
     }
@@ -290,7 +290,7 @@ struct MyBigNetworkMono : CoupledModelMono
 
     virtual ~MyBigNetworkMono() {}
 
-    virtual CoupledModel::children_t children() override final
+    virtual CoupledModel::children_t children(const vle::Common&) override final
     {
         CoupledModel::children_t cs;
 
@@ -332,7 +332,7 @@ struct MyBigNetwork : CoupledModel
 
     virtual ~MyBigNetwork() {}
 
-    virtual CoupledModel::children_t children() override final
+    virtual CoupledModel::children_t children(const vle::Common&) override final
     {
         CoupledModel::children_t cs;
 
@@ -377,7 +377,7 @@ struct MyGenNetwork : CoupledModel
 
     virtual ~MyGenNetwork() {}
 
-    virtual CoupledModel::children_t children() override final
+    virtual CoupledModel::children_t children(const vle::Common&) override final
     {
         return {&gen};
     }
@@ -412,7 +412,7 @@ struct MyCptNetwork : CoupledModel
 
     virtual ~MyCptNetwork() {}
 
-    virtual CoupledModel::children_t children() override final
+    virtual CoupledModel::children_t children(const vle::Common&) override final
     {
         return {&cpt};
     }
@@ -450,7 +450,7 @@ struct MyGlobalNetwork : CoupledModel
 
     virtual ~MyGlobalNetwork() {}
 
-    virtual CoupledModel::children_t children() override final
+    virtual CoupledModel::children_t children(const vle::Common&) override final
     {
         return {&cpt, &gen1, &gen2};
     }

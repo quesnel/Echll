@@ -8,7 +8,8 @@ AM_CPPFLAGS = -I$(top_builddir) \
 lib_LTLIBRARIES = libvle-2.0.la
 
 vleincludedir = $(includedir)/vle-2.0/vle
-vleinclude_HEADERS = vle/dbg.hpp \
+vleinclude_HEADERS = vle/common.hpp \
+		     vle/dbg.hpp \
 		     vle/devs.hpp \
 		     vle/dsde.hpp \
 		     vle/dtss.hpp \
@@ -24,6 +25,7 @@ libvle_2_0_la_SOURCES = environment.cpp \
 			i18n.hpp \
 			path.cpp \
 			path.hpp \
+			vle/common.hpp \
 			vle/dbg.hpp \
 			vle/devs.hpp \
 			vle/dsde.hpp \

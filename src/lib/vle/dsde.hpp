@@ -27,6 +27,7 @@
 #ifndef __VLE_KERNEL_DSDE_HPP__
 #define __VLE_KERNEL_DSDE_HPP__
 
+#include <vle/common.hpp>
 #include <vle/time.hpp>
 #include <vle/port.hpp>
 #include <vle/heap.hpp>
@@ -70,7 +71,7 @@ namespace dsde
         Model *parent;
         typename HeapType <Time, Value>::handle_type heapid;
 
-        virtual void start(const time_type& time) = 0;
+        virtual void start(const Common& common, const time_type& time) = 0;
         virtual void transition(const time_type& time) = 0;
         virtual void output(const time_type& time) = 0;
     };
@@ -87,7 +88,7 @@ namespace dsde
         typedef typename Time::type time_type;
         typedef Value value_type;
 
-        virtual time_type init(const time_type& time) = 0;
+        virtual time_type init(const vle::Common& common, const time_type& time) = 0;
         virtual time_type delta(const time_type& time) = 0;
         virtual void lambda() const = 0;
 
@@ -103,10 +104,10 @@ namespace dsde
         virtual ~AtomicModel()
         {}
 
-        virtual void start(const time_type& time) override final
+        virtual void start(const vle::Common& common, const time_type& time) override final
         {
             Model <Time, Value>::tl = time;
-            Model <Time, Value>::tn = time + init(time);
+            Model <Time, Value>::tn = time + init(common, time);
         }
 
         virtual void transition(const time_type& time) override final
@@ -230,7 +231,7 @@ namespace dsde
          *
          * @return
          */
-        virtual children_t children() = 0;
+        virtual children_t children(const vle::Common& common) = 0;
 
         virtual void post(const UpdatedPort <Time, Value> &out,
                           UpdatedPort <Time, Value> &in) const = 0;
@@ -247,14 +248,14 @@ namespace dsde
         virtual ~CoupledModel()
         {}
 
-        virtual void start(const time_type& time) override final
+        virtual void start(const vle::Common& common, const time_type& time) override final
         {
-            auto cs = children();
+            auto cs = children(common);
             std::for_each(cs.begin(), cs.end(),
                           [=](Model <Time, Value>* child)
                           {
                               child->parent = this;
-                              child->start(time);
+                              child->start(common, time);
 
                               auto id = heap.emplace(child, child->tn);
                               child->heapid = id;
@@ -356,6 +357,7 @@ namespace dsde
         typename HeapType <Time, Value>::handle_type chi_heapid;
         mutable vle::PortList <Value> chi_x, chi_y;
         transition_policy policy;
+        vle::Common localcommon;
 
         virtual children_t children() = 0;
         virtual time_type init(const time_type& time) = 0;
@@ -388,7 +390,7 @@ namespace dsde
         {
             dWarning("Executive insert a new model");
             mdl->parent = this;
-            mdl->start(Executive::chi_tl);
+            mdl->start(localcommon, Executive::chi_tl);
 
             auto id = heap.emplace(mdl, mdl->tn);
             mdl->heapid = id;
@@ -403,8 +405,9 @@ namespace dsde
             mdl->parent = nullptr;
         }
 
-        virtual void start(const time_type& time) override final
+        virtual void start(const vle::Common& common, const time_type& time) override final
         {
+            localcommon = common;
             chi_tl = time;
             chi_tn = time + init(time);
             auto id = heap.emplace(this, chi_tn);
@@ -416,7 +419,7 @@ namespace dsde
                           [=](Model <Time, Value> *child)
                           {
                               child->parent = this;
-                              child->start(time);
+                              child->start(localcommon, time);
 
                               auto id = heap.emplace(child, child->tn);
                               (*id).heapid = id;
@@ -529,10 +532,23 @@ namespace dsde
         typedef typename Time::type time_type;
         typedef Value value_type;
         typedef Model <Time, Value> model_type;
+        vle::CommonPtr common;
+
+        Engine()
+            : common(std::make_shared <Common>())
+        {}
+
+        Engine(vle::Common&& common)
+            : common(std::make_shared <vle::Common>(common))
+        {}
+
+        Engine(vle::CommonPtr common)
+            : common(common)
+        {}
 
         time_type pre(model_type& model, const time_type& time)
         {
-            model.start(time);
+            model.start(*common, time);
 
             return model.tn;
         }
