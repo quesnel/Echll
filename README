@@ -1,34 +1,40 @@
-VLE 2.0.0
-=========
+Echll
+=====
 
-**VLE2** is a tiny library designed to quickly develop DEVS, DTSS, DSDE and
+Copyright © 2014 INRA
+
+**Echll** is a tiny library designed to quickly develop DEVS, DTSS, DSDE and
 multicomponent simulator.
 
-See <http://www.vle-project.org/vle-Z.0> for introductory docs.
+See <http://www.vle-project.org/vle-2.0> for introductory docs.
 
 Gauthier Quesnel <gauthier.quesnel@toulouse.inra.fr>
 
+## Requirements
 
-Requirements
-------------
+* boost (≥ 1.50)
+* cmake (≥ 2.8)
+* make (≥ 1.8)
+* c++ compiler (gcc ≥ 4.8, clang ≥ 3.3, intel icc (≥ 11.0).
 
-Must have:
+For recent Debian and Ubuntu derivatives (remove clang to only use gcc):
 
-- c++ compiler (gcc or clang with C++11)
-- libc++ or libstdc++
-- boost (1.49 or better)
+    apt-get install build-essential cmake clang libboost-dev
 
-Compiling and installing
-------------------------
+## Compiling and installing
 
-Do this as root:
+Compiling and installing:
 
-    ./configure --prefix=/usr --sysdir=/etc
-    make
-    sudo make install
-
-Unless you are installing in your users directories:
-
-    ./configure --prefix=$HOME
-    make
+    cd Echll
+    mkdir build
+    cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release ..
+    make -j
     make install
+
+To use clang replace the previous `cmake` command:
+
+    CXX=clang++-libc++ cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release ..
+
+# Usage
+
+* Not yet usable.
