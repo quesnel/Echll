@@ -24,41 +24,48 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
+//#ifdef HAVE_CONFIG_H
+//# include <config.h>
+//#endif
+
+//#ifdef ENABLE_NLS
+//# include <libintl.h>
+//#else
+//# define gettext(x)          (x)
+//# define dgettext(domain, x) (x)
+//#endif
+//#define _(x)                 dgettext(PACKAGE, x)
 
 #include <vle/environment.hpp>
-#include "path.hpp"
+#include <iostream>
 
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-
-TEST_CASE("try-make_path_api", "run")
+int main(int argc, char *argv[])
 {
-    {
-        std::string path = vle::Path::make_path("A", "B", "C");
-        REQUIRE(path == "A/B/C");
+    (void)argc;
+    (void)argv;
+
+    //std::setlocale(LC_ALL, "");
+
+//#ifdef ENABLE_NLS
+    //::bindtextdomain(PACKAGE, LOCALE_DIR);
+    //::bind_textdomain_codeset(PACKAGE, "UTF-8");
+//#endif
+
+    vle::EnvironmentPtr env;
+    try {
+        env = std::make_shared<vle::Environment>();
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to initialize VLE: " << e.what();
+        return EXIT_FAILURE;
     }
 
-    {
-        std::string path = vle::Path::make_path("struct");
-        REQUIRE(path == "struct");
-    }
-}
+//#ifdef HAVE_CONFIG_H
+    //env->warning(_(PACKAGE_NAME " " VERSION " started"));
+//#else
+    //env->warning(_("VLE started"));
+//#endif
+//
+    env->warning("VLE started");
 
-TEST_CASE("try-environment-package-path", "run")
-{
-    vle::EnvironmentPtr env = std::make_shared<vle::Environment>();
-
-    std::string tmp_path = vle::Path::get_temporary_path();
-    env->set_prefix_path(tmp_path);
-
-    REQUIRE(env->get_prefix_path() == tmp_path);
-    REQUIRE(env->get_package_path("test", vle::PACKAGE_DATA_DIRECTORY) ==
-            vle::Path::make_path(tmp_path, "pkgs-2.0", "test", "data"));
-    REQUIRE(env->get_package_path("test", vle::PACKAGE_EXP_DIRECTORY) ==
-            vle::Path::make_path(tmp_path, "pkgs-2.0", "test", "exp"));
-    REQUIRE(env->get_package_path("test", vle::PACKAGE_SIMULATOR_DIRECTORY) ==
-            vle::Path::make_path(tmp_path, "pkgs-2.0", "test", "simulators"));
+    return EXIT_SUCCESS;
 }

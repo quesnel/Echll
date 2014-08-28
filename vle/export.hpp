@@ -24,52 +24,35 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_PATH_HPP__
-#define __VLE_KERNEL_PATH_HPP__
+#ifndef __VLE_KERNEL_EXPORT_HPP__
+#define __VLE_KERNEL_EXPORT_HPP__
 
-#include <string>
-#include <vle/export.hpp>
+#if defined _WIN32 || defined __CYGWIN__
+  #define VLE_HELPER_DLL_IMPORT __declspec(dllimport)
+  #define VLE_HELPER_DLL_EXPORT __declspec(dllexport)
+  #define VLE_HELPER_DLL_LOCAL
+#else
+  #if __GNUC__ >= 4
+    #define VLE_HELPER_DLL_IMPORT __attribute__ ((visibility ("default")))
+    #define VLE_HELPER_DLL_EXPORT __attribute__ ((visibility ("default")))
+    #define VLE_HELPER_DLL_LOCAL  __attribute__ ((visibility ("hidden")))
+  #else
+    #define VLE_HELPER_DLL_IMPORT
+    #define VLE_HELPER_DLL_EXPORT
+    #define VLE_HELPER_DLL_LOCAL
+  #endif
+#endif
 
-namespace vle {
-
-struct Path
-{
-    static bool exist_file(const std::string &filename);
-
-    static bool exist_directory(const std::string &dirname);
-
-    static bool create_directories(const std::string &dirname);
-
-    template <typename T, typename... ArgTypes>
-        static std::string make_path_impl(const T& first,
-                                          const ArgTypes&... args)
-        {
-            using expand_variadic_pack = int[];
-            std::string out(first);
-
-            (void)expand_variadic_pack{0,
-                ((out.append("/"), out.append(args)), void(), 0)...};
-
-            return out;
-        }
-
-    template <typename T>
-        static std::string make_path_impl(const T& arg)
-        {
-            return arg;
-        }
-
-    template <typename... ArgTypes>
-        static std::string make_path(const ArgTypes&... args)
-        {
-            return make_path_impl(args...);
-        }
-
-    static std::string get_temporary_path();
-
-    static std::string get_home_path();
-};
-
-}
+#ifdef Echll_DLL
+  #ifdef Echll_EXPORTS
+    #define VLE_API VLE_HELPER_DLL_EXPORT
+  #else
+    #define VLE_API VLE_HELPER_DLL_IMPORT
+  #endif
+  #define VLE_LOCAL VLE_HELPER_DLL_LOCAL
+#else
+  #define VLE_API
+  #define VLE_LOCAL
+#endif
 
 #endif

@@ -34,6 +34,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <cstdlib>
 
 namespace vle {
 
@@ -97,7 +98,7 @@ std::string Path::get_temporary_path()
     const int names_size = sizeof(names) / sizeof(names[0]);
 
     for (int i = 0; i != names_size; ++i)
-        if (::getenv(names[i]) && exist_directory(::getenv(names[i])))
+        if (std::getenv(names[i]) && exist_directory(std::getenv(names[i])))
             return names[i];
 
     return "/tmp";
@@ -107,10 +108,10 @@ std::string Path::get_home_path()
 {
     char *home = nullptr;
 
-    if ((home = ::getenv("VLE_HOME")) == nullptr)
-        if ((home = ::getenv("HOME")) == nullptr)
-            if ((home = ::getenv("PWD")) == nullptr)
-                if ((home = ::getenv("TMP")) == nullptr)
+    if ((home = std::getenv("VLE_HOME")) == nullptr)
+        if ((home = std::getenv("HOME")) == nullptr)
+            if ((home = std::getenv("PWD")) == nullptr)
+                if ((home = std::getenv("TMP")) == nullptr)
                     return std::string();
 
     return std::string(home);
