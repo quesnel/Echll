@@ -27,56 +27,66 @@
 #ifndef __VLE_KERNEL_UTILS_HPP__
 #define __VLE_KERNEL_UTILS_HPP__
 
+#include <vle/export.hpp>
 #include <functional>
 #include <limits>
+#include <string>
 #include <cmath>
+#include <cstdint>
+#include <cinttypes>
 
-namespace vle
+#if defined __GNUC__
+#define VLE_GCC_PRINTF(format__, args__) __attribute__ ((format (printf, format__, args__)))
+#endif
+
+namespace vle {
+
+VLE_API std::string stringf(const char* format, ...) VLE_GCC_PRINTF(1, 2);
+
+/**
+ * The @e ScopeExit structure permits the use of the @c Scope_Guard C++
+ * idiom.
+ *
+ * @code
+ * void world::add_person(person const& a_person)
+ * {
+ *     bool commit = false;
+ *
+ *     persons_.push_back(a_person);
+ *     ScopeExit on_exit1([&commit, this](void)
+ *     {
+ *         if (!commit)
+ *             persons_.pop_back();
+ *     });
+ *
+ *     // ...
+ *
+ *     commit = true;
+ * }
+ * @endcode
+ */
+struct ScopeExit
 {
-    /**
-     * The @e ScopeExit structure permits the use of the @c Scope_Guard C++
-     * idiom.
-     *
-     * @code
-     * void world::add_person(person const& a_person)
-     * {
-     *     bool commit = false;
-     *
-     *     persons_.push_back(a_person);
-     *     ScopeExit on_exit1([&commit, this](void)
-     *     {
-     *         if (!commit)
-     *             persons_.pop_back();
-     *     });
-     *
-     *     // ...
-     *
-     *     commit = true;
-     * }
-     * @endcode
-     */
-    struct ScopeExit
+    ScopeExit(std::function <void (void)> fct)
+        : fct(fct)
+    {}
+
+    ~ScopeExit()
     {
-        ScopeExit(std::function <void (void)> fct)
-            : fct(fct)
-        {
-        }
-
-        ~ScopeExit()
-        {
-            fct();
-        }
-
-    private:
-        std::function<void (void)> fct;
-    };
-
-    template <typename T>
-    bool is_almost_equal(const T a, const T b)
-    {
-        const T scale = (std::abs(a) + std::abs(b)) / T(2.0);
-        return std::abs(a - b) <= (scale * std::numeric_limits<T>::epsilon());
+        fct();
     }
+
+private:
+    std::function<void (void)> fct;
+};
+
+template <typename T>
+bool is_almost_equal(const T a, const T b)
+{
+    const T scale = (std::abs(a) + std::abs(b)) / T(2.0);
+    return std::abs(a - b) <= (scale * std::numeric_limits<T>::epsilon());
+}
+
 }
 
 #endif
