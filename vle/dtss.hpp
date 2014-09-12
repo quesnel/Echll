@@ -268,6 +268,8 @@ namespace dtss {
         virtual void y_msg(Model <Time, Value>& model,
                            const time_type& time) override final
         {
+            (void)model;
+            (void)time;
             // TODO
         }
     };

@@ -31,6 +31,9 @@
 #include <algorithm>
 #include <map>
 #include <vector>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/string.hpp>
 
 namespace vle {
 
@@ -150,6 +153,17 @@ template <typename Value>
         {
             return empty;
         }
+
+        friend class boost::serialization::access;
+        template<class Archive>
+            void serialize(Archive & ar, const unsigned int version)
+            {
+                (void)version;
+
+                ar & ports;
+                ar & accessor;
+                ar & empty;
+            }
     };
 }
 

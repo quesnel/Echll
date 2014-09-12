@@ -538,10 +538,6 @@ namespace dsde
             : common(std::make_shared <Common>())
         {}
 
-        Engine(vle::Common&& common)
-            : common(std::make_shared <vle::Common>(common))
-        {}
-
         Engine(vle::CommonPtr common)
             : common(common)
         {}

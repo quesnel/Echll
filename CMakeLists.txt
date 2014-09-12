@@ -1,5 +1,5 @@
 project(Echll)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.7)
 set(Echll_MAJOR 0)
 set(Echll_MINOR 0)
 set(Echll_PATCH 99)
@@ -20,19 +20,16 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_CXX_COMPILER_ID} STREQU
   endif ()
 endif ()
 
-include_directories(. ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR})
-find_package(PkgConfig)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR})
 
-macro (pkg_config_library LIBNAME pcfile)
-  pkg_check_modules(${LIBNAME} REQUIRED ${pcfile})
-  include_directories(${${LIBNAME}_INCLUDE_DIRS})
-  link_directories(${${LIBNAME}_LIBRARY_DIRS})
-  add_definitions(${${LIBNAME}_CFLAGS_OTHER})
-  set(Echll_LINK_LIBRARIES ${Echll_LINK_LIBRARIES} ${${LIBNAME}_LIBRARIES})
-  set(Echll_STATIC_LINK_LIBRARIES ${Echll_STATIC_LINK_LIBRARIES} ${${LIBNAME}_STATIC_LIBRARIES})
-endmacro ()
-
-#pkg_config_library(LIBMPI ompi-cxx)
+message(STATUS "checking for a (p)thread library")
+find_package(Threads REQUIRED)
+if (NOT Threads_FOUND)
+  message(ERROR " failed to found a (p)thread support.")
+else ()
+  message(STATUS " threads support enabled")
+  set(Echll_LINK_LIBRARIES ${Echll_LINK_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+endif ()
 
 message(STATUS "checking for a C++ compiler with MPI support")
 find_package(MPI REQUIRED)
@@ -43,8 +40,23 @@ if (NOT MPI_CXX_FOUND)
   MPI_CXX_INCLUDE_PATH and rerun CMake.")
 else()
   message(STATUS " MPI support enabled")
+  include_directories(${MPI_CXX_INCLUDE_PATH})
+  set(Echll_LINK_LIBRARIES ${Echll_LINK_LIBRARIES} ${MPI_CXX_LIBRARIES})
 endif ()
 
+message(STATUS "checking for Boost headers and libraries")
+find_package(Boost 1.55 REQUIRED COMPONENTS mpi serialization)
+if (NOT Boost_FOUND)
+  message(ERROR " failed to found Boost headers or Boost MPI library.
+  Please install them or assign BOOST_ROOT, BOOST_INCLUDREDIR,
+  BOOST_LIBRARYDIR and rerun CMake. Read the installed FindBoost in
+  CMAke's directory too.")
+else ()
+  message(STATUS " Boost found")
+  include_directories(${Boost_INCLUDE_DIRS})
+  link_directories(${Boost_LIBRARY_DIRS})
+  set(Echll_LINK_LIBRARIES ${Echll_LINK_LIBRARIES} ${Boost_LIBRARIES})
+endif ()
 
 ### # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 ## Echll-x.y.pc
@@ -56,7 +68,7 @@ if (WIN32)
 else()
   set(Echll_PKGCONFIG_PREFIXPATH "${CMAKE_INSTALL_PREFIX}")
   set(Echll_PKGCONFIG_LIBDIR "lib")
-endif()
+endif ()
 
 configure_file(Echll.pc.in ${PROJECT_BINARY_DIR}/Echll-${Echll_STABLEVERSION}.pc @ONLY)
 install(FILES ${PROJECT_BINARY_DIR}/Echll-${Echll_STABLEVERSION}.pc
@@ -78,7 +90,6 @@ set(Echll_CORE_SRCS vle/common.hpp vle/dbg.hpp vle/devs.hpp
   vle/vle.hpp)
 
 add_library(Echll_corelib SHARED ${Echll_CORE_SRCS})
-add_library(Echll_static_corelib STATIC ${Echll_CORE_SRCS})
 
 set_target_properties(Echll_corelib PROPERTIES
   VERSION 0
@@ -87,27 +98,12 @@ set_target_properties(Echll_corelib PROPERTIES
   COMPILE_DEFINITIONS "Echll_DLL"
   COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
 
-if (WIN32)
-  target_link_libraries(Echll_corelib ${Echll_STATIC_LINK_LIBRARIES})
-else ()
-  target_link_libraries(Echll_corelib ${Echll_LINK_LIBRARIES})
-endif ()
-
-set_target_properties(Echll_static_corelib PROPERTIES
-  VERSION 0
-  OUTPUT_NAME "echll-${Echll_STABLEVERSION}"
-  DEFINE_SYMBOL "Echll_EXPORTS"
-  COMPILE_FLAGS "-fvisibility=hidden -Fvisibility-inlines-hidden")
+target_link_libraries(Echll_corelib ${Echll_LINK_LIBRARIES})
 
 install(FILES ${Echll_CORE_HDRS}
   DESTINATION include/echll-${Echll_STABLEVERSION})
 
 install(TARGETS Echll_corelib
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib)
-
-install(TARGETS Echll_static_corelib
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib)
@@ -119,30 +115,19 @@ install(TARGETS Echll_static_corelib
 set(Echll_MAIN_SRCS vle/main.cpp)
 
 add_executable(echll ${Echll_MAIN_SRCS})
+target_link_libraries(echll Echll_corelib ${Echll_LINK_LIBRARIES})
 
-if (MPI_CXX_FOUND)
-  include_directories(${MPI_CXX_INCLUDE_PATH})
-  target_link_libraries(echll ${MPI_CXX_LIBRARIES})
-
-  if (MPI_CXX_COMPILE_FLAGS)
-    set_target_properties(echll PROPERTIES COMPILE_FLAGS "${MPI_CXX_COMPILE_FLAGS}")
-  endif ()
-
-  if (MPI_CXX_LINK_FLAGS)
-    set_target_properties(echll PROPERTIES LINK_FLAGS "${MPI_CXX_LINK_FLAGS}")
-  endif ()
+if (MPI_CXX_COMPILE_FLAGS)
+  set_target_properties(echll PROPERTIES COMPILE_FLAGS "${MPI_CXX_COMPILE_FLAGS}")
 endif ()
 
-if (WIN32)
-  target_link_libraries(echll Echll_static_corelib ${Echll_STATIC_LINK_LIBRARIES})
-  set_target_properties(echll PROPERTIES
-    COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
-else ()
-  target_link_libraries(echll Echll_corelib ${Echll_LINK_LIBRARIES})
-  set_target_properties(echll PROPERTIES
-    VERSION ${Echll_STABLEVERSION}
-    COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
+if (MPI_CXX_LINK_FLAGS)
+  set_target_properties(echll PROPERTIES LINK_FLAGS "${MPI_CXX_LINK_FLAGS}")
 endif ()
+
+set_target_properties(echll PROPERTIES
+  VERSION ${Echll_STABLEVERSION}
+  COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
 
 install(TARGETS echll DESTINATION bin)
 
@@ -182,6 +167,13 @@ if (CATCH_INCLUDE_DIR)
   set_target_properties(test_dtss-engine PROPERTIES
     COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
   add_test(NAME test_dtss-engine COMMAND test_dtss-engine)
+
+  add_executable(test_mpi-synchronous tests/mpi-synchronous.cpp)
+  target_link_libraries(test_mpi-synchronous Echll_corelib ${Echll_LINK_LIBRARIES})
+  set_target_properties(test_mpi-synchronous PROPERTIES
+    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
+  add_test(NAME test_mpi-synchronous COMMAND mpirun -np 4
+    test_mpi-synchronous)
 else ()
   message(STATUS " not found catch.hpp. Unit test disabled")
 endif ()
