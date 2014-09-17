@@ -66,6 +66,14 @@ struct SynchronousProxyModel : Model <Time, Value>
           , rank(-1)
     {}
 
+    SynchronousProxyModel(std::initializer_list <std::string> lst_x,
+                          std::initializer_list <std::string> lst_y)
+        : Model <Time, Value>(lst_x, lst_y)
+          , environment(nullptr)
+          , communicator(nullptr)
+          , rank(-1)
+    {}
+
     virtual ~SynchronousProxyModel()
     {
         if (communicator && (*communicator))
@@ -78,11 +86,12 @@ struct SynchronousProxyModel : Model <Time, Value>
 
         communicator->send(rank, proxy_send_start_tag, time);
 
-        time_type tmp;
-        communicator->recv(rank, proxy_recv_tn_tag, tmp);
+        time_type tn;
+        communicator->recv(rank, proxy_recv_tn_tag, tn);
 
         Model <Time, Value>::tl = time;
-        Model <Time, Value>::tn = time + tmp;
+        Model <Time, Value>::tn = tn;
+        Model <Time, Value>::x.clear();
     }
 
     virtual void transition(const time_type& time)
@@ -93,8 +102,8 @@ struct SynchronousProxyModel : Model <Time, Value>
         time_type tn;
         communicator->recv(rank, proxy_recv_tn_tag, tn);
 
-        Model <Time, Value>::tn = tn;
         Model <Time, Value>::tl = time;
+        Model <Time, Value>::tn = tn;
         Model <Time, Value>::x.clear();
     }
 

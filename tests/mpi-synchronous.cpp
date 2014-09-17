@@ -50,23 +50,39 @@ using SynchronousLogicalProcessor = vle::dsde::SynchronousLogicalProcessor <MyTi
 
 struct Counter : AtomicModel
 {
+    bool is_rank_0;
     int i;
+    double current_time;
 
     Counter()
-        : AtomicModel({"in"}, {}), i(0)
+        : AtomicModel({"in"}, {}),
+        is_rank_0(false),
+        i(0)
     {}
 
     virtual ~Counter()
     {}
 
-    virtual double init(const vle::Common&, const double&) override final
+    virtual double init(const vle::Common&, const double& time) override final
     {
+        if (is_rank_0) {
+            current_time = time;
+            std::cerr << "Counter init\n";
+        }
+
         i = 0;
         return Infinity<double>::positive;
     }
 
-    virtual double delta(const double&) override final
+    virtual double delta(const double& time) override final
     {
+        if (is_rank_0) {
+            current_time += time;
+            std::cerr << "Counter delta t=" << current_time
+                << " x[0].size()=" << x[0].size()
+                << "\n";
+        }
+
         i += x[0].size();
         return Infinity<double>::positive;
     }
@@ -126,16 +142,33 @@ struct Network : CoupledModelMono
         return cs;
     }
 
-    virtual void post(const UpdatedPort &/*out*/, UpdatedPort &in) const override final
+    virtual void post(const UpdatedPort &out, UpdatedPort &in) const override final
     {
+        assert(out.size() == 0 or out.size() == 1);
+
+        if (cpt.is_rank_0)
+            std::cerr << "--------------------\nstart loop\n";
+
+        if (cpt.is_rank_0) {
+            std::cerr << "Network cpt:" << cpt.x[0].size()
+                << " generator: " << gens.size() << "\n";
+        }
+
         for (auto& gen : gens) {
-            if (gen.y[0].size())
+            if (!gen.y[0].empty())
                 in.emplace(&cpt);
+
+            if (cpt.is_rank_0) {
+                std::cerr << "Network cpt: receives " << gen.y[0].size()
+                    << " message(s)\n";
+            }
 
             cpt.x[0].insert(cpt.x[0].end(),
                             gen.y[0].begin(),
                             gen.y[0].end());
         }
+        if (cpt.is_rank_0)
+            std::cerr << "end loop\n";
     }
 };
 
@@ -170,9 +203,11 @@ struct RootNetwork : CoupledModelMono
         return cs;
     }
 
-    virtual void post(const UpdatedPort &/*out*/,
+    virtual void post(const UpdatedPort &out,
                       UpdatedPort &/*in*/) const override final
-    {}
+    {
+        assert(out.empty());
+    }
 };
 
 int main(int argc, char *argv[])
@@ -190,13 +225,20 @@ int main(int argc, char *argv[])
         MyDSDE dsde_engine;
         RootNetwork rn(&env, &comm);
 
+        std::cerr << "RootCoordinator " << comm.rank() << "\n";
         vle::SimulationDbg <MyDSDE> sim(dsde_engine, rn);
-        if (sim.run(0.0, 1000.0) != 1000.0) {
+        rn.c.cpt.is_rank_0 = true;
+        double final_date = sim.run(0.0, 1000.0);
+
+        if (final_date != 1000.0) {
             std::cerr << "sim.run(0.0, 1000.0) != 1000.0\n";
             goto quit;
         }
 
-        std::cout << "RN: " << comm.rank() << " counter=" << rn.c.cpt.i << "\n";
+        if (rn.c.cpt.i != 2997) {
+            std::cerr << "rn.c.cpt.i (" << rn.c.cpt.i << ") != 2997\n";
+            goto quit;
+        }
 
         ret = EXIT_SUCCESS;
     } else {
@@ -209,7 +251,11 @@ int main(int argc, char *argv[])
 
         sp.run(model);
 
-        std::cout << "LP " << comm.rank() << " counter=" << model.cpt.i << "\n";
+        std::cerr << "LP " << comm.rank() << " counter=" << model.cpt.i << "\n";
+        if (model.cpt.i != 2997) {
+            std::cerr << "model.cpt.i (" << model.cpt.i << " != 2997\n";
+            goto quit;
+        }
 
         ret = EXIT_SUCCESS;
     }
