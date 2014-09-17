@@ -37,7 +37,7 @@ template <typename T>
     {
         bool operator()(const T &lhs, const T &rhs) const
         {
-            return lhs.tn > rhs.tn;
+            return lhs.tn >= rhs.tn;
         }
     };
 
