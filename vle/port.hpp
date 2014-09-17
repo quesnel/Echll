@@ -49,122 +49,117 @@ struct model_port_error : std::invalid_argument
 };
 
 template <typename Value>
-    struct PortList
+struct PortList
+{
+    typedef std::vector <Value> Values;
+
+    std::vector <Values> ports;
+    std::map <std::string, int> accessor;
+    bool empty;
+
+    PortList()
+        : empty(true)
+    {}
+
+    PortList(std::initializer_list < std::string > lst)
+        : empty(true)
     {
-        typedef std::vector <Value> Values;
+        for (const auto& str : lst)
+            add(str);
+    }
 
-        std::vector <Values> ports;
-        std::map <std::string, int> accessor;
-        bool empty;
+    int add(const std::string &name)
+    {
+        bool success = false;
 
-        PortList()
-            : empty(true)
-        {}
-
-        PortList(std::initializer_list < std::string > lst)
-            : empty(true)
-        {
-            std::for_each(lst.begin(), lst.end(),
-                          [=](const std::string &str)
+        ports.push_back(Values());
+        ScopeExit on_exit([&success, this](void)
                           {
-                            add(str);
+                          if (!success)
+                              ports.pop_back();
                           });
-        }
 
-        int add(const std::string &name)
+        accessor.emplace(name, ports.size() - 1);
+        success = true;
+
+        return ports.size() - 1;
+    }
+
+    const Values& operator[](int i) const
+    {
+        return ports[i];
+    }
+
+    Values& operator[](int i)
+    {
+        empty = false;
+
+        return ports[i];
+    }
+
+    const Values& at(int i) const
+    {
+        if (i > ports.size())
+            throw model_port_error(i);
+
+        return ports[i];
+    }
+
+    Values& at(int i)
+    {
+        empty = false;
+
+        if (i > ports.size())
+            throw model_port_error(i);
+
+        return ports[i];
+    }
+
+    const Values& operator[](const std::string &name) const
+    {
+        auto it = accessor.find(name);
+        if (it == accessor.end())
+            throw model_port_error(name);
+
+        return ports[it->second];
+    }
+
+    Values& operator[](const std::string &name)
+    {
+        empty = false;
+
+        auto it = accessor.find(name);
+        if (it == accessor.end())
+            throw model_port_error(name);
+
+        return ports[it->second];
+    }
+
+    void clear()
+    {
+        empty = true;
+
+        for (auto& port : ports)
+            port.clear();
+    }
+
+    bool is_empty() const
+    {
+        return empty;
+    }
+
+    friend class boost::serialization::access;
+    template<class Archive>
+        void serialize(Archive & ar, const unsigned int version)
         {
-            bool success = false;
+            (void)version;
 
-            ports.push_back(Values());
-            ScopeExit on_exit([&success, this](void)
-                              {
-                                  if (!success)
-                                      ports.pop_back();
-                              });
-
-            accessor.emplace(name, ports.size() - 1);
-            success = true;
-
-            return ports.size() - 1;
+            ar & ports;
+            ar & accessor;
+            ar & empty;
         }
+};
 
-        const Values& operator[](int i) const
-        {
-            return ports[i];
-        }
-
-        Values& operator[](int i)
-        {
-            empty = false;
-
-            return ports[i];
-        }
-
-        const Values& at(int i) const
-        {
-            if (i > ports.size())
-                throw model_port_error(i);
-
-            return ports[i];
-        }
-
-        Values& at(int i)
-        {
-            empty = false;
-
-            if (i > ports.size())
-                throw model_port_error(i);
-
-            return ports[i];
-        }
-
-        const Values& operator[](const std::string &name) const
-        {
-            auto it = accessor.find(name);
-            if (it == accessor.end())
-                throw model_port_error(name);
-
-            return ports[it->second];
-        }
-
-        Values& operator[](const std::string &name)
-        {
-            empty = false;
-
-            auto it = accessor.find(name);
-            if (it == accessor.end())
-                throw model_port_error(name);
-
-            return ports[it->second];
-        }
-
-        void clear()
-        {
-            empty = true;
-
-            std::for_each(ports.begin(), ports.end(),
-                          [=](Values &values)
-                          {
-                            values.clear();
-                          });
-        }
-
-        bool is_empty() const
-        {
-            return empty;
-        }
-
-        friend class boost::serialization::access;
-        template<class Archive>
-            void serialize(Archive & ar, const unsigned int version)
-            {
-                (void)version;
-
-                ar & ports;
-                ar & accessor;
-                ar & empty;
-            }
-    };
 }
 
 #endif
