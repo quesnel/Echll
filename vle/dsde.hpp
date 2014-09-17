@@ -139,13 +139,13 @@ namespace dsde
         void operator()(Bag <Time, Value>& bag, const time_type& time,
                         HeapType <Time, Value> &heap)
         {
-            std::for_each(bag.begin(), bag.end(),
-                          [&time, &heap](Model <Time, Value> *child)
-                          {
-                              child->transition(time);
-                              (*child->heapid).tn = child->tn;
-                              heap.update(child->heapid);
-                          });
+            for (auto *child: bag) {
+                child->transition(time);
+                child->x.clear();
+
+                (*child->heapid).tn = child->tn;
+                heap.update(child->heapid);
+            }
         }
     };
 
@@ -187,6 +187,7 @@ namespace dsde
                 Model <Time, Value>* child = (*bag.begin());
 
                 child->transition(time);
+                child->x.clear();
                 (*child->heapid).tn = child->tn;
                 heap.update(child->heapid);
             } else {
@@ -199,12 +200,11 @@ namespace dsde
                     if (worker.get_id() != std::thread::id())
                         worker.join();
 
-                std::for_each(bag.begin(), bag.end(),
-                             [&heap](Model <Time, Value> *child)
-                             {
-                                (*child->heapid).tn = child->tn;
-                                heap.update(child->heapid);
-                             });
+                for (auto* child : bag) {
+                    (*child->heapid).tn = child->tn;
+                    heap.update(child->heapid);
+                    child->x.clear();
+                }
             }
         }
     };
@@ -251,16 +251,15 @@ namespace dsde
         virtual void start(const vle::Common& common, const time_type& time) override
         {
             auto cs = children(common);
-            std::for_each(cs.begin(), cs.end(),
-                          [=](Model <Time, Value>* child)
-                          {
-                              child->parent = this;
-                              child->start(common, time);
 
-                              auto id = heap.emplace(child, child->tn);
-                              child->heapid = id;
-                              (*id).heapid = id;
-                          });
+            for (auto child : cs) {
+                child->parent = this;
+                child->start(common, time);
+
+                auto id = heap.emplace(child, child->tn);
+                child->heapid = id;
+                (*id).heapid = id;
+            };
 
             Model <Time, Value>::tl = time;
             Model <Time, Value>::tn = heap.top().tn;
@@ -287,21 +286,24 @@ namespace dsde
                             (*it).element));
             }
 
-            {
-                if (not Model <Time, Value>::x.is_empty())
-                    post({this}, last_output_list);
+            if (not Model <Time, Value>::x.is_empty()) {
+                post({this}, last_output_list);
+                Model <Time, Value>::x.clear();
+            }
 
-                for (auto &child : last_output_list)
-                    bag.insert(const_cast <Model <Time, Value>*>(child));
+            for (auto &child : last_output_list)
+                bag.insert(const_cast <Model <Time, Value>*>(child));
 
-                last_output_list.clear();
+            last_output_list.clear();
+
+            for (auto& b : bag) {
+                assert(b != this);
             }
 
             policy(bag, time, heap);
 
             Model <Time, Value>::tl = time;
             Model <Time, Value>::tn = heap.top().tn;
-            Model <Time, Value>::x.clear();
         }
 
         virtual void output(const time_type& time) override
@@ -332,11 +334,8 @@ namespace dsde
 
                 post(lst, last_output_list);
 
-                std::for_each(lst.begin(), lst.end(),
-                              [](const Model <Time, Value> *child)
-                              {
-                                  child->y.clear();
-                              });
+                for (auto *child : lst)
+                    child->y.clear();
             }
         }
     };
@@ -553,6 +552,7 @@ namespace dsde
         {
             model.output(time);
             model.transition(time);
+            model.x.clear();
 
             return model.tn;
         }
