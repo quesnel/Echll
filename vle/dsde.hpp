@@ -104,13 +104,13 @@ namespace dsde
         virtual ~AtomicModel()
         {}
 
-        virtual void start(const vle::Common& common, const time_type& time) override final
+        virtual void start(const vle::Common& common, const time_type& time) override
         {
             Model <Time, Value>::tl = time;
             Model <Time, Value>::tn = time + init(common, time);
         }
 
-        virtual void transition(const time_type& time) override final
+        virtual void transition(const time_type& time) override
         {
 #ifndef VLE_OPTIMIZE
             if (!(Model <Time, Value>::tl <= time && time <= Model <Time, Value>::tn))
@@ -124,7 +124,7 @@ namespace dsde
             Model <Time, Value>::x.clear();
         }
 
-        virtual void output(const time_type& time) override final
+        virtual void output(const time_type& time) override
         {
             if (time == Model <Time, Value>::tn)
                 lambda();
@@ -248,7 +248,7 @@ namespace dsde
         virtual ~CoupledModel()
         {}
 
-        virtual void start(const vle::Common& common, const time_type& time) override final
+        virtual void start(const vle::Common& common, const time_type& time) override
         {
             auto cs = children(common);
             std::for_each(cs.begin(), cs.end(),
@@ -266,7 +266,7 @@ namespace dsde
             Model <Time, Value>::tn = heap.top().tn;
         }
 
-        virtual void transition(const time_type& time) override final
+        virtual void transition(const time_type& time) override
         {
 #ifndef VLE_OPTIMIZE
             if (!(Model <Time, Value>::tl <= time && time <= Model <Time, Value>::tn))
@@ -304,7 +304,7 @@ namespace dsde
             Model <Time, Value>::x.clear();
         }
 
-        virtual void output(const time_type& time) override final
+        virtual void output(const time_type& time) override
         {
 #ifndef VLE_OPTIMIZE
             if (!(time == heap.top().tn))
@@ -405,7 +405,7 @@ namespace dsde
             mdl->parent = nullptr;
         }
 
-        virtual void start(const vle::Common& common, const time_type& time) override final
+        virtual void start(const vle::Common& common, const time_type& time) override
         {
             localcommon = common;
             chi_tl = time;
@@ -431,7 +431,7 @@ namespace dsde
             Model <Time, Value>::x.clear();
         }
 
-        virtual void transition(const time_type &time) override final
+        virtual void transition(const time_type &time) override
         {
 #ifndef VLE_OPTIMIZE
             if (!(Model <Time, Value>::tl <= time && time <= Model <Time, Value>::tn))
@@ -486,7 +486,7 @@ namespace dsde
             Model <Time, Value>::x.clear();
         }
 
-        virtual void output(const time_type &time) override final
+        virtual void output(const time_type &time) override
         {
 #ifndef VLE_OPTIMIZE
             if (!(time == heap.top().tn))
