@@ -164,19 +164,24 @@ namespace dsde
             : pool(std::thread::hardware_concurrency())
         {}
 
-        void work(Bag <Time, Value>& bag, const time_type& time, const int idx)
+        void work(Bag <Time, Value>& bag, const time_type& time,
+                  const std::size_t idx)
         {
+            if (idx >= bag.size())
+                return;
+
+            std::size_t current_job_id = idx;
             auto it = bag.begin();
-            int job = bag.size() - idx;
+            std::advance(it, idx);
 
-            if (job > 0) {
-                std::advance(it, idx);
+            for (;;) {
+                (*it)->transition(time);
+                current_job_id += pool.size();
 
-                while (job > 0) {
-                    (*it)->transition(time);
-                    job -= pool.size();
-                    std::advance(it, pool.size());
-                }
+                if (current_job_id >= bag.size())
+                    break;
+
+                std::advance(it, pool.size());
             }
         }
 
@@ -319,6 +324,9 @@ namespace dsde
                 UpdatedPort <Time, Value> lst;
                 auto it = heap.ordered_begin();
                 auto et = heap.ordered_end();
+
+                assert(it != et);
+                assert((std::size_t)std::distance(it, et) == heap.size());
 
                 do {
                     auto id = (*it).heapid;
