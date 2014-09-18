@@ -24,27 +24,38 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DBG_HPP__
-#define __VLE_KERNEL_DBG_HPP__
-
-#include <vle/export.hpp>
-#include <cstdint>
-#include <cinttypes>
-
-#if defined __GNUC__
-#define VLE_GCC_PRINTF(format__, args__) __attribute__ ((format (printf, format__, args__)))
-#endif
+#include <vle/dbg.hpp>
+#include <iostream>
+#include <vector>
+#include <cstdio>
+#include <cstdarg>
 
 namespace vle {
 
-VLE_API void debugf(const char* format, ...) VLE_GCC_PRINTF(1, 2);
+#ifndef NDEBUG
+void debugf(const char* format, ...)
+{
+    std::vector <char> buffer(1024, '\0');
+    int sz;
+    va_list ap;
 
-#ifdef NDEBUG
-inline void debugf(const char* format, ...)
-{}
-#endif
+    for (;;) {
+        va_start(ap, format);
+        sz = std::vsnprintf(buffer.data(), buffer.size(), format, ap);
+        va_end(ap);
 
-
+        if (sz < 0) {
+            std::clog << "DEBUG: nothing\n";
+            return;
+        } else if (static_cast <std::size_t>(sz) < buffer.size()) {
+            std::clog << "DEBUG: " << buffer.data() << "\n";
+            return;
+        } else {
+            buffer.resize(sz + 1);
+        }
+    }
 }
 
 #endif
+
+}

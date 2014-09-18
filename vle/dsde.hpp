@@ -395,7 +395,6 @@ namespace dsde
 
         void insert(Model <Time, Value> *mdl)
         {
-            dWarning("Executive insert a new model");
             mdl->parent = this;
             mdl->start(localcommon, Executive::chi_tl);
 
@@ -406,7 +405,6 @@ namespace dsde
 
         void erase(Model <Time, Value >*mdl)
         {
-            dWarning("Execute erase a model");
             last_output_list.erase(mdl);
             heap.erase(mdl->heapid);
             mdl->parent = nullptr;

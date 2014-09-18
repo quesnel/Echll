@@ -83,11 +83,11 @@ set(Echll_CORE_HDRS vle/common.hpp vle/dbg.hpp vle/devs.hpp
   vle/heap.hpp vle/i18n.hpp vle/init.hpp vle/path.hpp vle/port.hpp
   vle/time.hpp vle/utils.hpp vle/vle.hpp)
 
-set(Echll_CORE_SRCS vle/common.hpp vle/dbg.hpp vle/devs.hpp
-  vle/dsde.hpp vle/dtss.hpp vle/environment.cpp vle/environment.hpp
-  vle/export.hpp vle/heap.hpp vle/i18n.hpp vle/init.hpp vle/path.cpp
-  vle/path.hpp vle/port.hpp vle/time.hpp vle/utils.cpp vle/utils.hpp
-  vle/vle.hpp)
+set(Echll_CORE_SRCS vle/common.hpp vle/dbg.cpp vle/dbg.hpp
+  vle/devs.hpp vle/dsde.hpp vle/dtss.hpp vle/environment.cpp
+  vle/environment.hpp vle/export.hpp vle/heap.hpp vle/i18n.hpp
+  vle/init.hpp vle/path.cpp vle/path.hpp vle/port.hpp vle/time.hpp
+  vle/utils.cpp vle/utils.hpp vle/vle.hpp)
 
 add_library(Echll_corelib SHARED ${Echll_CORE_SRCS})
 

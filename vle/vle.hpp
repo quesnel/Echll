@@ -83,7 +83,7 @@ struct SimulationDbg
         for (i = engine.pre(model, begin);
              i < end;
              i = engine.run(model, i), ++bag) {
-            dPrint("- - - - - - - - - - - - - - - - - - t=", i);
+            vle::debugf("- - - - - - - - - - - - - - - - - - t=%f", i);
         }
 
         engine.post(model, i);

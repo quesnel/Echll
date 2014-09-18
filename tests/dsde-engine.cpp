@@ -153,8 +153,9 @@ struct Counter : AtomicModel
 
     virtual double delta(const double&) override final
     {
-        dWarning("Counter make a delta with ", x[0].size(), " message(s)",
-                 " so, number of received message is ", i);
+        vle::debugf("Counter make a delta with %" PRIuMAX " message(s)"
+                    " so, number of received message is %u",
+                    (std::uintmax_t)x[0].size(), i);
 
         i += x[0].size();
         return Infinity<double>::positive;
@@ -202,14 +203,14 @@ struct Generator : AtomicModel
 
     virtual double delta(const double&) override final
     {
-        dWarning("Generator ", this, " delta");
+        vle::debugf("Generator %p delta", this);
         i++;
         return timestep; // return std::abs(dist(prng));
     }
 
     virtual void lambda() const override final
     {
-        dWarning("Generator ", this, " two messages");
+        vle::debugf("Generator %p sends two messages", this);
         y[0] = { std::string("msg"), std::string("msg2") };
     }
 
@@ -636,23 +637,22 @@ struct MyGlobalNetwork : Parent
     virtual void post(const UpdatedPort &out,
                       UpdatedPort &in) const override final
     {
-        dWarning("MyGlobalNetwork::post out.is_empty=", out.empty(),
-                 " event:", out.count(&gen1), ", ", out.count(&gen2));
+        vle::debugf("MyGlobalNetwork::post out.is_empty=%s"
+                    " event: %" PRIuMAX "%" PRIuMAX,
+                    ((out.empty()) ? "true" : "false"),
+                    (std::uintmax_t)out.count(&gen1),
+                    (std::uintmax_t)out.count(&gen2));
 
         if (out.count(&gen1) + out.count(&gen2) > 0) {
             in.emplace(&cpt);
-
-            dWarning("MyGlobalNetwork"
-                     " gen1.y[0].size() == ", gen1.y[0].size(),
-                     " && gen2.y[0].size() == ", gen2.y[0].size());
 
             cpt.x[0] = gen1.y[0];
             cpt.x[0].insert(cpt.x[0].end(),
                             gen2.y[0].begin(),
                             gen2.y[0].end());
 
-            dWarning("MyGlobalNetwork::post message to cpt (", cpt.x[0].size(),
-                     ")");
+            vle::debugf("MyGlobalNetwork::post message to cpt: %" PRIuMAX,
+                        cpt.x[0].size());
         }
     }
 };
@@ -693,13 +693,13 @@ struct MyExecutive : ExecutiveMono
         previous += e;
 
         if (next == previous) {
-            dWarning("MyExecutive: previsous == next == ", next);
+            vle::debugf("MyExecutive: previous == %f", next);
             if (previous == 5.) {
-                dError("MyExecutive: destroy a model");
+                vle::debugf("MyExecutive: destroy a model");
                 erase(&generators.back());
                 generators.pop_back();
             } else {
-                dError("MyExecutive: build a new model");
+                vle::debugf("MyExecutive: build a new model");
                 generators.emplace_back(1u);
                 insert(&generators.back());
             }
@@ -721,17 +721,20 @@ struct MyExecutive : ExecutiveMono
     virtual void post(const UpdatedPort &out,
                       UpdatedPort &in) const override final
     {
-        dWarning("MyExecutive::post out.is_emtpy=", out.empty());
+        vle::debugf("MyExecutive::post out.is_emtpy %s",
+                    ((out.empty() ? "true" : "false")));
 
         if (!out.empty()) {
             for (const auto *child : out) {
-                dWarning("MyExecutive need to copy message from a child");
+                vle::debugf("MyExecutive need to copy message from a child");
                 cpt.x[0].insert(cpt.x[0].end(),
                                 child->y[0].begin(),
                                 child->y[0].end());
             }
             in.emplace(&cpt);
-            dWarning("MyExecutive::post `", cpt.x[0].size(),"' message to cpt");
+
+            vle::debugf("MyExecutive::post `%" PRIuMAX "' message to cpt",
+                        cpt.x[0].size());
         }
     }
 };
@@ -840,7 +843,8 @@ TEST_CASE("main/synchronizer/hierarchy/bignetwork-1-thread", "run")
 
     auto mend = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = mend - mstart;
-    dInfo("MyBigNetworkThread elapsed time: ", elapsed_seconds.count(), "s");
+    vle::debugf("MyBigNetworkThread elapsed time: %f s.",
+                elapsed_seconds.count());
 }
 
 TEST_CASE("main/synchronizer/hierarchy/bignetwork-1-mono", "run")
@@ -856,7 +860,8 @@ TEST_CASE("main/synchronizer/hierarchy/bignetwork-1-mono", "run")
 
     auto mend = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = mend - mstart;
-    dInfo("MyBigNetworkMono elapsed time: ", elapsed_seconds.count(), "s");
+    vle::debugf("MyBigNetworkMono elapsed time: %f s.",
+                elapsed_seconds.count());
 }
 
 TEST_CASE("main/synchronizer/hierarchy/network-2", "run")
@@ -1062,7 +1067,7 @@ TEST_CASE("main/synchronizer/hierarchy-thread/bignetwork-1-thread", "run")
 
     auto mend = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = mend - mstart;
-    dInfo("MyBigNetworkThread elapsed time: ", elapsed_seconds.count(), "s");
+    vle::debugf("MyBigNetworkThread elapsed time: %f s.", elapsed_seconds.count());
 }
 
 TEST_CASE("main/synchronizer/hierarchy-thread/bignetwork-1-mono", "run")
@@ -1078,7 +1083,8 @@ TEST_CASE("main/synchronizer/hierarchy-thread/bignetwork-1-mono", "run")
 
     auto mend = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = mend - mstart;
-    dInfo("MyBigNetworkMono elapsed time: ", elapsed_seconds.count(), "s");
+    vle::debugf("MyBigNetworkMono elapsed time: %f s. ",
+                elapsed_seconds.count());
 }
 
 TEST_CASE("main/synchronizer/hierarchy-thread/network-2", "run")

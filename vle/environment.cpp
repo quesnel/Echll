@@ -92,7 +92,8 @@ public:
             HomeSystem hs(home_path);
             m_homesystem.swap(hs);
         } catch (const std::exception& e) {
-            dWarning("Failed to switch home directory to ", home_path);
+            debugf("Failed to switch home directory to %s",
+                   home_path.c_str());
         }
     }
 
@@ -118,7 +119,7 @@ Environment::Environment()
 #ifndef VLE_NDEBUG_MODE
     m->start = std::chrono::system_clock::now();
     std::time_t end_time = std::chrono::system_clock::to_time_t(m->start);
-    dInfo(_("Environment is created at time: "), std::ctime(&end_time));
+    debugf(_("Environment is created at time: %s"), std::ctime(&end_time));
 #endif
 }
 
@@ -127,7 +128,8 @@ Environment::~Environment()
 #ifndef VLE_NDEBUG_MODE
     m->end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = m->end - m->start;
-    dInfo(_("Environment is deleted. Elapsed time: "), elapsed_seconds.count(), "s");
+    debugf(_("Environment is deleted. Elapsed time: %f s."),
+           elapsed_seconds.count());
 #endif
 }
 
