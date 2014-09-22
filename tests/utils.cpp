@@ -25,7 +25,21 @@
  */
 
 #include <vle/environment.hpp>
+#include <vle/dbg.hpp>
 #include <vle/path.hpp>
+#include <vle/utils.hpp>
+#include <cstring>
+
+const std::string str500("01234567890123456789012345678901234567890123456789"
+                         "01234567890123456789012345678901234567890123456789"
+                         "01234567890123456789012345678901234567890123456789"
+                         "01234567890123456789012345678901234567890123456789"
+                         "01234567890123456789012345678901234567890123456789"
+                         "01234567890123456789012345678901234567890123456789"
+                         "01234567890123456789012345678901234567890123456789"
+                         "01234567890123456789012345678901234567890123456789"
+                         "01234567890123456789012345678901234567890123456789"
+                         "01234567890123456789012345678901234567890123456789");
 
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
@@ -57,4 +71,33 @@ TEST_CASE("try-environment-package-path", "run")
             vle::Path::make_path(tmp_path, "pkgs-2.0", "test", "exp"));
     REQUIRE(env->get_package_path("test", vle::PACKAGE_SIMULATOR_DIRECTORY) ==
             vle::Path::make_path(tmp_path, "pkgs-2.0", "test", "simulators"));
+}
+
+TEST_CASE("try-stringf-format", "run")
+{
+    std::string small = vle::stringf("%d %d %d", 1, 2, 3);
+    REQUIRE(std::strcmp(small.c_str(), "1 2 3") == 0);
+
+    REQUIRE(str500.size() == 500u);
+
+    std::string big;
+
+    REQUIRE_NOTHROW(big = vle::stringf("%s%s%s%s%s",
+                                       str500.c_str(),
+                                       str500.c_str(),
+                                       str500.c_str(),
+                                       str500.c_str(),
+                                       str500.c_str()));
+
+    REQUIRE(big.size() == (500u * 5 + 1));
+}
+
+TEST_CASE("try-debugf", "run")
+{
+    REQUIRE_NOTHROW(vle::debugf("%s%s%s%s%s",
+                                str500.c_str(),
+                                str500.c_str(),
+                                str500.c_str(),
+                                str500.c_str(),
+                                str500.c_str()));
 }

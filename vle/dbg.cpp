@@ -45,7 +45,6 @@ void debugf(const char* format, ...)
         va_end(ap);
 
         if (sz < 0) {
-            std::clog << "DEBUG: nothing\n";
             return;
         } else if (static_cast <std::size_t>(sz) < buffer.size()) {
             std::clog << "DEBUG: " << buffer.data() << "\n";
