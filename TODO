@@ -13,8 +13,6 @@ Here's a short list of things we can do
   - Initialization system:
     - Add a generic init system for all engines/models in CTOR?
     - Provides an experimental frames manager.
-  - Add a **parallel_dsde** that use `std::thread` in transition
-    function.
   - Add a **devs** engine.
   - Add a **dtss** engine.
     - Use the `std::is_integral <Time::type>::value` to ensure type of the
