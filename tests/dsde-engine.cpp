@@ -50,18 +50,19 @@ struct Infinity
 };
 
 typedef vle::Time <double, Infinity<double>> MyTime;
-typedef vle::dsde::Engine <MyTime, std::string> MyDSDE;
+typedef std::string MyValue;
+typedef vle::dsde::Engine <MyTime, MyValue> MyDSDE;
 
-using UpdatedPort = vle::dsde::UpdatedPort <MyTime, std::string>;
-using AtomicModel = vle::dsde::AtomicModel <MyTime, std::string>;
-using CoupledModelThread = vle::dsde::CoupledModel <MyTime, std::string,
-      vle::dsde::TransitionPolicyThread <MyTime, std::string>>;
-using CoupledModelMono = vle::dsde::CoupledModel <MyTime, std::string,
-      vle::dsde::TransitionPolicyDefault <MyTime, std::string>>;
-using ExecutiveThread = vle::dsde::Executive <MyTime, std::string,
-      vle::dsde::TransitionPolicyThread <MyTime, std::string>>;
-using ExecutiveMono = vle::dsde::Executive <MyTime, std::string,
-      vle::dsde::TransitionPolicyDefault <MyTime, std::string>>;
+using UpdatedPort = vle::dsde::UpdatedPort <MyTime, MyValue>;
+using AtomicModel = vle::dsde::AtomicModel <MyTime, MyValue>;
+using CoupledModelThread = vle::dsde::CoupledModel <MyTime, MyValue,
+      vle::dsde::TransitionPolicyThread <MyTime, MyValue>>;
+using CoupledModelMono = vle::dsde::CoupledModel <MyTime, MyValue,
+      vle::dsde::TransitionPolicyDefault <MyTime, MyValue>>;
+using ExecutiveThread = vle::dsde::Executive <MyTime, MyValue,
+      vle::dsde::TransitionPolicyThread <MyTime, MyValue>>;
+using ExecutiveMono = vle::dsde::Executive <MyTime, MyValue,
+      vle::dsde::TransitionPolicyDefault <MyTime, MyValue>>;
 
 struct ModelB : AtomicModel
 {
@@ -1026,6 +1027,107 @@ TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network2", "run")
 
     std::string result = model.observation();
     REQUIRE(result == "16 4 4 16 4 4 16 4 4 16 4 4");
+}
+
+TEST_CASE("main/synchronizer/hierarchy-thread/generic-coupledmodel-1", "run")
+{
+    typedef vle::dsde::Factory <MyTime, MyValue> factory_t;
+    factory_t factory;
+    factory.functions.emplace("Counter",
+                              []() -> factory_t::modelptr
+                              {
+                                  return factory_t::modelptr(new Counter());
+                              });
+
+    factory.functions.emplace("Generator",
+                              []() -> factory_t::modelptr
+                              {
+                                  return factory_t::modelptr(new Generator());
+                              });
+
+    {
+        const std::string str = "Unknown\n";
+        std::istringstream is(str);
+        MyDSDE dsde_engine;
+
+        REQUIRE_THROWS_AS(
+            (vle::dsde::GenericCoupledModel
+             <MyTime, MyValue, vle::dsde::TransitionPolicyThread <
+             MyTime, MyValue>>(is, factory)),
+            vle::dsde::factory_error);
+    }
+    {
+        const std::string str = "Generator\n"
+            "Generator\n"
+            "Generator\n"
+            "Counter\n";
+        std::istringstream is(str);
+        MyDSDE dsde_engine;
+
+        REQUIRE_THROWS_AS(
+            (vle::dsde::GenericCoupledModel
+             <MyTime, MyValue, vle::dsde::TransitionPolicyThread <
+             MyTime, MyValue>>(is, factory)),
+            vle::dsde::fileformat_error);
+    }
+    {
+        const std::string str = "Generator\n"
+            "Generator\n"
+            "Generator\n"
+            "Counter\n"
+            "#\n"
+            "4 3 0 0";
+        std::istringstream is(str);
+        MyDSDE dsde_engine;
+
+        REQUIRE_THROWS_AS(
+            (vle::dsde::GenericCoupledModel
+             <MyTime, MyValue, vle::dsde::TransitionPolicyThread <
+             MyTime, MyValue>>(is, factory)),
+            vle::dsde::fileformat_error);
+    }
+    {
+        const std::string str = "Generator\n"
+            "Generator\n"
+            "Generator\n"
+            "Counter\n"
+            "#\n"
+            "0 3 1 0";
+        std::istringstream is(str);
+        MyDSDE dsde_engine;
+
+        REQUIRE_THROWS_AS(
+            (vle::dsde::GenericCoupledModel
+             <MyTime, MyValue, vle::dsde::TransitionPolicyThread <
+             MyTime, MyValue>>(is, factory)),
+            vle::dsde::fileformat_error);
+    }
+    {
+        const std::string str = "Generator\n"
+            "Generator\n"
+            "Generator\n"
+            "Counter\n"
+            "#\n"
+            "0 3 0 0\n"
+            "1 3 0 0\n"
+            "2 3 0 0\n";
+
+        std::istringstream is(str);
+        MyDSDE dsde_engine;
+        vle::dsde::GenericCoupledModel
+            <MyTime, MyValue, vle::dsde::TransitionPolicyThread <
+                                  MyTime, MyValue>> model(is, factory);
+
+        vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+
+        double final_date = sim.run(0.0, 10);
+        REQUIRE(final_date == 10.0);
+        REQUIRE(model.m_children.size() == 4u);
+        REQUIRE(model.m_children[3].get());
+
+        std::string result = dynamic_cast <Counter*>(model.m_children[3].get())->observation();
+        REQUIRE(result == "54");
+    }
 }
 
 TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network-mono", "run")

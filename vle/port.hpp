@@ -148,6 +148,11 @@ struct PortList
         return empty;
     }
 
+    std::size_t size() const
+    {
+        return ports.size();
+    }
+
     friend class boost::serialization::access;
     template<class Archive>
         void serialize(Archive & ar, const unsigned int version)
