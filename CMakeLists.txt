@@ -12,7 +12,7 @@ endif ()
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -std=c++1y")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -std=c++11")
 
   if ("${CMAKE_BUILD_TYPE}" EQUAL "Debug" OR "${CMAKE_BUILD_TYPE}" EQUAL "RelWithDebInfo")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb3")
@@ -27,7 +27,7 @@ find_package(Threads REQUIRED)
 if (NOT Threads_FOUND)
   message(ERROR " failed to found a (p)thread support.")
 else ()
-  message(STATUS " threads support enabled")
+  message(STATUS " threads support enabled (${CMAKE_THREAD_LIBS_INIT})")
   set(Echll_LINK_LIBRARIES ${Echll_LINK_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 endif ()
 
@@ -157,7 +157,7 @@ if (CATCH_INCLUDE_DIR)
   add_test(NAME test_devs-engine COMMAND test_devs-engine)
 
   add_executable(test_dsde-engine tests/dsde-engine.cpp)
-  target_link_libraries(test_dsde-engine Echll_corelib pthread ${Echll_LINK_LIBRARIES})
+  target_link_libraries(test_dsde-engine Echll_corelib ${Echll_LINK_LIBRARIES})
   set_target_properties(test_dsde-engine PROPERTIES
     COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
   add_test(NAME test_dsde-engine COMMAND test_dsde-engine)
