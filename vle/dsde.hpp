@@ -78,6 +78,34 @@ struct factory_error : std::invalid_argument
     {}
 };
 
+template <typename Time>
+inline void check_transition_synchronization(typename Time::type tl,
+                                             typename Time::type time,
+                                             typename Time::type tn)
+{
+#ifndef VLE_OPTIMIZE
+    if (!(tl <= time && time <= tn))
+        throw dsde_internal_error("Synchronization error");
+#else
+    (void)tl;
+    (void)time;
+    (void)tn;
+#endif
+}
+
+template <typename Time>
+inline void check_output_synchronization(typename Time::type tn,
+                                         typename Time::type time)
+{
+#ifndef VLE_OPTIMIZE
+    if (time != tn)
+        throw dsde_internal_error("Synchronization error");
+#else
+    (void)tn;
+    (void)time;
+#endif
+}
+
 template <typename Time, typename Value>
 struct Model
 {
@@ -143,13 +171,13 @@ struct AtomicModel : Model <Time, Value>
 
     virtual void transition(const time_type& time) override
     {
-#ifndef VLE_OPTIMIZE
-        if (!(Model <Time, Value>::tl <= time && time <= Model <Time, Value>::tn))
-            throw dsde_internal_error("Synchronization error");
+        check_transition_synchronization <Time>(Model <Time, Value>::tl,
+                                                time,
+                                                Model <Time, Value>::tn);
 
         if (time < Model <Time, Value>::tn and Model <Time, Value>::x.is_empty())
             return;
-#endif
+
         Model <Time, Value>::tn = time + delta(time - Model <Time, Value>::tl);
         Model <Time, Value>::tl = time;
         Model <Time, Value>::x.clear();
@@ -303,13 +331,13 @@ struct CoupledModel : Model <Time, Value>
 
     virtual void transition(const time_type& time) override
     {
-#ifndef VLE_OPTIMIZE
-        if (!(Model <Time, Value>::tl <= time && time <= Model <Time, Value>::tn))
-            throw dsde_internal_error("Synchronization error");
+        check_transition_synchronization <Time>(Model <Time, Value>::tl,
+                                                time,
+                                                Model <Time, Value>::tn);
 
         if (time < Model <Time, Value>::tn && Model <Time, Value>::x.is_empty())
             return;
-#endif
+
         Bag <Time, Value> bag;
 
         {
@@ -344,13 +372,8 @@ struct CoupledModel : Model <Time, Value>
 
     virtual void output(const time_type& time) override
     {
-#ifndef VLE_OPTIMIZE
-        if (!(time == heap.top().tn))
-            throw dsde_internal_error("Synchronization error");
+        check_output_synchronization <Time>(heap.top().tn, time);
 
-        if (!(Model <Time, Value>::tn == heap.top().tn))
-            throw dsde_internal_error("Synchronization error");
-#endif
         if (time == Model <Time, Value>::tn && not heap.empty()) {
             UpdatedPort <Time, Value> lst;
             auto it = heap.ordered_begin();
@@ -630,13 +653,13 @@ template <typename Time, typename Value,
 
         virtual void transition(const time_type &time) override
         {
-#ifndef VLE_OPTIMIZE
-            if (!(Model <Time, Value>::tl <= time && time <= Model <Time, Value>::tn))
-                throw dsde_internal_error("Synchronization error");
+            check_transition_synchronization <Time>(Model <Time, Value>::tl,
+                                                    time,
+                                                    Model <Time, Value>::tn);
 
             if (time < Model <Time, Value>::tn && Model <Time, Value>::x.is_empty())
                 return;
-#endif
+
             Bag <Time, Value> bag;
             bool have_chi = false;
 
@@ -685,13 +708,8 @@ template <typename Time, typename Value,
 
         virtual void output(const time_type &time) override
         {
-#ifndef VLE_OPTIMIZE
-            if (!(time == heap.top().tn))
-                throw dsde_internal_error("Synchronization error");
+            check_output_synchronization <Time>(heap.top().tn, time);
 
-            if (!(Model <Time, Value>::tn == heap.top().tn))
-                throw dsde_internal_error("Synchronization error");
-#endif
             if (time == Model <Time, Value>::tn && not heap.empty()) {
                 UpdatedPort <Time, Value> lst;
                 auto it = heap.ordered_begin();
