@@ -70,7 +70,7 @@ struct SimulationDbg
 
     engine_type& engine;
     model_type& model;
-    unsigned long int bag;
+    std::uintmax_t nbloop;
 
     SimulationDbg(engine_type& engine, model_type& model)
         : engine(engine), model(model)
@@ -78,12 +78,23 @@ struct SimulationDbg
 
     time_type run(const time_type &begin, const time_type &end)
     {
-        bag = 0;
-        time_type i;
-        for (i = engine.pre(model, begin);
-             i < end;
-             i = engine.run(model, i), ++bag) {
-            vle::debugf("- - - - - - - - - - - - - - - - - - t=%f", i);
+        time_type i = engine.pre(model, begin);
+        time_type prev = i;
+        std::uintmax_t localbag = 1;
+        nbloop = 0;
+
+        vle::debugf("- - - - - - - - - - - - - start date %f", i);
+
+        for (; i < end; i = engine.run(model, i)) {
+            if (prev < i) {
+                prev = i;
+                localbag = 1;
+                vle::debugf("- - - - - - - - - - - - - next date %f", i);
+            } else {
+                localbag++;
+                vle::debugf("- - - - - - - - - - - - - bag %" PRIuMAX, localbag);
+            }
+            nbloop++;
         }
 
         engine.post(model, i);

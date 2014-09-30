@@ -763,7 +763,7 @@ TEST_CASE("main/synchronizer/hierarchy/simple_model_api2", "run")
     double final_date = sim.run(0, 10);
 
     REQUIRE(final_date == 10);
-    REQUIRE(sim.bag == 10);
+    REQUIRE(sim.nbloop == 10);
 }
 
 TEST_CASE("main/synchronizer/hierarchy/flat-network", "run")
