@@ -75,8 +75,8 @@ struct PortList
         ports.push_back(Values());
         ScopeExit on_exit([&success, this](void)
                           {
-                          if (!success)
-                              ports.pop_back();
+                              if (!success)
+                                  ports.pop_back();
                           });
 
         accessor.emplace(name, ports.size() - 1);
@@ -155,14 +155,14 @@ struct PortList
 
     friend class boost::serialization::access;
     template<class Archive>
-        void serialize(Archive & ar, const unsigned int version)
-        {
-            (void)version;
+    void serialize(Archive & ar, const unsigned int version)
+    {
+        (void)version;
 
-            ar & ports;
-            ar & accessor;
-            ar & empty;
-        }
+        ar & ports;
+        ar & accessor;
+        ar & empty;
+    }
 };
 
 }

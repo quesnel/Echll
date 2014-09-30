@@ -33,11 +33,11 @@
 
 namespace vle {
 
-    /**
-     * @brief @e vle::Common stores experimental conditions, simulation engine
-     * parameters etc.
-     */
-    std::map <std::string, boost::any> Common;
+/**
+ * @brief @e vle::Common stores experimental conditions, simulation engine
+ * parameters etc.
+ */
+std::map <std::string, boost::any> Common;
 
 }
 

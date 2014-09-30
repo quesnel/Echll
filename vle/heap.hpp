@@ -33,34 +33,36 @@
 namespace vle {
 
 template <typename T>
-    struct HeapElementCompare : std::binary_function <T, T, bool>
+struct HeapElementCompare : std::binary_function <T, T, bool>
+{
+    bool operator()(const T &lhs, const T &rhs) const
     {
-        bool operator()(const T &lhs, const T &rhs) const
-        {
-            return lhs.tn >= rhs.tn;
-        }
-    };
+        return lhs.tn >= rhs.tn;
+    }
+};
 
 template <typename Time, typename Value>
-    struct HeapElement
-    {
-        typedef typename boost::heap::fibonacci_heap <HeapElement <Time, Value>,
-              boost::heap::compare <HeapElementCompare <HeapElement <Time,
-              Value>>>>::handle_type handle_t;
+struct HeapElement
+{
+    typedef typename boost::heap::fibonacci_heap <
+        HeapElement <Time, Value>,
+        boost::heap::compare <
+            HeapElementCompare <
+                HeapElement <Time, Value>>>>::handle_type handle_t;
 
-        void *element;
-        handle_t heapid;
-        typename Time::type tn;
+    void *element;
+    handle_t heapid;
+    typename Time::type tn;
 
-        HeapElement(void *elt, typename Time::type tn)
-            : element(elt), tn(tn)
-        {}
-    };
+    HeapElement(void *elt, typename Time::type tn)
+        : element(elt), tn(tn)
+    {}
+};
 
 template <typename Time, typename Value>
-    using HeapType = boost::heap::fibonacci_heap <HeapElement <Time, Value>,
-          boost::heap::compare <HeapElementCompare
-              <HeapElement <Time, Value>>>>;
+using HeapType = boost::heap::fibonacci_heap <
+    HeapElement <Time, Value>,
+    boost::heap::compare <HeapElementCompare <HeapElement <Time, Value>>>>;
 
 template <typename Time, typename Value>
 std::ostream& operator<<(std::ostream& out,

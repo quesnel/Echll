@@ -92,7 +92,8 @@ struct SimulationDbg
                 vle::debugf("- - - - - - - - - - - - - next date %f", i);
             } else {
                 localbag++;
-                vle::debugf("- - - - - - - - - - - - - bag %" PRIuMAX, localbag);
+                vle::debugf("- - - - - - - - - - - - - bag %" PRIuMAX,
+                            localbag);
             }
             nbloop++;
         }

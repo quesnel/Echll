@@ -45,263 +45,263 @@ struct dtss_internal_error : std::logic_error
 
 namespace dtss {
 
-    template <typename Time, typename Value>
-    struct Model
+template <typename Time, typename Value>
+struct Model
+{
+    typedef typename Time::type time_type;
+    typedef Value value_type;
+
+    Model()
+        : tn(Time::infinity), parent(nullptr)
+    {}
+
+    Model(std::initializer_list <std::string> lst_x,
+          std::initializer_list <std::string> lst_y)
+        : x(lst_x), y(lst_y), tn(Time::infinity),
+          parent(nullptr)
+    {}
+
+    virtual ~Model()
+    {}
+
+    mutable vle::PortList <Value> x, y;
+    time_type tn;
+    time_type h;
+    Model *parent;
+
+    virtual void i_msg(const time_type& time) = 0;
+    virtual void s_msg(const time_type& time) = 0;
+    virtual void x_msg(const time_type& time) = 0;
+    virtual void y_msg(Model <Time, Value>& model,
+                       const time_type& time) = 0;
+};
+
+template <typename Time, typename Value>
+using UpdatedPort = std::set <const Model <Time, Value>*>;
+
+template <typename Time, typename Value>
+struct Fnss : Model <Time, Value>
+{
+    typedef typename Time::type time_type;
+    typedef Value value_type;
+
+    virtual void lambda() const = 0;
+
+    Fnss()
+        : Model <Time, Value>()
+    {}
+
+    Fnss(std::initializer_list <std::string> lst_x,
+         std::initializer_list <std::string> lst_y)
+        : Model <Time, Value>(lst_x, lst_y)
+    {}
+
+    virtual ~Fnss()
+    {}
+
+    virtual void i_msg(const time_type& time) override final
     {
-        typedef typename Time::type time_type;
-        typedef Value value_type;
+        (void)time;
+    }
 
-        Model()
-            : tn(Time::infinity), parent(nullptr)
-        {}
-
-        Model(std::initializer_list <std::string> lst_x,
-              std::initializer_list <std::string> lst_y)
-            : x(lst_x), y(lst_y), tn(Time::infinity),
-            parent(nullptr)
-        {}
-
-        virtual ~Model()
-        {}
-
-        mutable vle::PortList <Value> x, y;
-        time_type tn;
-        time_type h;
-        Model *parent;
-
-        virtual void i_msg(const time_type& time) = 0;
-        virtual void s_msg(const time_type& time) = 0;
-        virtual void x_msg(const time_type& time) = 0;
-        virtual void y_msg(Model <Time, Value>& model,
-                           const time_type& time) = 0;
-    };
-
-    template <typename Time, typename Value>
-    using UpdatedPort = std::set <const Model <Time, Value>*>;
-
-    template <typename Time, typename Value>
-    struct Fnss : Model <Time, Value>
+    virtual void s_msg(const time_type& time) override final
     {
-        typedef typename Time::type time_type;
-        typedef Value value_type;
+        (void)time;
+    }
 
-        virtual void lambda() const = 0;
-
-        Fnss()
-            : Model <Time, Value>()
-        {}
-
-        Fnss(std::initializer_list <std::string> lst_x,
-             std::initializer_list <std::string> lst_y)
-            : Model <Time, Value>(lst_x, lst_y)
-        {}
-
-        virtual ~Fnss()
-        {}
-
-        virtual void i_msg(const time_type& time) override final
-        {
-            (void)time;
-        }
-
-        virtual void s_msg(const time_type& time) override final
-        {
-            (void)time;
-        }
-
-        virtual void x_msg(const time_type& time) override final
-        {
-            lambda();
-            Model <Time, Value>::parent->y_msg(*this, time);
-        }
-    };
-
-    template <typename Time, typename Value>
-    struct Moore : Model <Time, Value>
+    virtual void x_msg(const time_type& time) override final
     {
-        typedef typename Time::type time_type;
-        typedef Value value_type;
+        lambda();
+        Model <Time, Value>::parent->y_msg(*this, time);
+    }
+};
 
-        virtual void init(const time_type& time) = 0;
-        virtual void delta() = 0;
-        virtual void lambda() const = 0;
+template <typename Time, typename Value>
+struct Moore : Model <Time, Value>
+{
+    typedef typename Time::type time_type;
+    typedef Value value_type;
 
-        Moore()
-            : Model <Time, Value>()
-        {}
+    virtual void init(const time_type& time) = 0;
+    virtual void delta() = 0;
+    virtual void lambda() const = 0;
 
-        Moore(std::initializer_list <std::string> lst_x,
-                    std::initializer_list <std::string> lst_y)
-            : Model <Time, Value>(lst_x, lst_y)
-        {}
+    Moore()
+        : Model <Time, Value>()
+    {}
 
-        virtual ~Moore()
-        {}
+    Moore(std::initializer_list <std::string> lst_x,
+          std::initializer_list <std::string> lst_y)
+        : Model <Time, Value>(lst_x, lst_y)
+    {}
 
-        virtual void i_msg(const time_type& time) override final
-        {
-            init(time);
-            Model <Time, Value>::tn = time;
-        }
+    virtual ~Moore()
+    {}
 
-        virtual void s_msg(const time_type& time) override final
-        {
+    virtual void i_msg(const time_type& time) override final
+    {
+        init(time);
+        Model <Time, Value>::tn = time;
+    }
+
+    virtual void s_msg(const time_type& time) override final
+    {
 #ifndef VLE_OPTIMIZE
-            if (time != Model <Time, Value>::tn)
-                throw dtss_internal_error("Synchronization error");
+        if (time != Model <Time, Value>::tn)
+            throw dtss_internal_error("Synchronization error");
 #endif
-            lambda();
-            Model <Time, Value>::parent->y_msg(this, time);
-            delta();
-        }
+        lambda();
+        Model <Time, Value>::parent->y_msg(this, time);
+        delta();
+    }
 
-        virtual void x_msg(const time_type& time) override final
-        {
-#ifndef VLE_OPTIMIZE
-            if (time != Model <Time, Value>::tn)
-                throw dtss_internal_error("Synchronization error");
-#endif
-            delta();
-            Model <Time, Value>::tn += Model <Time, Value>::h;
-        }
-
-        virtual void y_msg(Model <Time, Value>& model,
-                           const time_type& time) override final
-        {
-            (void)model;
-            (void)time;
-        }
-    };
-
-    template <typename Time, typename Value>
-    struct CoupledModel : Model <Time, Value>
+    virtual void x_msg(const time_type& time) override final
     {
-        typedef typename Time::type time_type;
-        typedef Value value_type;
-
-        UpdatedPort <Time, Value> last_output_list;
-
-        typedef std::vector <Fnss <Time, Value>*> children_fnss_t;
-        typedef std::vector <Moore <Time, Value>*> children_moore_t;
-
-        /**
-         * @brief Get the children of the @e CoupledModel.
-         *
-         * The @e children function is called only once by the simulation layer
-         * after the constructor.
-         *
-         * @return
-         */
-        virtual children_fnss_t fnss_children() = 0;
-
-        virtual children_moore_t moore_children() = 0;
-
-        virtual void post(const UpdatedPort <Time, Value> &out,
-                          UpdatedPort <Time, Value> &in) const = 0;
-
-        CoupledModel()
-            : Model <Time, Value>()
-        {}
-
-        CoupledModel(std::initializer_list <std::string> lst_x,
-                     std::initializer_list <std::string> lst_y)
-            : Model <Time, Value>(lst_x, lst_y)
-        {}
-
-        virtual ~CoupledModel()
-        {}
-
-        virtual void i_msg(const time_type& time) override final
-        {
-            {
-                auto children = fnss_children();
-                std::for_each(children.begin(), children.end(),
-                              [this, &time](Fnss <Time, Value> *child)
-                              {
-                                  child->parent = this;
-                                  child->i_msg(time);
-                              });
-            }
-
-            {
-                auto children = moore_children();
-                std::for_each(children.begin(), children.end(),
-                              [this, &time](Moore <Time, Value> *child)
-                              {
-                                  child->parent = this;
-                                  child->i_msg(time);
-                              });
-            }
-
-            Model <Time, Value>::tn = time;
-        }
-
-        virtual void s_msg(const time_type& time) override final
-        {
 #ifndef VLE_OPTIMIZE
-            if (time != Model <Time, Value>::tn)
-                throw dtss_internal_error("Synchronization error");
+        if (time != Model <Time, Value>::tn)
+            throw dtss_internal_error("Synchronization error");
 #endif
+        delta();
+        Model <Time, Value>::tn += Model <Time, Value>::h;
+    }
 
-            {
-                auto children = moore_children();
-                std::for_each(children.begin(), children.end(),
-                              [&time](Moore <Time, Value>* child)
-                              {
-                                  child->s_msg(time);
-                              });
-            }
+    virtual void y_msg(Model <Time, Value>& model,
+                       const time_type& time) override final
+    {
+        (void)model;
+        (void)time;
+    }
+};
 
-            // TODO
+template <typename Time, typename Value>
+struct CoupledModel : Model <Time, Value>
+{
+    typedef typename Time::type time_type;
+    typedef Value value_type;
+
+    UpdatedPort <Time, Value> last_output_list;
+
+    typedef std::vector <Fnss <Time, Value>*> children_fnss_t;
+    typedef std::vector <Moore <Time, Value>*> children_moore_t;
+
+    /**
+     * @brief Get the children of the @e CoupledModel.
+     *
+     * The @e children function is called only once by the simulation layer
+     * after the constructor.
+     *
+     * @return
+     */
+    virtual children_fnss_t fnss_children() = 0;
+
+    virtual children_moore_t moore_children() = 0;
+
+    virtual void post(const UpdatedPort <Time, Value> &out,
+                      UpdatedPort <Time, Value> &in) const = 0;
+
+    CoupledModel()
+        : Model <Time, Value>()
+    {}
+
+    CoupledModel(std::initializer_list <std::string> lst_x,
+                 std::initializer_list <std::string> lst_y)
+        : Model <Time, Value>(lst_x, lst_y)
+    {}
+
+    virtual ~CoupledModel()
+    {}
+
+    virtual void i_msg(const time_type& time) override final
+    {
+        {
+            auto children = fnss_children();
+            std::for_each(children.begin(), children.end(),
+                          [this, &time](Fnss <Time, Value> *child)
+                          {
+                              child->parent = this;
+                              child->i_msg(time);
+                          });
         }
 
-        virtual void x_msg(const time_type& time) override final
         {
+            auto children = moore_children();
+            std::for_each(children.begin(), children.end(),
+                          [this, &time](Moore <Time, Value> *child)
+                          {
+                              child->parent = this;
+                              child->i_msg(time);
+                          });
+        }
+
+        Model <Time, Value>::tn = time;
+    }
+
+    virtual void s_msg(const time_type& time) override final
+    {
 #ifndef VLE_OPTIMIZE
-            if (time != Model <Time, Value>::tn)
-                throw dtss_internal_error("Synchronization error");
+        if (time != Model <Time, Value>::tn)
+            throw dtss_internal_error("Synchronization error");
 #endif
 
-            // TODO
-        }
-
-        virtual void y_msg(Model <Time, Value>& model,
-                           const time_type& time) override final
         {
-            (void)model;
-            (void)time;
-            // TODO
+            auto children = moore_children();
+            std::for_each(children.begin(), children.end(),
+                          [&time](Moore <Time, Value>* child)
+                          {
+                              child->s_msg(time);
+                          });
         }
-    };
 
-    template <typename Time, typename Value>
-    struct Engine
+        // TODO
+    }
+
+    virtual void x_msg(const time_type& time) override final
     {
-        typedef typename Time::type time_type;
-        typedef Value value_type;
-        typedef Model <Time, Value> model_type;
+#ifndef VLE_OPTIMIZE
+        if (time != Model <Time, Value>::tn)
+            throw dtss_internal_error("Synchronization error");
+#endif
 
-        time_type pre(model_type& model, const time_type& time)
-        {
-            model.i_msg(time);
+        // TODO
+    }
 
-            return model.tn;
-        }
+    virtual void y_msg(Model <Time, Value>& model,
+                       const time_type& time) override final
+    {
+        (void)model;
+        (void)time;
+        // TODO
+    }
+};
 
-        time_type run(model_type& model, const time_type& time)
-        {
-            model.s_message(time);
-            model.x_message(time);
+template <typename Time, typename Value>
+struct Engine
+{
+    typedef typename Time::type time_type;
+    typedef Value value_type;
+    typedef Model <Time, Value> model_type;
 
-            return model.tn;
-        }
+    time_type pre(model_type& model, const time_type& time)
+    {
+        model.i_msg(time);
 
-        void post(model_type& model, const time_type& time)
-        {
-            (void)model;
-            (void)time;
-        }
-    };
+        return model.tn;
+    }
+
+    time_type run(model_type& model, const time_type& time)
+    {
+        model.s_message(time);
+        model.x_message(time);
+
+        return model.tn;
+    }
+
+    void post(model_type& model, const time_type& time)
+    {
+        (void)model;
+        (void)time;
+    }
+};
 }
 
 };

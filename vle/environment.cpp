@@ -46,7 +46,7 @@ struct HomeSystem
 
     HomeSystem(const std::string& dirpath)
         : homepath(dirpath),
-        pkgpath(vle::Path::make_path(dirpath, "pkgs-2.0"))
+          pkgpath(vle::Path::make_path(dirpath, "pkgs-2.0"))
     {
         if (!vle::Path::exist_directory(dirpath) &&
             !vle::Path::create_directories(dirpath))

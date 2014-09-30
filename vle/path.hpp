@@ -36,34 +36,34 @@ struct Path
 {
     static bool exist_file(const std::string &filename);
 
-    static bool exist_directory(const std::string &dirname);
+é    static bool exist_directory(const std::string &dirname);
 
     static bool create_directories(const std::string &dirname);
 
     template <typename T, typename... ArgTypes>
-        static std::string make_path_impl(const T& first,
-                                          const ArgTypes&... args)
-        {
-            using expand_variadic_pack = int[];
-            std::string out(first);
+    static std::string make_path_impl(const T& first,
+                                      const ArgTypes&... args)
+    {
+        using expand_variadic_pack = int[];
+        std::string out(first);
 
-            (void)expand_variadic_pack{0,
+        (void)expand_variadic_pack{0,
                 ((out.append("/"), out.append(args)), void(), 0)...};
 
-            return out;
-        }
+        return out;
+    }
 
     template <typename T>
-        static std::string make_path_impl(const T& arg)
-        {
-            return arg;
-        }
+    static std::string make_path_impl(const T& arg)
+    {
+        return arg;
+    }
 
     template <typename... ArgTypes>
-        static std::string make_path(const ArgTypes&... args)
-        {
-            return make_path_impl(args...);
-        }
+    static std::string make_path(const ArgTypes&... args)
+    {
+        return make_path_impl(args...);
+    }
 
     VLE_API static std::string get_temporary_path();
 

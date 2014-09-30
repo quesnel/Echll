@@ -275,132 +275,132 @@ struct TransitionPolicyThread
 
 template <typename Time, typename Value,
           typename Policy = TransitionPolicyThread <Time, Value>>
-struct CoupledModel : Model <Time, Value>
-{
-    typedef typename Time::type time_type;
-    typedef Value value_type;
-    typedef Policy transition_policy;
-
-    HeapType <Time, Value> heap;
-    UpdatedPort <Time, Value> last_output_list;
-    transition_policy policy;
-
-    typedef std::vector <Model <Time, Value>*> children_t;
-
-    /**
-     * @brief Get the children of the @e CoupledModel.
-     *
-     * The @e children function is called only once by the simulation layer
-     * after the constructor.
-     *
-     * @return
-     */
-    virtual children_t children(const vle::Common& common) = 0;
-
-    virtual void post(const UpdatedPort <Time, Value> &out,
-                      UpdatedPort <Time, Value> &in) const = 0;
-
-    CoupledModel()
-        : Model <Time, Value>()
-    {}
-
-    CoupledModel(std::initializer_list <std::string> lst_x,
-                 std::initializer_list <std::string> lst_y)
-        : Model <Time, Value>(lst_x, lst_y)
-    {}
-
-    virtual ~CoupledModel()
-    {}
-
-    virtual void start(const vle::Common& common, const time_type& time) override
+    struct CoupledModel : Model <Time, Value>
     {
-        auto cs = children(common);
+        typedef typename Time::type time_type;
+        typedef Value value_type;
+        typedef Policy transition_policy;
 
-        for (auto child : cs) {
-            child->parent = this;
-            child->start(common, time);
+        HeapType <Time, Value> heap;
+        UpdatedPort <Time, Value> last_output_list;
+        transition_policy policy;
 
-            auto id = heap.emplace(child, child->tn);
-            child->heapid = id;
-            (*id).heapid = id;
-        };
+        typedef std::vector <Model <Time, Value>*> children_t;
 
-        Model <Time, Value>::tl = time;
-        Model <Time, Value>::tn = heap.top().tn;
-    }
+        /**
+         * @brief Get the children of the @e CoupledModel.
+         *
+         * The @e children function is called only once by the simulation layer
+         * after the constructor.
+         *
+         * @return
+         */
+        virtual children_t children(const vle::Common& common) = 0;
 
-    virtual void transition(const time_type& time) override
-    {
-        check_transition_synchronization <Time>(Model <Time, Value>::tl,
-                                                time,
-                                                Model <Time, Value>::tn);
+        virtual void post(const UpdatedPort <Time, Value> &out,
+                          UpdatedPort <Time, Value> &in) const = 0;
 
-        if (time < Model <Time, Value>::tn && Model <Time, Value>::x.is_empty())
-            return;
+        CoupledModel()
+            : Model <Time, Value>()
+        {}
 
-        Bag <Time, Value> bag;
+        CoupledModel(std::initializer_list <std::string> lst_x,
+                     std::initializer_list <std::string> lst_y)
+            : Model <Time, Value>(lst_x, lst_y)
+        {}
 
+        virtual ~CoupledModel()
+        {}
+
+        virtual void start(const vle::Common& common, const time_type& time) override
         {
-            auto it = heap.ordered_begin();
-            auto et = heap.ordered_end();
+            auto cs = children(common);
 
-            for (; it != et && (*it).tn == time; ++it)
-                bag.insert(
-                    reinterpret_cast <Model <Time, Value>*>(
-                        (*it).element));
+            for (auto child : cs) {
+                child->parent = this;
+                child->start(common, time);
+
+                auto id = heap.emplace(child, child->tn);
+                child->heapid = id;
+                (*id).heapid = id;
+            };
+
+            Model <Time, Value>::tl = time;
+            Model <Time, Value>::tn = heap.top().tn;
         }
 
-        if (not Model <Time, Value>::x.is_empty()) {
-            post({this}, last_output_list);
-            Model <Time, Value>::x.clear();
+        virtual void transition(const time_type& time) override
+        {
+            check_transition_synchronization <Time>(Model <Time, Value>::tl,
+                                                    time,
+                                                    Model <Time, Value>::tn);
+
+            if (time < Model <Time, Value>::tn && Model <Time, Value>::x.is_empty())
+                return;
+
+            Bag <Time, Value> bag;
+
+            {
+                auto it = heap.ordered_begin();
+                auto et = heap.ordered_end();
+
+                for (; it != et && (*it).tn == time; ++it)
+                    bag.insert(
+                        reinterpret_cast <Model <Time, Value>*>(
+                            (*it).element));
+            }
+
+            if (not Model <Time, Value>::x.is_empty()) {
+                post({this}, last_output_list);
+                Model <Time, Value>::x.clear();
+            }
+
+            for (auto &child : last_output_list)
+                bag.insert(const_cast <Model <Time, Value>*>(child));
+
+            last_output_list.clear();
+
+            for (auto& b : bag) {
+                assert(b != this);
+            }
+
+            policy(bag, time, heap);
+
+            Model <Time, Value>::tl = time;
+            Model <Time, Value>::tn = heap.top().tn;
         }
 
-        for (auto &child : last_output_list)
-            bag.insert(const_cast <Model <Time, Value>*>(child));
+        virtual void output(const time_type& time) override
+        {
+            check_output_synchronization <Time>(heap.top().tn, time);
 
-        last_output_list.clear();
+            if (time == Model <Time, Value>::tn && not heap.empty()) {
+                UpdatedPort <Time, Value> lst;
+                auto it = heap.ordered_begin();
+                auto et = heap.ordered_end();
 
-        for (auto& b : bag) {
-            assert(b != this);
+                assert(it != et);
+                assert((std::size_t)std::distance(it, et) == heap.size());
+
+                do {
+                    auto id = (*it).heapid;
+                    Model <Time, Value> *mdl =
+                        reinterpret_cast <Model <Time, Value>*>(
+                            (*id).element);
+
+                    mdl->output(time);
+                    if (!(mdl->y.is_empty()))
+                        lst.emplace(mdl);
+                    ++it;
+                } while (it != et && it->tn == Model <Time, Value>::tn);
+
+                post(lst, last_output_list);
+
+                for (auto *child : lst)
+                    child->y.clear();
+            }
         }
-
-        policy(bag, time, heap);
-
-        Model <Time, Value>::tl = time;
-        Model <Time, Value>::tn = heap.top().tn;
-    }
-
-    virtual void output(const time_type& time) override
-    {
-        check_output_synchronization <Time>(heap.top().tn, time);
-
-        if (time == Model <Time, Value>::tn && not heap.empty()) {
-            UpdatedPort <Time, Value> lst;
-            auto it = heap.ordered_begin();
-            auto et = heap.ordered_end();
-
-            assert(it != et);
-            assert((std::size_t)std::distance(it, et) == heap.size());
-
-            do {
-                auto id = (*it).heapid;
-                Model <Time, Value> *mdl =
-                    reinterpret_cast <Model <Time, Value>*>(
-                        (*id).element);
-
-                mdl->output(time);
-                if (!(mdl->y.is_empty()))
-                    lst.emplace(mdl);
-                ++it;
-            } while (it != et && it->tn == Model <Time, Value>::tn);
-
-            post(lst, last_output_list);
-
-            for (auto *child : lst)
-                child->y.clear();
-        }
-    }
-};
+    };
 
 template <typename Time, typename Value>
 struct Factory

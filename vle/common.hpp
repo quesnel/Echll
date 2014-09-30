@@ -34,13 +34,13 @@
 
 namespace vle {
 
-    /**
-     * @brief @e vle::Common stores experimental conditions, simulation engine
-     * parameters etc.
-     */
-    typedef std::unordered_map <std::string, boost::any> Common;
+/**
+ * @brief @e vle::Common stores experimental conditions, simulation engine
+ * parameters etc.
+ */
+typedef std::unordered_map <std::string, boost::any> Common;
 
-    typedef std::shared_ptr <Common> CommonPtr;
+typedef std::shared_ptr <Common> CommonPtr;
 
 }
 

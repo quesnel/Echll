@@ -61,17 +61,17 @@ struct SynchronousProxyModel : Model <Time, Value>
 
     SynchronousProxyModel()
         : Model <Time, Value>()
-          , environment(nullptr)
-          , communicator(nullptr)
-          , rank(-1)
+        , environment(nullptr)
+        , communicator(nullptr)
+        , rank(-1)
     {}
 
     SynchronousProxyModel(std::initializer_list <std::string> lst_x,
                           std::initializer_list <std::string> lst_y)
         : Model <Time, Value>(lst_x, lst_y)
-          , environment(nullptr)
-          , communicator(nullptr)
-          , rank(-1)
+        , environment(nullptr)
+        , communicator(nullptr)
+        , rank(-1)
     {}
 
     virtual ~SynchronousProxyModel()
@@ -129,16 +129,16 @@ struct SynchronousLogicalProcessor
 
     SynchronousLogicalProcessor()
         : common(std::make_shared <Common>())
-          , environment(nullptr)
-          , communicator(nullptr)
-          , parent(-1)
+        , environment(nullptr)
+        , communicator(nullptr)
+        , parent(-1)
     {}
 
     SynchronousLogicalProcessor(vle::CommonPtr common)
         : common(common)
-          , environment(nullptr)
-          , communicator(nullptr)
-          , parent(-1)
+        , environment(nullptr)
+        , communicator(nullptr)
+        , parent(-1)
     {}
 
     /*
