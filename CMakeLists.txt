@@ -73,10 +73,11 @@ install(FILES ${PROJECT_BINARY_DIR}/Echll-${Echll_STABLEVERSION}.pc
 ## Core library
 #
 
-set(Echll_CORE_HDRS vle/common.hpp vle/context.hpp vle/dbg.hpp
-  vle/devs.hpp vle/dsde.hpp vle/dtss.hpp vle/export.hpp
-  vle/generic.hpp vle/heap.hpp vle/i18n.hpp vle/mpi.hpp vle/port.hpp
-  vle/time.hpp vle/utils.hpp vle/vle.hpp)
+set(Echll_CORE_HDRS vle/common.hpp vle/context.hpp vle/devs.hpp
+  vle/dsde.hpp vle/dtss.hpp vle/export.hpp vle/generic.hpp
+  vle/heap.hpp vle/i18n.hpp vle/mpi-synchronous.hpp
+  vle/mpi-timewarp.hpp vle/port.hpp vle/time.hpp vle/utils.hpp
+  vle/vle.hpp)
 
 install(FILES ${Echll_CORE_HDRS}
   DESTINATION include/Echll-${Echll_STABLEVERSION}/vle)
@@ -154,6 +155,13 @@ if (CATCH_INCLUDE_DIR)
     COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
   add_test(NAME test_tree-mpi-synchronous COMMAND mpirun -np 4
     test_tree-mpi-synchronous)
+
+  add_executable(test_mpi-timewarp tests/mpi-timewarp.cpp)
+  target_link_libraries(test_mpi-timewarp ${Echll_LINK_LIBRARIES})
+  set_target_properties(test_mpi-timewarp PROPERTIES
+    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
+  add_test(NAME test_mpi-timewarp COMMAND mpirun -np 4
+    test_mpi-timewarp)
 else ()
   message(STATUS " not found catch.hpp. Unit test disabled")
 endif ()

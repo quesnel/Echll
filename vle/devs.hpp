@@ -32,7 +32,6 @@
 #include <vle/heap.hpp>
 #include <memory>
 #include <set>
-#include <vle/dbg.hpp>
 
 namespace vle {
 

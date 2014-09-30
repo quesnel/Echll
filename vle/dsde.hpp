@@ -32,7 +32,6 @@
 #include <vle/time.hpp>
 #include <vle/port.hpp>
 #include <vle/heap.hpp>
-#include <vle/dbg.hpp>
 #include <memory>
 #include <set>
 #include <thread>

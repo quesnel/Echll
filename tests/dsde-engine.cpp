@@ -38,7 +38,6 @@
 #include <limits>
 #include <vle/vle.hpp>
 #include <vle/generic.hpp>
-#include <vle/dbg.hpp>
 #include <boost/format.hpp>
 #include <list>
 

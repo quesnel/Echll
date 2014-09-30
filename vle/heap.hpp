@@ -28,7 +28,6 @@
 #define __VLE_KERNEL_HEAP_HPP__
 
 #include <boost/heap/fibonacci_heap.hpp>
-#include <vle/dbg.hpp>
 
 namespace vle {
 
@@ -63,27 +62,6 @@ template <typename Time, typename Value>
 using HeapType = boost::heap::fibonacci_heap <
     HeapElement <Time, Value>,
     boost::heap::compare <HeapElementCompare <HeapElement <Time, Value>>>>;
-
-template <typename Time, typename Value>
-std::ostream& operator<<(std::ostream& out,
-                         const HeapElement <Time, Value>& elt)
-{
-    return out << elt.element << ", " << ", " << elt.tn;
-}
-
-template <typename Time, typename Value>
-std::ostream& operator<<(std::ostream& out,
-                         const HeapType <Time, Value>& heap)
-{
-    auto it = heap.ordered_begin();
-    auto et = heap.ordered_end();
-    unsigned long int i = 0;
-
-    for (; it != et; ++it, ++i)
-        out << i << ":" << *it << "\n";
-
-    return out;
-}
 
 }
 

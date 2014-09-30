@@ -24,47 +24,47 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DBG_HPP__
-#define __VLE_KERNEL_DBG_HPP__
+#include <vle/mpi-timewarp.hpp>
+#include <vle/vle.hpp>
+#include <iostream>
+#include <cstdlib>
 
+template <typename T>
+struct Infinity
+{
+    static constexpr T negative = -std::numeric_limits<T>::infinity();
+    static constexpr T positive = std::numeric_limits<T>::infinity();
+};
 
-//#if defined __GNUC__
-//#define VLE_GCC_PRINTF(format__, args__) __attribute__ ((format (printf, format__, args__)))
-//#endif
+typedef vle::Time <double, Infinity<double>> MyTime;
+typedef int MyValue;
+typedef vle::dsde::Engine <MyTime, MyValue> MyDSDE;
 
-//namespace vle {
+using UpdatedPort = vle::dsde::UpdatedPort <MyTime, MyValue>;
+using AtomicModel = vle::dsde::AtomicModel <MyTime, MyValue>;
+using CoupledModel = vle::dsde::CoupledModel <MyTime, MyValue>;
+using CoupledModelMono = vle::dsde::CoupledModel
+    <MyTime, MyValue, vle::dsde::TransitionPolicyDefault <MyTime, MyValue>>;
 
-//VLE_API void debugf(const char* format, ...) VLE_GCC_PRINTF(1, 2);
+int main(int argc, char *argv[])
+{
+    boost::mpi::environment env(argc, argv);
+    boost::mpi::communicator comm;
+    int ret = EXIT_FAILURE;
 
-//#ifdef NDEBUG
-//inline void debugf(const char* format, ...)
-//{
-    //(void)format;
-//}
-//#else
-//void debugf(const char* format, ...)
-//{
-    //std::vector <char> buffer(1024, '\0');
-    //int sz;
-    //va_list ap;
+    if (comm.size() == 1) {
+        std::cerr << "comm.size() == 1\n";
+        goto quit;
+    }
 
-    //for (;;) {
-        //va_start(ap, format);
-        //sz = std::vsnprintf(buffer.data(), buffer.size(), format, ap);
-        //va_end(ap);
+    if (comm.rank() == 0) {
 
-        //if (sz < 0) {
-            //return;
-        //} else if (static_cast <std::size_t>(sz) < buffer.size()) {
-            //std::clog << "DEBUG: " << buffer.data() << "\n";
-            //return;
-        //} else {
-            //buffer.resize(sz + 1);
-        //}
-    //}
-//}
-//#endif
+        ret = EXIT_SUCCESS;
+    } else {
 
-//}
+        ret = EXIT_SUCCESS;
+    }
 
-#endif
+quit:
+    return ret;
+}

@@ -24,8 +24,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_MPI_HPP__
-#define __VLE_KERNEL_MPI_HPP__
+#ifndef __VLE_KERNEL_SYNCHRONOUS_MPI_HPP__
+#define __VLE_KERNEL_SYNCHRONOUS_MPI_HPP__
 
 #include <vle/common.hpp>
 #include <vle/time.hpp>

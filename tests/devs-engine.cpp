@@ -36,7 +36,6 @@
 #include <limits>
 #include <vle/vle.hpp>
 #include <vle/devs.hpp>
-#include <vle/dbg.hpp>
 #include <boost/format.hpp>
 #include <list>
 
