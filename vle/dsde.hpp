@@ -107,6 +107,9 @@ inline void check_output_synchronization(typename Time::type tn,
 }
 
 template <typename Time, typename Value>
+struct ComposedModel;
+
+template <typename Time, typename Value>
 struct Model
 {
     typedef typename Time::type time_type;
@@ -127,7 +130,7 @@ struct Model
 
     mutable vle::PortList <Value> x, y;
     time_type tl, tn;
-    Model *parent;
+    ComposedModel <Time, Value> *parent;
     typename HeapType <Time, Value>::handle_type heapid;
 
     virtual void start(const Common& common, const time_type& time) = 0;
@@ -140,6 +143,31 @@ using Bag = std::set <Model <Time, Value>*>;
 
 template <typename Time, typename Value>
 using UpdatedPort = std::set <const Model <Time, Value>*>;
+
+template <typename Time, typename Value>
+struct ComposedModel : Model <Time, Value>
+{
+    typedef typename Time::type time_type;
+    typedef Value value_type;
+
+    ComposedModel()
+        : Model <Time, Value>()
+    {}
+
+    ComposedModel(std::initializer_list <std::string> lst_x,
+                  std::initializer_list <std::string> lst_y)
+        : Model <Time, Value>(lst_x, lst_y)
+    {}
+
+    virtual ~ComposedModel()
+    {}
+
+    virtual void post(const UpdatedPort <Time, Value> &out,
+                      UpdatedPort <Time, Value> &in) const = 0;
+
+    UpdatedPort <Time, Value> last_output_list;
+    UpdatedPort <Time, Value> root;
+};
 
 template <typename Time, typename Value>
 struct AtomicModel : Model <Time, Value>
@@ -275,14 +303,13 @@ struct TransitionPolicyThread
 
 template <typename Time, typename Value,
           typename Policy = TransitionPolicyThread <Time, Value>>
-    struct CoupledModel : Model <Time, Value>
-    {
+struct CoupledModel : ComposedModel <Time, Value>
+{
         typedef typename Time::type time_type;
         typedef Value value_type;
         typedef Policy transition_policy;
 
         HeapType <Time, Value> heap;
-        UpdatedPort <Time, Value> last_output_list;
         transition_policy policy;
 
         typedef std::vector <Model <Time, Value>*> children_t;
@@ -298,15 +325,15 @@ template <typename Time, typename Value,
         virtual children_t children(const vle::Common& common) = 0;
 
         virtual void post(const UpdatedPort <Time, Value> &out,
-                          UpdatedPort <Time, Value> &in) const = 0;
+                          UpdatedPort <Time, Value> &in) const override = 0;
 
         CoupledModel()
-            : Model <Time, Value>()
+            : ComposedModel <Time, Value>()
         {}
 
         CoupledModel(std::initializer_list <std::string> lst_x,
                      std::initializer_list <std::string> lst_y)
-            : Model <Time, Value>(lst_x, lst_y)
+            : ComposedModel <Time, Value>(lst_x, lst_y)
         {}
 
         virtual ~CoupledModel()
@@ -350,15 +377,24 @@ template <typename Time, typename Value,
                             (*it).element));
             }
 
+            if (not ComposedModel <Time, Value>::root.empty()) {
+                post(ComposedModel <Time, Value>::root,
+                     ComposedModel <Time, Value>::last_output_list);
+                for (auto& r : ComposedModel <Time, Value>::root) {
+                    r->y.clear();
+                }
+                ComposedModel <Time, Value>::root.clear();
+            }
+
             if (not Model <Time, Value>::x.is_empty()) {
-                post({this}, last_output_list);
+                post({this}, ComposedModel <Time, Value>::last_output_list);
                 Model <Time, Value>::x.clear();
             }
 
-            for (auto &child : last_output_list)
+            for (auto &child : ComposedModel <Time, Value>::last_output_list)
                 bag.insert(const_cast <Model <Time, Value>*>(child));
 
-            last_output_list.clear();
+            ComposedModel <Time, Value>::last_output_list.clear();
 
             for (auto& b : bag) {
                 assert(b != this);
@@ -394,7 +430,14 @@ template <typename Time, typename Value,
                     ++it;
                 } while (it != et && it->tn == Model <Time, Value>::tn);
 
-                post(lst, last_output_list);
+                post(lst, ComposedModel <Time, Value>::last_output_list);
+
+                auto ithis = ComposedModel <Time, Value>::last_output_list.find(this);
+                if (ithis != ComposedModel <Time, Value>::last_output_list.end()) {
+                    ComposedModel <Time, Value>::last_output_list.erase(ithis);
+                    ComposedModel <Time, Value>::parent->root.emplace(this);
+                    assert(not (Model <Time, Value>::y.is_empty()));
+                }
 
                 for (auto *child : lst)
                     child->y.clear();
@@ -427,152 +470,295 @@ struct Factory
  * @e GenericCoupledModel can read a TGF file format to initialize children
  * and connections.
  *
+ * \example
+ * Generator
+ * Generator
+ * Counter
+ * #
+ * 0 3 0 0
+ * 1 2 0 0
+ * 2 3 0 0
+ * \endexample
+ *
  * @TODO Move this class into a dsde-basic ?
  */
-template <typename Time, typename Value, typename Policy = TransitionPolicyThread <Time, Value>>
-    struct GenericCoupledModel : CoupledModel <Time, Value>
+template <typename Time, typename Value,
+         typename Policy = TransitionPolicyDefault <Time, Value>>
+struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
+{
+    typedef typename Time::type time_type;
+    typedef Value value_type;
+    typedef Policy transition_policy;
+
+    typedef std::pair <Model <Time, Value>*, int> inputport;
+    typedef std::pair <Model <Time, Value>*, int> outputport;
+    typedef std::vector <std::unique_ptr <Model <Time, Value>>> vertices;
+
+    enum ReaderOption
     {
-        typedef typename Time::type time_type;
-        typedef Value value_type;
-        typedef Policy transition_policy;
+        INDEXED_BY_INT,
+        INDEXED_BY_STRING
+    };
 
-        typedef std::pair <Model <Time, Value>*, int> inputport;
-        typedef std::pair <Model <Time, Value>*, int> outputport;
-        typedef std::vector <std::unique_ptr <Model <Time, Value>>> vertices;
-
-        struct hash_inputport
+    struct hash_inputport
+    {
+        std::size_t operator()(const inputport& lhs) const
         {
-            std::size_t operator()(const inputport& lhs) const
-            {
-                std::hash <Model <Time, Value>*> hasher;
+            std::hash <Model <Time, Value>*> hasher;
 
-                return hasher(lhs.first);
-            }
-        };
+            return hasher(lhs.first);
+        }
+    };
 
-        struct equalto_inputport
+    struct equalto_inputport
+    {
+        constexpr bool operator()(const inputport& lhs,
+                                  const inputport& rhs) const
         {
-            constexpr bool operator()(const inputport& lhs, const inputport& rhs) const
-            {
-                return lhs.first == rhs.first && lhs.second == lhs.second;
-            }
-        };
+            return lhs.first == rhs.first &&
+                rhs.second == lhs.second;
+        }
+    };
 
-        typedef std::unordered_multimap <
-            inputport, outputport, hash_inputport, equalto_inputport> edges;
+    typedef std::unordered_multimap <
+        inputport, outputport, hash_inputport, equalto_inputport> edges;
 
-        vertices m_children;
-        edges m_connections;
+    vertices m_children;
+    edges m_connections;
 
-        void read(std::istream& is, const Factory <Time, Value>& factory)
-        {
-            while (is.good()) {
-                std::string dynamics;
-                if (is >> dynamics) {
-                    if (!dynamics.empty() && dynamics[0] != '#') {
-                        m_children.emplace_back(factory.get(dynamics));
-                    } else {
-                        break;
-                    }
-                } else
-                    throw fileformat_error();
-            }
+    void read(std::istream& is, const Factory <Time, Value>& factory,
+              ReaderOption opt)
+    {
+        while (is.good()) {
+            std::string dynamics;
+            if (is >> dynamics) {
+                if (!dynamics.empty() && dynamics[0] != '#') {
+                    m_children.emplace_back(factory.get(dynamics));
+                } else {
+                    break;
+                }
+            } else
+                throw fileformat_error();
+        }
 
+        if (opt == INDEXED_BY_INT) {
             while (is.good()) {
                 std::size_t model_i, model_j;
                 std::size_t port_i, port_j;
 
                 if (is >> model_i >> model_j >> port_i >> port_j) {
-                    if (model_i >= m_children.size())
+                    if (model_i > m_children.size())
                         throw fileformat_error(model_i, m_children.size());
 
-                    if (model_j >= m_children.size())
+                    if (model_j > m_children.size())
                         throw fileformat_error(model_j, m_children.size());
 
-                    Model <Time, Value>* src = m_children[model_i].get();
-                    if (port_i >= src->y.size())
-                        throw fileformat_error(port_i);
+                    Model <Time, Value>* src;
 
-                    Model <Time, Value>* dst = m_children[model_j].get();
-                    if (port_j >= dst->x.size())
-                        throw fileformat_error(port_j);
+                    if (model_i == 0) {
+                        src = this;
+
+                        if (port_i >= src->x.size())
+                            throw fileformat_error(port_i);
+                    } else {
+                        src = m_children[model_i - 1].get();
+
+                        if (port_i >= src->y.size())
+                            throw fileformat_error(port_i);
+                    }
+
+                    Model <Time, Value>* dst;
+
+                    if (model_j == 0) {
+                        dst = this;
+
+                        if (port_j >= dst->y.size())
+                            throw fileformat_error(port_j);
+                    } else {
+                        dst = m_children[model_j - 1].get();
+
+                        if (port_j >= dst->x.size())
+                            throw fileformat_error(port_j);
+                    };
+
+                    m_connections.emplace(std::make_pair(src, port_i),
+                                          std::make_pair(dst, port_j));
+                }
+            }
+        } else {
+            while (is.good()) {
+                std::size_t model_i, model_j;
+                std::size_t port_i, port_j;
+                std::string str_port_i, str_port_j;
+
+                if (is >> model_i >> model_j >> str_port_i >> str_port_j) {
+                    if (model_i > m_children.size())
+                        throw fileformat_error(model_i, m_children.size());
+
+                    if (model_j > m_children.size())
+                        throw fileformat_error(model_j, m_children.size());
+
+                    Model <Time, Value>* src;
+
+                    if (model_i == 0) {
+                        src = this;
+                        port_i = src->x.index(str_port_i);
+                    } else {
+                        src = m_children[model_i - 1].get();
+                        port_i = src->y.index(str_port_i);
+                    }
+
+                    Model <Time, Value>* dst;
+
+                    try {
+                        if (model_j == 0) {
+                            dst = this;
+                            port_j = dst->y.index(str_port_j);
+                        } else {
+                            dst = m_children[model_j - 1].get();
+                            port_j = dst->x.index(str_port_j);
+                        }
+                    } catch (const std::exception& e) {
+                        throw fileformat_error();
+                    }
 
                     m_connections.emplace(std::make_pair(src, port_i),
                                           std::make_pair(dst, port_j));
                 }
             }
         }
+    }
 
-        GenericCoupledModel(std::istream& is, const Factory <Time, Value>& factory)
-            : CoupledModel <Time, Value>()
-        {
-            read(is, factory);
-        }
+    GenericCoupledModel(std::istream& is,
+                        const Factory <Time, Value>& factory,
+                        ReaderOption opt = INDEXED_BY_INT)
+        : CoupledModel <Time, Value, Policy>()
+    {
+        read(is, factory, opt);
+    }
 
-        GenericCoupledModel(std::initializer_list <std::string> lst_x,
-                            std::initializer_list <std::string> lst_y,
-                            std::istream& is,
-                            const Factory <Time, Value>& factory)
-            : CoupledModel <Time, Value>(lst_x, lst_y)
-        {
-            read(is, factory);
-        }
+    GenericCoupledModel(std::initializer_list <std::string> lst_x,
+                        std::initializer_list <std::string> lst_y,
+                        std::istream& is,
+                        const Factory <Time, Value>& factory,
+                        ReaderOption opt = INDEXED_BY_INT)
+        : CoupledModel <Time, Value, Policy>(lst_x, lst_y)
+    {
+        read(is, factory, opt);
+    }
 
-        virtual typename CoupledModel <Time, Value>::children_t
+    virtual typename CoupledModel <Time, Value>::children_t
         children(const vle::Common& /*common*/) override final
         {
-            // TODO How to apply common data to subchild ?
-            typename CoupledModel <Time, Value>::children_t ret;
-            ret.reserve(m_children.size());
-
-            for (auto& child : m_children)
-                ret.emplace_back(child.get());
-
-            return ret;
+            return {};
         }
 
-        virtual void post(const UpdatedPort <Time, Value> &out,
-                          UpdatedPort <Time, Value> &in) const override final
-        {
-            for (auto& model : out) {
-                for (std::size_t i = 0, e = model->y.size(); i != e; ++i) {
-                    if (!model->y[i].empty()) {
-                        auto result = m_connections.equal_range(
-                            std::make_pair(
-                                const_cast <Model <Time, Value>*>(model),
-                                i));
+    virtual vle::Common update_common(
+        const vle::Common& common,
+        const GenericCoupledModel::vertices& v,
+        const GenericCoupledModel::edges& e,
+        int child)
+    {
+        (void) common;
+        (void) v;
+        (void) e;
+        (void) child;
 
-                        for (; result.first != result.second; ++result.first) {
-                            Model <Time, Value>* dst =
-                                const_cast <Model <Time, Value>*>(
-                                    result.first->second.first);
+        return vle::Common();
+    }
 
-                            int portdst = result.first->second.second;
+    virtual void start(const vle::Common& common,
+                       const time_type& time) override final
+    {
+        typename CoupledModel <Time, Value>::children_t ret;
+        ret.reserve(m_children.size());
 
-                            in.emplace(dst);
-                            dst->x[portdst].insert(dst->x[portdst].end(),
-                                                   model->y[i].begin(),
-                                                   model->y[i].end());
+        for (int i = 0, e = m_children.size(); i != e; ++i) {
+            m_children[i]->parent = this;
+            vle::Common localcommon = update_common(common,
+                                                    m_children,
+                                                    m_connections,
+                                                    i);
+
+            m_children[i]->start(localcommon, time);
+
+            auto id = CoupledModel <Time, Value, Policy>::heap.emplace(
+                m_children[i].get(),
+                m_children[i]->tn);
+
+            m_children[i]->heapid = id;
+            (*id).heapid = id;
+        };
+
+        Model <Time, Value>::tl = time;
+        Model <Time, Value>::tn =
+            CoupledModel <Time, Value, Policy>::heap.top().tn;
+    }
+
+    virtual void post(const UpdatedPort <Time, Value> &out,
+                      UpdatedPort <Time, Value> &in) const override final
+    {
+        for (auto& model : out) {
+            std::size_t i = 0;
+            std::size_t e = (model == this) ?
+                Model <Time, Value>::x.size() : model->y.size();
+
+            for (; i != e; ++i) {
+                if ((model == this &&
+                     !Model <Time, Value>::x[i].empty()) or
+                    (model != this && !model->y[i].empty())) {
+                    auto result = m_connections.equal_range(
+                        std::make_pair(
+                            const_cast <Model <Time, Value>*>(model),
+                            i));
+
+                    for (; result.first != result.second; ++result.first) {
+                        Model <Time, Value>* dst =
+                            const_cast <Model <Time, Value>*>(
+                                result.first->second.first);
+
+                        int portdst = result.first->second.second;
+
+                        in.emplace(dst);
+
+                        if (dst == this) {
+                            if (model == this) {
+                                assert(false);
+                            } else {
+                                dst->y[portdst].insert(dst->y[portdst].end(),
+                                                       model->y[i].begin(),
+                                                       model->y[i].end());
+                            }
+                        } else {
+                            if (model == this) {
+                                dst->x[portdst].insert(dst->x[portdst].end(),
+                                                       model->x[i].begin(),
+                                                       model->x[i].end());
+                            } else {
+                                dst->x[portdst].insert(dst->x[portdst].end(),
+                                                       model->y[i].begin(),
+                                                       model->y[i].end());
+                            }
                         }
                     }
                 }
             }
         }
+    }
 
-        virtual ~GenericCoupledModel()
-        {}
-    };
+    virtual ~GenericCoupledModel()
+    {}
+};
 
 template <typename Time, typename Value,
           typename Policy = TransitionPolicyThread <Time, Value>>
-    struct Executive : Model <Time, Value>
+    struct Executive : ComposedModel <Time, Value>
     {
         typedef typename Time::type time_type;
         typedef Value value_type;
         typedef Policy transition_policy;
 
         HeapType <Time, Value> heap;
-        UpdatedPort <Time, Value> last_output_list;
 
         typedef std::vector <Model <Time, Value>*> children_t;
         time_type chi_tl, chi_tn;
@@ -589,19 +775,19 @@ template <typename Time, typename Value,
                           UpdatedPort <Time, Value> &x) const = 0;
 
         Executive()
-            : Model <Time, Value>()
+            : ComposedModel <Time, Value>()
         {}
 
         Executive(std::initializer_list <std::string> lst_x,
                   std::initializer_list <std::string> lst_y)
-            : Model <Time, Value>(lst_x, lst_y)
+            : ComposedModel <Time, Value>(lst_x, lst_y)
         {}
 
         Executive(std::initializer_list <std::string> lst_x,
                   std::initializer_list <std::string> lst_y,
                   std::initializer_list <std::string> chi_lst_x,
                   std::initializer_list <std::string> chi_lst_y)
-            : Model <Time, Value>(lst_x, lst_y), chi_tl(-Time::infinity),
+            : ComposedModel <Time, Value>(lst_x, lst_y), chi_tl(-Time::infinity),
               chi_tn(Time::infinity), chi_x(chi_lst_x), chi_y(chi_lst_y)
         {}
 
@@ -620,7 +806,7 @@ template <typename Time, typename Value,
 
         void erase(Model <Time, Value >*mdl)
         {
-            last_output_list.erase(mdl);
+            ComposedModel <Time, Value>::last_output_list.erase(mdl);
             heap.erase(mdl->heapid);
             mdl->parent = nullptr;
         }
@@ -679,16 +865,16 @@ template <typename Time, typename Value,
 
             {
                 if (not Model <Time, Value>::x.is_empty())
-                    post({this}, last_output_list);
+                    post({this}, ComposedModel <Time, Value>::last_output_list);
 
-                for (auto &child : last_output_list) {
+                for (auto &child : ComposedModel <Time, Value>::last_output_list) {
                     if (child == this)
                         have_chi = true;
                     else
                         bag.insert(const_cast <Model <Time, Value>*>(child));
                 }
 
-                last_output_list.clear();
+                ComposedModel <Time, Value>::last_output_list.clear();
             }
 
             policy(bag, time, heap);
@@ -730,7 +916,7 @@ template <typename Time, typename Value,
                     ++it;
                 } while (it != et && it->tn == Model <Time, Value>::tn);
 
-                post(lst, last_output_list);
+                post(lst, ComposedModel <Time, Value>::last_output_list);
 
                 std::for_each(lst.begin(), lst.end(),
                               [](const Model <Time, Value> *child)

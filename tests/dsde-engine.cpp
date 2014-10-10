@@ -55,6 +55,8 @@ typedef vle::dsde::Engine <MyTime, MyValue> MyDSDE;
 
 using UpdatedPort = vle::dsde::UpdatedPort <MyTime, MyValue>;
 using AtomicModel = vle::dsde::AtomicModel <MyTime, MyValue>;
+using GenericCoupledModel = vle::dsde::GenericCoupledModel <MyTime, MyValue,
+      vle::dsde::TransitionPolicyThread <MyTime, MyValue>>;
 using CoupledModelThread = vle::dsde::CoupledModel <MyTime, MyValue,
       vle::dsde::TransitionPolicyThread <MyTime, MyValue>>;
 using CoupledModelMono = vle::dsde::CoupledModel <MyTime, MyValue,
@@ -211,7 +213,7 @@ struct Generator : AtomicModel
 
     virtual void lambda() const override final
     {
-        vle::debugf("Generator %p sends two messages", this);
+        vle::debugf("Generator lambda %p sends two messages", this);
         y[0] = { std::string("msg"), std::string("msg2") };
     }
 
@@ -296,6 +298,128 @@ struct MyNetwork : Parent
     }
 };
 
+//
+//  +--------------+
+//  |              |
+//  +>-cpt     gen-+>
+//  |              |
+//  +--------------+
+//
+template <typename Parent>
+struct MyNetworkToCouple : Parent
+{
+    Generator gen;
+    Counter cpt;
+
+    MyNetworkToCouple()
+        : Parent({"in"}, {"out"}), gen(1)
+    {}
+
+    virtual ~MyNetworkToCouple() {}
+
+    virtual typename Parent::children_t children(const vle::Common&) override final
+    {
+        return {&gen, &cpt};
+    }
+
+    virtual std::string observation() const
+    {
+        std::string ret = cpt.observation() + " " + gen.observation();
+
+        return ret;
+    }
+
+    virtual void post(const UpdatedPort &out,
+                      UpdatedPort &in) const override final
+    {
+        (void) out;
+
+        if (!MyNetworkToCouple::x.is_empty()) {
+            vle::debugf("Coupled (%p) send %lu to cpt %lu (%p)",
+                        this,
+                        MyNetworkToCouple::x[0].size(),
+                        cpt.x[0].size(),
+                        &cpt);
+
+            cpt.x[0].insert(cpt.x[0].end(),
+                            MyNetworkToCouple::x[0].begin(),
+                            MyNetworkToCouple::x[0].end());
+            in.emplace(&cpt);
+        }
+
+        if (!gen.y.is_empty()) {
+            vle::debugf("Gen sends %lu to Coupled %lu",
+                        gen.y[0].size(),
+                        MyNetworkToCouple::y[0].size());
+
+            MyNetworkToCouple::y[0].insert(MyNetworkToCouple::y[0].end(),
+                                           gen.y[0].begin(),
+                                           gen.y[0].end());
+            in.emplace(this);
+        }
+    }
+};
+
+template <typename Parent>
+struct MyRootNetworkToCouple : Parent
+{
+    std::vector <MyNetworkToCouple <Parent>> m_children;
+
+    MyRootNetworkToCouple()
+        : Parent(), m_children(2)
+    {}
+
+    virtual ~MyRootNetworkToCouple() {}
+
+    virtual typename Parent::children_t children(const vle::Common&) override final
+    {
+        typename Parent::children_t ret;
+
+        for (auto& child : m_children)
+            ret.emplace_back(&child);
+
+        return std::move(ret);
+    }
+
+    virtual std::string observation() const
+    {
+        std::string ret;
+
+        for (auto& child : m_children)
+            ret += child.observation() + " ";
+
+        return std::move(ret);
+    }
+
+    virtual void post(const UpdatedPort &out,
+                      UpdatedPort &in) const override final
+    {
+        (void) out;
+
+        if (!m_children[0].y.is_empty()) {
+            vle::debugf("MyRootNetworkToCouple move 0 to 1 (%lu vs %lu)",
+                        m_children[1].x[0].size(),
+                        m_children[0].y[0].size());
+            m_children[1].x[0].insert(m_children[1].x[0].end(),
+                                      m_children[0].y[0].begin(),
+                                      m_children[0].y[0].end());
+            in.emplace(&m_children[1]);
+        }
+
+        if (!m_children[1].y.is_empty()) {
+            vle::debugf("MyRootNetworkToCouple move 1 to 0 (%lu vs %lu)",
+                        m_children[0].x[0].size(),
+                        m_children[1].y[0].size());
+            m_children[0].x[0].insert(m_children[0].x[0].end(),
+                                      m_children[1].y[0].begin(),
+                                      m_children[1].y[0].end());
+            in.emplace(&m_children[0]);
+        }
+    }
+};
+
+
+
 template <typename Parent>
 struct MyFlatNetwork : Parent
 {
@@ -355,7 +479,6 @@ struct MyFlatNetwork : Parent
             cpts[i].x[0].insert(cpts[i].x[0].begin(),
                                 gens[i * 2 + 1].y[0].begin(),
                                 gens[i * 2 + 1].y[0].end());
-
         }
     }
 };
@@ -779,6 +902,19 @@ TEST_CASE("main/synchronizer/hierarchy/flat-network", "run")
     REQUIRE(result == "36 36 36 36");
 }
 
+TEST_CASE("main/synchronizer/hierarchy/myrootnetworktocouple", "run")
+{
+    MyDSDE dsde_engine;
+    MyRootNetworkToCouple <CoupledModelMono> model;
+    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+
+    double final_date = sim.run(0.0, 10);
+    REQUIRE(final_date == 10.0);
+
+    std::string result = model.observation();
+    REQUIRE(result == "18 9 18 9 ");
+}
+
 TEST_CASE("main/synchronizer/hierarchy/network-of-network", "run")
 {
     MyDSDE dsde_engine;
@@ -1076,7 +1212,7 @@ TEST_CASE("main/synchronizer/hierarchy-thread/generic-coupledmodel-1", "run")
             "Generator\n"
             "Counter\n"
             "#\n"
-            "4 3 0 0";
+            "5 4 0 0";
         std::istringstream is(str);
         MyDSDE dsde_engine;
 
@@ -1092,7 +1228,7 @@ TEST_CASE("main/synchronizer/hierarchy-thread/generic-coupledmodel-1", "run")
             "Generator\n"
             "Counter\n"
             "#\n"
-            "0 3 1 0";
+            "1 3 1 0";
         std::istringstream is(str);
         MyDSDE dsde_engine;
 
@@ -1108,9 +1244,9 @@ TEST_CASE("main/synchronizer/hierarchy-thread/generic-coupledmodel-1", "run")
             "Generator\n"
             "Counter\n"
             "#\n"
-            "0 3 0 0\n"
-            "1 3 0 0\n"
-            "2 3 0 0\n";
+            "1 4 0 0\n"
+            "2 4 0 0\n"
+            "3 4 0 0\n";
 
         std::istringstream is(str);
         MyDSDE dsde_engine;
@@ -1125,7 +1261,37 @@ TEST_CASE("main/synchronizer/hierarchy-thread/generic-coupledmodel-1", "run")
         REQUIRE(model.m_children.size() == 4u);
         REQUIRE(model.m_children[3].get());
 
-        std::string result = dynamic_cast <Counter*>(model.m_children[3].get())->observation();
+        std::string result = dynamic_cast <Counter*>(
+            model.m_children[3].get())->observation();
+        REQUIRE(result == "54");
+    }
+    {
+        const std::string str = "Generator\n"
+            "Generator\n"
+            "Generator\n"
+            "Counter\n"
+            "#\n"
+            "1 4 out in\n"
+            "2 4 out in\n"
+            "3 4 out in\n";
+
+        std::istringstream is(str);
+        MyDSDE dsde_engine;
+        vle::dsde::GenericCoupledModel
+            <MyTime, MyValue, vle::dsde::TransitionPolicyThread <
+            MyTime, MyValue>> model(is,
+                                    factory,
+                                    GenericCoupledModel::INDEXED_BY_STRING);
+
+        vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+
+        double final_date = sim.run(0.0, 10);
+        REQUIRE(final_date == 10.0);
+        REQUIRE(model.m_children.size() == 4u);
+        REQUIRE(model.m_children[3].get());
+
+        std::string result = dynamic_cast <Counter*>(
+            model.m_children[3].get())->observation();
         REQUIRE(result == "54");
     }
 }

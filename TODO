@@ -9,6 +9,10 @@ Here's a short list of things we can do
 - Parallel kernel
   - How to define parallel vle::Simulation class ?
 
+- Port
+  - fix the is_empty() function
+  - append a merge function instead of insert(it, it, it)
+
 - Engine
   - Initialization system:
     - Add a generic init system for all engines/models in CTOR?

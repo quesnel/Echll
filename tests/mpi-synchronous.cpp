@@ -119,20 +119,20 @@ struct Generator : AtomicModel
     }
 };
 
-struct Network : CoupledModelMono
+struct Network : CoupledModel
 {
     std::vector <Generator> gens;
     Counter cpt;
 
     Network() :
-        CoupledModelMono(), gens(1)
+        CoupledModel(), gens(1)
     {}
 
     virtual ~Network() {}
 
-    virtual CoupledModelMono::children_t children(const vle::Common&) override final
+    virtual CoupledModel::children_t children(const vle::Common&) override final
     {
-        CoupledModelMono::children_t cs;
+        CoupledModel::children_t cs;
 
         for (auto& gen : gens)
             cs.push_back(&gen);

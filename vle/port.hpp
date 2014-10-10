@@ -155,7 +155,11 @@ struct PortList
 
     bool is_empty() const
     {
-        return empty;
+        for (const auto& port : ports)
+            if (!port.empty())
+                return false;
+
+        return true;
     }
 
     std::size_t size() const
