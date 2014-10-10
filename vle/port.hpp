@@ -68,6 +68,16 @@ struct PortList
             add(str);
     }
 
+    int index(const std::string& name) const
+    {
+        return accessor.at(name);
+    }
+
+    bool exists(const std::string& name) const
+    {
+        return accessor.find(name) != accessor.end();
+    }
+
     int add(const std::string &name)
     {
         bool success = false;
