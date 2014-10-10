@@ -36,7 +36,7 @@ struct Path
 {
     static bool exist_file(const std::string &filename);
 
-é    static bool exist_directory(const std::string &dirname);
+    static bool exist_directory(const std::string &dirname);
 
     static bool create_directories(const std::string &dirname);
 
