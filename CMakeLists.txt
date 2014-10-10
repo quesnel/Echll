@@ -174,6 +174,13 @@ if (CATCH_INCLUDE_DIR)
     COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
   add_test(NAME test_mpi-synchronous COMMAND mpirun -np 4
     test_mpi-synchronous)
+
+  add_executable(test_tree-mpi-synchronous tests/tree.cpp)
+  target_link_libraries(test_tree-mpi-synchronous Echll_corelib ${Echll_LINK_LIBRARIES})
+  set_target_properties(test_tree-mpi-synchronous PROPERTIES
+    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
+  add_test(NAME test_tree-mpi-synchronous COMMAND mpirun -np 4
+    test_tree-mpi-synchronous)
 else ()
   message(STATUS " not found catch.hpp. Unit test disabled")
 endif ()
