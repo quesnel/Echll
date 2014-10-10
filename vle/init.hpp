@@ -37,7 +37,7 @@ namespace vle {
  * @brief @e vle::Common stores experimental conditions, simulation engine
  * parameters etc.
  */
-std::map <std::string, boost::any> Common;
+std::unordered_map <std::string, boost::any> Common;
 
 }
 
