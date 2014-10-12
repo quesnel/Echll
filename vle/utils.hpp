@@ -31,9 +31,12 @@
 #include <functional>
 #include <limits>
 #include <string>
+#include <vector>
 #include <cmath>
 #include <cstdint>
 #include <cinttypes>
+#include <cstdio>
+#include <cstdarg>
 
 #if defined __GNUC__
 #define VLE_GCC_PRINTF(format__, args__) __attribute__ ((format (printf, format__, args__)))
@@ -85,6 +88,26 @@ bool is_almost_equal(const T a, const T b)
 {
     const T scale = (std::abs(a) + std::abs(b)) / T(2.0);
     return std::abs(a - b) <= (scale * std::numeric_limits<T>::epsilon());
+}
+
+inline std::string stringf(const char* format, ...)
+{
+    std::vector <char> buffer(1024, '\0');
+    int sz;
+    va_list ap;
+
+    for (;;) {
+        va_start(ap, format);
+        sz = std::vsnprintf(buffer.data(), buffer.size(), format, ap);
+        va_end(ap);
+
+        if (sz < 0)
+            return std::move(std::string());
+        else if (static_cast <std::size_t>(sz) < buffer.size())
+            return std::move(std::string(buffer.data(), buffer.size()));
+        else
+            buffer.resize(sz + 1);
+    }
 }
 
 }

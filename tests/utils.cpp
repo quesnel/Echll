@@ -24,9 +24,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <vle/environment.hpp>
 #include <vle/dbg.hpp>
-#include <vle/path.hpp>
 #include <vle/utils.hpp>
 #include <cstring>
 
@@ -43,35 +41,6 @@ const std::string str500("01234567890123456789012345678901234567890123456789"
 
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
-
-TEST_CASE("try-make_path_api", "run")
-{
-    {
-        std::string path = vle::Path::make_path("A", "B", "C");
-        REQUIRE(path == "A/B/C");
-    }
-
-    {
-        std::string path = vle::Path::make_path("struct");
-        REQUIRE(path == "struct");
-    }
-}
-
-TEST_CASE("try-environment-package-path", "run")
-{
-    vle::EnvironmentPtr env = std::make_shared<vle::Environment>();
-
-    std::string tmp_path = vle::Path::get_temporary_path();
-    env->set_prefix_path(tmp_path);
-
-    REQUIRE(env->get_prefix_path() == tmp_path);
-    REQUIRE(env->get_package_path("test", vle::PACKAGE_DATA_DIRECTORY) ==
-            vle::Path::make_path(tmp_path, "pkgs-2.0", "test", "data"));
-    REQUIRE(env->get_package_path("test", vle::PACKAGE_EXP_DIRECTORY) ==
-            vle::Path::make_path(tmp_path, "pkgs-2.0", "test", "exp"));
-    REQUIRE(env->get_package_path("test", vle::PACKAGE_SIMULATOR_DIRECTORY) ==
-            vle::Path::make_path(tmp_path, "pkgs-2.0", "test", "simulators"));
-}
 
 TEST_CASE("try-stringf-format", "run")
 {

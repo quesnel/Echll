@@ -28,6 +28,10 @@
 #define __VLE_KERNEL_DBG_HPP__
 
 #include <vle/export.hpp>
+#include <iostream>
+#include <vector>
+#include <cstdio>
+#include <cstdarg>
 #include <cstdint>
 #include <cinttypes>
 
@@ -42,8 +46,29 @@ VLE_API void debugf(const char* format, ...) VLE_GCC_PRINTF(1, 2);
 #ifdef NDEBUG
 inline void debugf(const char* format, ...)
 {}
-#endif
+#else
+void debugf(const char* format, ...)
+{
+    std::vector <char> buffer(1024, '\0');
+    int sz;
+    va_list ap;
 
+    for (;;) {
+        va_start(ap, format);
+        sz = std::vsnprintf(buffer.data(), buffer.size(), format, ap);
+        va_end(ap);
+
+        if (sz < 0) {
+            return;
+        } else if (static_cast <std::size_t>(sz) < buffer.size()) {
+            std::clog << "DEBUG: " << buffer.data() << "\n";
+            return;
+        } else {
+            buffer.resize(sz + 1);
+        }
+    }
+}
+#endif
 
 }
 

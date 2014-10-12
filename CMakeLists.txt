@@ -62,13 +62,8 @@ endif ()
 ## Echll-x.y.pc
 #
 
-if (WIN32)
-  set(Echll_PKGCONFIG_PREFIXPATH "/target")
-  set(Echll_PKGCONFIG_LIBDIR "bin")
-else()
-  set(Echll_PKGCONFIG_PREFIXPATH "${CMAKE_INSTALL_PREFIX}")
-  set(Echll_PKGCONFIG_LIBDIR "lib")
-endif ()
+set(Echll_PKGCONFIG_PREFIX_DIR "${CMAKE_INSTALL_PREFIX}")
+set(Echll_PKGCONFIG_BOOSTINCLUDE_DIRS "${Boost_INCLUDE_DIRS}")
 
 configure_file(Echll.pc.in ${PROJECT_BINARY_DIR}/Echll-${Echll_STABLEVERSION}.pc @ONLY)
 install(FILES ${PROJECT_BINARY_DIR}/Echll-${Echll_STABLEVERSION}.pc
@@ -79,34 +74,12 @@ install(FILES ${PROJECT_BINARY_DIR}/Echll-${Echll_STABLEVERSION}.pc
 #
 
 set(Echll_CORE_HDRS vle/common.hpp vle/dbg.hpp vle/devs.hpp
-  vle/dsde.hpp vle/dtss.hpp vle/environment.hpp vle/export.hpp
-  vle/heap.hpp vle/i18n.hpp vle/init.hpp vle/path.hpp vle/port.hpp
-  vle/time.hpp vle/utils.hpp vle/vle.hpp)
-
-set(Echll_CORE_SRCS vle/common.hpp vle/dbg.cpp vle/dbg.hpp
-  vle/devs.hpp vle/dsde.hpp vle/dtss.hpp vle/environment.cpp
-  vle/environment.hpp vle/export.hpp vle/heap.hpp vle/i18n.hpp
-  vle/init.hpp vle/path.cpp vle/path.hpp vle/port.hpp vle/time.hpp
-  vle/utils.cpp vle/utils.hpp vle/vle.hpp)
-
-add_library(Echll_corelib SHARED ${Echll_CORE_SRCS})
-
-set_target_properties(Echll_corelib PROPERTIES
-  VERSION 0
-  OUTPUT_NAME "echll-${Echll_STABLEVERSION}"
-  DEFINE_SYMBOL "Echll_EXPORTS"
-  COMPILE_DEFINITIONS "Echll_DLL"
-  COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
-
-target_link_libraries(Echll_corelib ${Echll_LINK_LIBRARIES})
+  vle/dsde.hpp vle/dtss.hpp vle/export.hpp vle/heap.hpp vle/i18n.hpp
+  vle/init.hpp vle/mpi.hpp vle/port.hpp vle/time.hpp vle/utils.hpp
+  vle/vle.hpp)
 
 install(FILES ${Echll_CORE_HDRS}
-  DESTINATION include/echll-${Echll_STABLEVERSION})
-
-install(TARGETS Echll_corelib
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib)
+  DESTINATION include/Echll-${Echll_STABLEVERSION}/vle)
 
 ### # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 ## Executable
@@ -115,7 +88,7 @@ install(TARGETS Echll_corelib
 set(Echll_MAIN_SRCS vle/main.cpp)
 
 add_executable(echll ${Echll_MAIN_SRCS})
-target_link_libraries(echll Echll_corelib ${Echll_LINK_LIBRARIES})
+target_link_libraries(echll ${Echll_LINK_LIBRARIES})
 
 if (MPI_CXX_COMPILE_FLAGS)
   set_target_properties(echll PROPERTIES COMPILE_FLAGS "${MPI_CXX_COMPILE_FLAGS}")
@@ -145,38 +118,38 @@ if (CATCH_INCLUDE_DIR)
   include_directories(${CATCH_INCLUDE_DIR})
 
   add_executable(test_utils tests/utils.cpp)
-  target_link_libraries(test_utils Echll_corelib ${Echll_LINK_LIBRARIES})
+  target_link_libraries(test_utils ${Echll_LINK_LIBRARIES})
   set_target_properties(test_utils PROPERTIES
     COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
   add_test(NAME test_utils COMMAND test_utils)
 
   add_executable(test_devs-engine tests/devs-engine.cpp)
-  target_link_libraries(test_devs-engine Echll_corelib ${Echll_LINK_LIBRARIES})
+  target_link_libraries(test_devs-engine ${Echll_LINK_LIBRARIES})
   set_target_properties(test_devs-engine PROPERTIES
     COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
   add_test(NAME test_devs-engine COMMAND test_devs-engine)
 
   add_executable(test_dsde-engine tests/dsde-engine.cpp)
-  target_link_libraries(test_dsde-engine Echll_corelib ${Echll_LINK_LIBRARIES})
+  target_link_libraries(test_dsde-engine ${Echll_LINK_LIBRARIES})
   set_target_properties(test_dsde-engine PROPERTIES
     COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
   add_test(NAME test_dsde-engine COMMAND test_dsde-engine)
 
   add_executable(test_dtss-engine tests/dtss-engine.cpp)
-  target_link_libraries(test_dtss-engine Echll_corelib ${Echll_LINK_LIBRARIES})
+  target_link_libraries(test_dtss-engine ${Echll_LINK_LIBRARIES})
   set_target_properties(test_dtss-engine PROPERTIES
     COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
   add_test(NAME test_dtss-engine COMMAND test_dtss-engine)
 
   add_executable(test_mpi-synchronous tests/mpi-synchronous.cpp)
-  target_link_libraries(test_mpi-synchronous Echll_corelib ${Echll_LINK_LIBRARIES})
+  target_link_libraries(test_mpi-synchronous ${Echll_LINK_LIBRARIES})
   set_target_properties(test_mpi-synchronous PROPERTIES
     COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
   add_test(NAME test_mpi-synchronous COMMAND mpirun -np 4
     test_mpi-synchronous)
 
   add_executable(test_tree-mpi-synchronous tests/tree.cpp)
-  target_link_libraries(test_tree-mpi-synchronous Echll_corelib ${Echll_LINK_LIBRARIES})
+  target_link_libraries(test_tree-mpi-synchronous ${Echll_LINK_LIBRARIES})
   set_target_properties(test_tree-mpi-synchronous PROPERTIES
     COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
   add_test(NAME test_tree-mpi-synchronous COMMAND mpirun -np 4

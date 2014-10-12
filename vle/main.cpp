@@ -24,48 +24,146 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-//#ifdef HAVE_CONFIG_H
-//# include <config.h>
-//#endif
-
-//#ifdef ENABLE_NLS
-//# include <libintl.h>
-//#else
-//# define gettext(x)          (x)
-//# define dgettext(domain, x) (x)
-//#endif
-//#define _(x)                 dgettext(PACKAGE, x)
-
-#include <vle/environment.hpp>
+#include <chrono>
+#include <fstream>
 #include <iostream>
+#include <limits>
+#include <random>
+#include <string>
+#include <vector>
+#include <vle/vle.hpp>
+#include <vle/dsde.hpp>
+#include <cmath>
+#include <ctime>
+
+template <typename T>
+struct Infinity
+{
+    static constexpr T negative = -std::numeric_limits<T>::infinity();
+    static constexpr T positive = std::numeric_limits<T>::infinity();
+};
+
+typedef vle::Time <double, Infinity<double>> DoubleTime;
+typedef boost::any Data;
+typedef vle::dsde::Engine <DoubleTime, Data> MyDSDE;
+typedef vle::dsde::Factory <DoubleTime, Data> Factory;
+
+using AtomicModel = vle::dsde::AtomicModel <DoubleTime, Data>;
+
+using GenericCoupledModel = vle::dsde::GenericCoupledModel <DoubleTime, Data,
+      vle::dsde::TransitionPolicyThread <DoubleTime, Data>>;
+
+struct Counter : AtomicModel
+{
+    unsigned int i;
+
+    Counter()
+        : AtomicModel({"in"}, {})
+        , i(0u)
+    {}
+
+    virtual ~Counter()
+    {}
+
+    virtual double init(const vle::Common&, const double&) override final
+    {
+        i = 0;
+        return Infinity<double>::positive;
+    }
+
+    virtual double delta(const double&) override final
+    {
+        i += x[0].size();
+
+        return Infinity<double>::positive;
+    }
+
+    virtual void lambda() const override final
+    {}
+
+    virtual std::string observation() const
+    {
+        return std::to_string(i);
+    }
+};
+
+struct Generator : AtomicModel
+{
+    unsigned int timestep;
+    unsigned int emitted;
+
+    Generator()
+        : AtomicModel({}, {"out"})
+        , timestep(1u)
+        , emitted(0u)
+    {}
+
+    virtual ~Generator()
+    {}
+
+    virtual double init(const vle::Common&, const double&) override final
+    {
+        timestep = 1.0;
+        emitted = 0u;
+
+        return timestep;
+    }
+
+    virtual double delta(const double&) override final
+    {
+        ++emitted;
+
+        return timestep;
+    }
+
+    virtual void lambda() const override final
+    {
+        y[0] = { std::string("beep") };
+    }
+
+    virtual std::string observation() const
+    {
+        return std::to_string(emitted);
+    }
+};
 
 int main(int argc, char *argv[])
 {
-    (void)argc;
-    (void)argv;
-
-    //std::setlocale(LC_ALL, "");
-
-//#ifdef ENABLE_NLS
-    //::bindtextdomain(PACKAGE, LOCALE_DIR);
-    //::bind_textdomain_codeset(PACKAGE, "UTF-8");
-//#endif
-
-    vle::EnvironmentPtr env;
-    try {
-        env = std::make_shared<vle::Environment>();
-    } catch (const std::exception& e) {
-        std::cerr << "Failed to initialize VLE: " << e.what();
-        return EXIT_FAILURE;
+    if (argc <= 1) {
+        std::cerr << argv[0] << " [files...]" << std::endl;
+        return EXIT_SUCCESS;
     }
 
-//#ifdef HAVE_CONFIG_H
-    //env->warning(_(PACKAGE_NAME " " VERSION " started"));
-//#else
-    //env->warning(_("VLE started"));
-//#endif
-//
-    env->warning("VLE started");
+    Factory factory;
+
+    factory.functions.emplace("Counter",
+                              []() -> Factory::modelptr
+                              {
+                                  return Factory::modelptr(new Counter());
+                              });
+
+    factory.functions.emplace("Generator",
+                              []() -> Factory::modelptr
+                              {
+                                  return Factory::modelptr(new Generator());
+                              });
+
+    for (int i = 1; i < argc; ++i) {
+        std::ifstream ifs(argv[i]);
+
+        if (!ifs.is_open()) {
+            std::cerr << "Failed to open " << argv[i] << "\n";
+            continue;
+        }
+
+        try {
+            MyDSDE dsde_engine;
+            GenericCoupledModel model(ifs, factory);
+            vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+        } catch (const std::exception& e) {
+            std::cerr << "Simulation failed: " << e.what() << "\n";
+        }
+    }
 
     return EXIT_SUCCESS;
 }

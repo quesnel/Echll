@@ -1,15 +1,10 @@
-PACKAGE_TARNAME=@PACKAGE_TARNAME@
-prefix=@prefix@
-exec_prefix=@exec_prefix@
-libdir=@libdir@
-includedir=@includedir@
-datarootdir=${prefix}/share
-datadir=${datarootdir}/@PACKAGE@
-docdir=@docdir@
+prefix=@Echll_PKGCONFIG_PREFIX_DIR@
+includedir=${prefix}/include
 
-Name: vle
-Description: A Discrete Event and Polymorphic Simulation Kernel
-Version: @VERSION@
-Libs: -L${libdir} -lvle-2.0
-Libs.private: -lm
-Cflags: -I${includedir}/vle-2.0
+Name: Echll
+Description: A C++ template library for Discrete Event and Polymorphic Simulation
+Requires:
+Version: @Echll_VERSION@
+Libs:
+Libs.private: -lm -lboost_mpi -lboost_serialization -lpthread
+Cflags: -I${includedir}/Echll-@Echll_STABLEVERSION@ -I@Echll_PKGCONFIG_BOOSTINCLUDE_DIRS@
