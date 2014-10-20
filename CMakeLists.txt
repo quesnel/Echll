@@ -75,8 +75,7 @@ install(FILES ${PROJECT_BINARY_DIR}/Echll-${Echll_STABLEVERSION}.pc
 
 set(Echll_CORE_HDRS vle/common.hpp vle/dbg.hpp vle/devs.hpp
   vle/dsde.hpp vle/dtss.hpp vle/export.hpp vle/heap.hpp vle/i18n.hpp
-  vle/init.hpp vle/mpi.hpp vle/port.hpp vle/time.hpp vle/utils.hpp
-  vle/vle.hpp)
+  vle/mpi.hpp vle/port.hpp vle/time.hpp vle/utils.hpp vle/vle.hpp)
 
 install(FILES ${Echll_CORE_HDRS}
   DESTINATION include/Echll-${Echll_STABLEVERSION}/vle)
