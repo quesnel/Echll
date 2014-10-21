@@ -78,21 +78,20 @@ struct PortList
         return accessor.find(name) != accessor.end();
     }
 
-    int add(const std::string &name)
+    int add()
     {
-        bool success = false;
-
-        ports.push_back(Values());
-        ScopeExit on_exit([&success, this](void)
-                          {
-                              if (!success)
-                                  ports.pop_back();
-                          });
-
-        accessor.emplace(name, ports.size() - 1);
-        success = true;
+        ports.emplace_back();
 
         return ports.size() - 1;
+    }
+
+    int add(const std::string &name)
+    {
+        auto ret = accessor.emplace(name, ports.size());
+        if (ret.second)
+            ports.emplace_back();
+
+        return ret.first->second;
     }
 
     const Values& operator[](int i) const
