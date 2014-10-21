@@ -37,7 +37,7 @@
 #include <random>
 #include <limits>
 #include <vle/vle.hpp>
-#include <vle/dsde.hpp>
+#include <vle/generic.hpp>
 #include <vle/dbg.hpp>
 #include <boost/format.hpp>
 #include <list>
@@ -1165,136 +1165,136 @@ TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network2", "run")
     REQUIRE(result == "16 4 4 16 4 4 16 4 4 16 4 4");
 }
 
-TEST_CASE("main/synchronizer/hierarchy-thread/generic-coupledmodel-1", "run")
-{
-    typedef vle::dsde::Factory <MyTime, MyValue> factory_t;
-    factory_t factory;
-    factory.functions.emplace("Counter",
-                              []() -> factory_t::modelptr
-                              {
-                                  return factory_t::modelptr(new Counter());
-                              });
+//TEST_CASE("main/synchronizer/hierarchy-thread/generic-coupledmodel-1", "run")
+//{
+    //typedef vle::dsde::Factory <MyTime, MyValue> factory_t;
+    //factory_t factory;
+    //factory.functions.emplace("Counter",
+                              //[]() -> factory_t::modelptr
+                              //{
+                                  //return factory_t::modelptr(new Counter());
+                              //});
 
-    factory.functions.emplace("Generator",
-                              []() -> factory_t::modelptr
-                              {
-                                  return factory_t::modelptr(new Generator());
-                              });
+    //factory.functions.emplace("Generator",
+                              //[]() -> factory_t::modelptr
+                              //{
+                                  //return factory_t::modelptr(new Generator());
+                              //});
 
-    {
-        const std::string str = "Unknown\n";
-        std::istringstream is(str);
-        MyDSDE dsde_engine;
+    //{
+        //const std::string str = "Unknown\n";
+        //std::istringstream is(str);
+        //MyDSDE dsde_engine;
 
-        REQUIRE_THROWS_AS(
-            (vle::dsde::GenericCoupledModel
-             <MyTime, MyValue, vle::dsde::TransitionPolicyThread <
-             MyTime, MyValue>>(is, factory)),
-            vle::dsde::factory_error);
-    }
-    {
-        const std::string str = "Generator\n"
-            "Generator\n"
-            "Generator\n"
-            "Counter\n";
-        std::istringstream is(str);
-        MyDSDE dsde_engine;
+        //REQUIRE_THROWS_AS(
+            //(vle::dsde::GenericCoupledModel
+             //<MyTime, MyValue, vle::dsde::TransitionPolicyThread <
+             //MyTime, MyValue>>(is, factory)),
+            //vle::dsde::factory_error);
+    //}
+    //{
+        //const std::string str = "Generator\n"
+            //"Generator\n"
+            //"Generator\n"
+            //"Counter\n";
+        //std::istringstream is(str);
+        //MyDSDE dsde_engine;
 
-        REQUIRE_THROWS_AS(
-            (vle::dsde::GenericCoupledModel
-             <MyTime, MyValue, vle::dsde::TransitionPolicyThread <
-             MyTime, MyValue>>(is, factory)),
-            vle::dsde::fileformat_error);
-    }
-    {
-        const std::string str = "Generator\n"
-            "Generator\n"
-            "Generator\n"
-            "Counter\n"
-            "#\n"
-            "5 4 0 0";
-        std::istringstream is(str);
-        MyDSDE dsde_engine;
+        //REQUIRE_THROWS_AS(
+            //(vle::dsde::GenericCoupledModel
+             //<MyTime, MyValue, vle::dsde::TransitionPolicyThread <
+             //MyTime, MyValue>>(is, factory)),
+            //vle::dsde::fileformat_error);
+    //}
+    //{
+        //const std::string str = "Generator\n"
+            //"Generator\n"
+            //"Generator\n"
+            //"Counter\n"
+            //"#\n"
+            //"5 4 0 0";
+        //std::istringstream is(str);
+        //MyDSDE dsde_engine;
 
-        REQUIRE_THROWS_AS(
-            (vle::dsde::GenericCoupledModel
-             <MyTime, MyValue, vle::dsde::TransitionPolicyThread <
-             MyTime, MyValue>>(is, factory)),
-            vle::dsde::fileformat_error);
-    }
-    {
-        const std::string str = "Generator\n"
-            "Generator\n"
-            "Generator\n"
-            "Counter\n"
-            "#\n"
-            "1 3 1 0";
-        std::istringstream is(str);
-        MyDSDE dsde_engine;
+        //REQUIRE_THROWS_AS(
+            //(vle::dsde::GenericCoupledModel
+             //<MyTime, MyValue, vle::dsde::TransitionPolicyThread <
+             //MyTime, MyValue>>(is, factory)),
+            //vle::dsde::fileformat_error);
+    //}
+    //{
+        //const std::string str = "Generator\n"
+            //"Generator\n"
+            //"Generator\n"
+            //"Counter\n"
+            //"#\n"
+            //"1 3 1 0";
+        //std::istringstream is(str);
+        //MyDSDE dsde_engine;
 
-        REQUIRE_THROWS_AS(
-            (vle::dsde::GenericCoupledModel
-             <MyTime, MyValue, vle::dsde::TransitionPolicyThread <
-             MyTime, MyValue>>(is, factory)),
-            vle::dsde::fileformat_error);
-    }
-    {
-        const std::string str = "Generator\n"
-            "Generator\n"
-            "Generator\n"
-            "Counter\n"
-            "#\n"
-            "1 4 0 0\n"
-            "2 4 0 0\n"
-            "3 4 0 0\n";
+        //REQUIRE_THROWS_AS(
+            //(vle::dsde::GenericCoupledModel
+             //<MyTime, MyValue, vle::dsde::TransitionPolicyThread <
+             //MyTime, MyValue>>(is, factory)),
+            //vle::dsde::fileformat_error);
+    //}
+    //{
+        //const std::string str = "Generator\n"
+            //"Generator\n"
+            //"Generator\n"
+            //"Counter\n"
+            //"#\n"
+            //"1 4 0 0\n"
+            //"2 4 0 0\n"
+            //"3 4 0 0\n";
 
-        std::istringstream is(str);
-        MyDSDE dsde_engine;
-        vle::dsde::GenericCoupledModel
-            <MyTime, MyValue, vle::dsde::TransitionPolicyThread <
-                                  MyTime, MyValue>> model(is, factory);
+        //std::istringstream is(str);
+        //MyDSDE dsde_engine;
+        //vle::dsde::GenericCoupledModel
+            //<MyTime, MyValue, vle::dsde::TransitionPolicyThread <
+                                  //MyTime, MyValue>> model(is, factory);
 
-        vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+        //vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
 
-        double final_date = sim.run(0.0, 10);
-        REQUIRE(final_date == 10.0);
-        REQUIRE(model.m_children.size() == 4u);
-        REQUIRE(model.m_children[3].get());
+        //double final_date = sim.run(0.0, 10);
+        //REQUIRE(final_date == 10.0);
+        //REQUIRE(model.m_children.size() == 4u);
+        //REQUIRE(model.m_children[3].get());
 
-        std::string result = dynamic_cast <Counter*>(
-            model.m_children[3].get())->observation();
-        REQUIRE(result == "54");
-    }
-    {
-        const std::string str = "Generator\n"
-            "Generator\n"
-            "Generator\n"
-            "Counter\n"
-            "#\n"
-            "1 4 out in\n"
-            "2 4 out in\n"
-            "3 4 out in\n";
+        //std::string result = dynamic_cast <Counter*>(
+            //model.m_children[3].get())->observation();
+        //REQUIRE(result == "54");
+    //}
+    //{
+        //const std::string str = "Generator\n"
+            //"Generator\n"
+            //"Generator\n"
+            //"Counter\n"
+            //"#\n"
+            //"1 4 out in\n"
+            //"2 4 out in\n"
+            //"3 4 out in\n";
 
-        std::istringstream is(str);
-        MyDSDE dsde_engine;
-        vle::dsde::GenericCoupledModel
-            <MyTime, MyValue, vle::dsde::TransitionPolicyThread <
-            MyTime, MyValue>> model(is,
-                                    factory,
-                                    GenericCoupledModel::INDEXED_BY_STRING);
+        //std::istringstream is(str);
+        //MyDSDE dsde_engine;
+        //vle::dsde::GenericCoupledModel
+            //<MyTime, MyValue, vle::dsde::TransitionPolicyThread <
+            //MyTime, MyValue>> model(is,
+                                    //factory,
+                                    //GenericCoupledModel::INDEXED_BY_STRING);
 
-        vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+        //vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
 
-        double final_date = sim.run(0.0, 10);
-        REQUIRE(final_date == 10.0);
-        REQUIRE(model.m_children.size() == 4u);
-        REQUIRE(model.m_children[3].get());
+        //double final_date = sim.run(0.0, 10);
+        //REQUIRE(final_date == 10.0);
+        //REQUIRE(model.m_children.size() == 4u);
+        //REQUIRE(model.m_children[3].get());
 
-        std::string result = dynamic_cast <Counter*>(
-            model.m_children[3].get())->observation();
-        REQUIRE(result == "54");
-    }
-}
+        //std::string result = dynamic_cast <Counter*>(
+            //model.m_children[3].get())->observation();
+        //REQUIRE(result == "54");
+    //}
+//}
 
 TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network-mono", "run")
 {

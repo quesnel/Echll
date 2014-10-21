@@ -32,7 +32,7 @@
 #include <string>
 #include <vector>
 #include <vle/vle.hpp>
-#include <vle/dsde.hpp>
+#include <vle/generic.hpp>
 #include <cmath>
 #include <ctime>
 
@@ -134,31 +134,31 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    Factory factory;
+    std::shared_ptr <Factory> factory;
+    typedef Factory::modelptr modelptr;
 
-    factory.functions.emplace("Counter",
-                              []() -> Factory::modelptr
-                              {
-                                  return Factory::modelptr(new Counter());
-                              });
+    factory->functions.emplace("Counter",
+                               []() -> modelptr
+                               {
+                                   return modelptr(new Counter());
+                               });
 
-    factory.functions.emplace("Generator",
-                              []() -> Factory::modelptr
-                              {
-                                  return Factory::modelptr(new Generator());
-                              });
+    factory->functions.emplace("Generator",
+                               []() -> modelptr
+                               {
+                                   return modelptr(new Generator());
+                               });
+
+    vle::CommonPtr common = std::make_shared <vle::Common>();
+    common->emplace("tgf-factory", factory);
+    common->emplace("tgf-source", (int)0);
 
     for (int i = 1; i < argc; ++i) {
-        std::ifstream ifs(argv[i]);
-
-        if (!ifs.is_open()) {
-            std::cerr << "Failed to open " << argv[i] << "\n";
-            continue;
-        }
+        common->emplace("tfg-filesource", std::string(argv[i]));
 
         try {
             MyDSDE dsde_engine;
-            GenericCoupledModel model(ifs, factory);
+            GenericCoupledModel model;
             vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
         } catch (const std::exception& e) {
             std::cerr << "Simulation failed: " << e.what() << "\n";
