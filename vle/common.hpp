@@ -31,6 +31,7 @@
 #include <unordered_map>
 #include <string>
 #include <boost/any.hpp>
+#include <vle/utils.hpp>
 
 namespace vle {
 
@@ -39,6 +40,28 @@ namespace vle {
  * parameters etc.
  */
 typedef std::unordered_map <std::string, boost::any> Common;
+
+template <typename T>
+    T common_get(const Common& c, const std::string& name)
+    {
+        auto it = c.find(name);
+        if (it == c.end())
+            throw std::invalid_argument(
+                stringf("Common: failed to find attribute %s", name.c_str()));
+
+        return boost::any_cast <T>(it->second);
+    }
+
+template <typename T>
+    const T* common_get_pointer(const Common& c, const std::string& name)
+    {
+        auto it = c.find(name);
+        if (it == c.end())
+            throw std::invalid_argument(
+                stringf("Common: failed to find attribute %s", name.c_str()));
+
+        return boost::any_cast <T>(&it->second);
+    }
 
 typedef std::shared_ptr <Common> CommonPtr;
 
