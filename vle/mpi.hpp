@@ -55,39 +55,36 @@ struct SynchronousProxyModel : Model <Time, Value>
     typedef typename Time::type time_type;
     typedef Value value_type;
 
-    boost::mpi::environment* environment;
-    boost::mpi::communicator* communicator;
+    boost::mpi::communicator communicator;
     int rank;
 
     SynchronousProxyModel()
         : Model <Time, Value>()
-        , environment(nullptr)
-        , communicator(nullptr)
+        , communicator()
         , rank(-1)
     {}
 
     SynchronousProxyModel(std::initializer_list <std::string> lst_x,
                           std::initializer_list <std::string> lst_y)
         : Model <Time, Value>(lst_x, lst_y)
-        , environment(nullptr)
-        , communicator(nullptr)
+        , communicator()
         , rank(-1)
     {}
 
     virtual ~SynchronousProxyModel()
     {
-        if (communicator && (*communicator))
-            communicator->send(rank, proxy_send_ended_simulation_tag);
+        if (communicator)
+            communicator.send(rank, proxy_send_ended_simulation_tag);
     }
 
     virtual void start(const Common& common, const time_type& time) override
     {
         (void) common;
 
-        communicator->send(rank, proxy_send_start_tag, time);
+        communicator.send(rank, proxy_send_start_tag, time);
 
         time_type tn;
-        communicator->recv(rank, proxy_recv_tn_tag, tn);
+        communicator.recv(rank, proxy_recv_tn_tag, tn);
 
         Model <Time, Value>::tl = time;
         Model <Time, Value>::tn = tn;
@@ -96,11 +93,11 @@ struct SynchronousProxyModel : Model <Time, Value>
 
     virtual void transition(const time_type& time)
     {
-        communicator->send(rank, proxy_send_transition_tag, time);
-        communicator->send(rank, proxy_send_transition_tag, Model <Time, Value>::x);
+        communicator.send(rank, proxy_send_transition_tag, time);
+        communicator.send(rank, proxy_send_transition_tag, Model <Time, Value>::x);
 
         time_type tn;
-        communicator->recv(rank, proxy_recv_tn_tag, tn);
+        communicator.recv(rank, proxy_recv_tn_tag, tn);
 
         Model <Time, Value>::tl = time;
         Model <Time, Value>::tn = tn;
@@ -109,8 +106,8 @@ struct SynchronousProxyModel : Model <Time, Value>
 
     virtual void output(const time_type& time)
     {
-        communicator->send(rank, proxy_send_output_tag, time);
-        communicator->recv(rank, proxy_recv_output_tag, Model <Time, Value>::y);
+        communicator.send(rank, proxy_send_output_tag, time);
+        communicator.recv(rank, proxy_recv_output_tag, Model <Time, Value>::y);
     }
 };
 
@@ -123,21 +120,16 @@ struct SynchronousLogicalProcessor
 
     vle::CommonPtr common;
 
-    boost::mpi::environment *environment;
-    boost::mpi::communicator *communicator;
+    boost::mpi::communicator communicator;
     int parent;
 
     SynchronousLogicalProcessor()
         : common(std::make_shared <Common>())
-        , environment(nullptr)
-        , communicator(nullptr)
         , parent(-1)
     {}
 
     SynchronousLogicalProcessor(vle::CommonPtr common)
         : common(common)
-        , environment(nullptr)
-        , communicator(nullptr)
         , parent(-1)
     {}
 
@@ -148,41 +140,39 @@ struct SynchronousLogicalProcessor
     void run(model_type& model)
     {
         assert(parent > -1);
-        assert(environment);
-        assert(communicator);
 
         time_type time;
 
         for (;;) {
-            boost::mpi::status msg = communicator->probe();
+            boost::mpi::status msg = communicator.probe();
 
             assert(msg.source() == parent);
 
             switch (msg.tag()) {
             case proxy_send_ended_simulation_tag:
-                communicator->recv(parent, proxy_send_ended_simulation_tag);
+                communicator.recv(parent, proxy_send_ended_simulation_tag);
                 return;
             case proxy_send_start_tag:
-                communicator->recv(parent, proxy_send_start_tag, time);
+                communicator.recv(parent, proxy_send_start_tag, time);
                 model.start(*common, time);
-                communicator->send(parent, proxy_recv_tn_tag, model.tn);
+                communicator.send(parent, proxy_recv_tn_tag, model.tn);
                 break;
             case proxy_send_transition_tag:
-                communicator->recv(parent, proxy_send_transition_tag, time);
-                communicator->recv(parent, proxy_send_transition_tag, model.x);
+                communicator.recv(parent, proxy_send_transition_tag, time);
+                communicator.recv(parent, proxy_send_transition_tag, model.x);
                 model.transition(time);
-                communicator->send(parent, proxy_recv_tn_tag, model.tn);
+                communicator.send(parent, proxy_recv_tn_tag, model.tn);
                 break;
             case proxy_send_output_tag:
-                communicator->recv(parent, proxy_send_output_tag, time);
+                communicator.recv(parent, proxy_send_output_tag, time);
                 model.output(time);
-                communicator->send(parent, proxy_recv_output_tag, model.y);
+                communicator.send(parent, proxy_recv_output_tag, model.y);
                 break;
             default:
                 throw std::invalid_argument(
                     stringf("[SynchronousLP] unknown tag %d from process %d to"
                             " process %d", msg.tag(), msg.source(),
-                            communicator->rank()));
+                            communicator.rank()));
             }
         }
     }

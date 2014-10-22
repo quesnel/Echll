@@ -177,15 +177,11 @@ struct RootNetwork : CoupledModelMono
     std::vector <SynchronousProxyModel> pm;
     Network c;
 
-    RootNetwork(boost::mpi::environment* env,
-                boost::mpi::communicator* comm)
+    RootNetwork(boost::mpi::communicator* comm)
         : CoupledModelMono(), pm(comm->size() - 1)
     {
-        for (int i = 0, e = comm->size() - 1; i != e; ++i) {
-            pm[i].environment = env;
-            pm[i].communicator = comm;
+        for (int i = 0, e = comm->size() - 1; i != e; ++i)
             pm[i].rank = i + 1;
-        }
     }
 
     virtual ~RootNetwork()
@@ -223,7 +219,7 @@ int main(int argc, char *argv[])
 
     if (comm.rank() == 0) {
         MyDSDE dsde_engine;
-        RootNetwork rn(&env, &comm);
+        RootNetwork rn(&comm);
 
         std::cerr << "RootCoordinator " << comm.rank() << "\n";
         vle::SimulationDbg <MyDSDE> sim(dsde_engine, rn);
@@ -243,8 +239,6 @@ int main(int argc, char *argv[])
         ret = EXIT_SUCCESS;
     } else {
         SynchronousLogicalProcessor sp;
-        sp.environment = &env;
-        sp.communicator = &comm;
         sp.parent = 0;
 
         Network model;
