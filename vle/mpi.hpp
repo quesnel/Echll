@@ -167,6 +167,7 @@ struct SynchronousLogicalProcessor
                 communicator.recv(parent, proxy_send_output_tag, time);
                 model.output(time);
                 communicator.send(parent, proxy_recv_output_tag, model.y);
+                model.y.clear();
                 break;
             default:
                 throw std::invalid_argument(

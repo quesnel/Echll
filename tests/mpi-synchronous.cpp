@@ -55,7 +55,7 @@ struct Counter : AtomicModel
     double current_time;
 
     Counter()
-        : AtomicModel({"in"}, {}),
+        : AtomicModel({"in"}, {"out"}),
         is_rank_0(false),
         i(0)
     {}
@@ -65,10 +65,8 @@ struct Counter : AtomicModel
 
     virtual double init(const vle::Common&, const double& time) override final
     {
-        if (is_rank_0) {
+        if (is_rank_0)
             current_time = time;
-            std::cerr << "Counter init\n";
-        }
 
         i = 0;
         return Infinity<double>::positive;
@@ -76,19 +74,25 @@ struct Counter : AtomicModel
 
     virtual double delta(const double& time) override final
     {
-        if (is_rank_0) {
+        if (is_rank_0)
             current_time += time;
-            std::cerr << "Counter delta t=" << current_time
-                << " x[0].size()=" << x[0].size()
-                << "\n";
+
+        double ret;
+
+        if (x.is_empty())
+            ret = Infinity<double>::positive;
+        else {
+            ret = std::numeric_limits <double>::epsilon();
+            i += x[0].size();
         }
 
-        i += x[0].size();
-        return Infinity<double>::positive;
+        return ret;
     }
 
     virtual void lambda() const override final
-    {}
+    {
+        y[0] = {i};
+    }
 };
 
 struct Generator : AtomicModel
@@ -125,7 +129,7 @@ struct Network : CoupledModel
     Counter cpt;
 
     Network() :
-        CoupledModel(), gens(1)
+        CoupledModel({}, {"out"}), gens(1)
     {}
 
     virtual ~Network() {}
@@ -146,29 +150,15 @@ struct Network : CoupledModel
     {
         assert(out.size() == 0 or out.size() == 1);
 
-        if (cpt.is_rank_0)
-            std::cerr << "--------------------\nstart loop\n";
-
-        if (cpt.is_rank_0) {
-            std::cerr << "Network cpt:" << cpt.x[0].size()
-                << " generator: " << gens.size() << "\n";
-        }
-
         for (auto& gen : gens) {
             if (!gen.y[0].empty())
                 in.emplace(&cpt);
 
-            if (cpt.is_rank_0) {
-                std::cerr << "Network cpt: receives " << gen.y[0].size()
-                    << " message(s)\n";
-            }
-
-            cpt.x[0].insert(cpt.x[0].end(),
-                            gen.y[0].begin(),
-                            gen.y[0].end());
+            cpt.x[0].insert(cpt.x[0].end(), gen.y[0].begin(), gen.y[0].end());
         }
-        if (cpt.is_rank_0)
-            std::cerr << "end loop\n";
+
+        if (!cpt.y.is_empty())
+            y[0].insert(y[0].end(), cpt.y[0].begin(), cpt.y[0].end());
     }
 };
 
@@ -176,11 +166,12 @@ struct RootNetwork : CoupledModelMono
 {
     std::vector <SynchronousProxyModel> pm;
     Network c;
+    Counter cpt;
 
     RootNetwork(boost::mpi::communicator* comm)
         : CoupledModelMono(), pm(comm->size() - 1)
     {
-        for (int i = 0, e = comm->size() - 1; i != e; ++i)
+        for (int i = 0, e = pm.size(); i != e; ++i)
             pm[i].rank = i + 1;
     }
 
@@ -189,20 +180,28 @@ struct RootNetwork : CoupledModelMono
 
     virtual CoupledModelMono::children_t children(const vle::Common&) override final
     {
-        CoupledModelMono::children_t cs;
+        CoupledModelMono::children_t ret;
 
         for (auto& p : pm)
-            cs.push_back(&p);
+            ret.push_back(&p);
 
-        cs.push_back(&c);
+        ret.push_back(&c);
+        ret.push_back(&cpt);
 
-        return cs;
+        return ret;
     }
 
-    virtual void post(const UpdatedPort &out,
-                      UpdatedPort &/*in*/) const override final
+    virtual void post(const UpdatedPort &out, UpdatedPort &in) const override final
     {
-        assert(out.empty());
+        if (!out.empty()) {
+            in.emplace(&cpt);
+
+            for (auto& o : out) {
+                if (o != &cpt) {
+                    cpt.x[0].insert(cpt.x[0].end(), o->y[0].begin(), o->y[0].end());
+                }
+            }
+        }
     }
 };
 
@@ -233,6 +232,12 @@ int main(int argc, char *argv[])
 
         if (rn.c.cpt.i != 2997) {
             std::cerr << "rn.c.cpt.i (" << rn.c.cpt.i << ") != 2997\n";
+            goto quit;
+        }
+
+        if (rn.cpt.i != (999 * comm.size())) {
+            std::cerr << "rn.cpt.i (" << rn.cpt.i << ") != "
+                      << (999 * comm.size()) << "\n";
             goto quit;
         }
 
