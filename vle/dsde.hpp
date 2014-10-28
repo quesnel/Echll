@@ -209,15 +209,27 @@ struct TransitionPolicyThread
 {
     typedef typename Time::time_type time_type;
 
-    std::vector <std::thread> pool;
-
     TransitionPolicyThread()
-        : pool(std::thread::hardware_concurrency())
+        : pool(default_pool_size())
     {}
 
     TransitionPolicyThread(const TransitionPolicyThread& /*other*/)
-        : pool(std::thread::hardware_concurrency())
+        : pool(default_pool_size())
     {}
+
+    static constexpr unsigned int default_pool_size()
+    {
+        /* std::thread::hardware_concurrency returns number of concurrent
+         * threads supported. If the value is not well defined or not
+         * computable, returns 0. */
+        return std::max(1u, std::thread::hardware_concurrency());
+    }
+
+    void set_pool_size(unsigned int i)
+    {
+        if (i > 0)
+            pool.resize(i);
+    }
 
     void work(Bag <Time, Value>& bag, const time_type& time,
               const std::size_t idx)
@@ -267,6 +279,9 @@ struct TransitionPolicyThread
             }
         }
     }
+
+private:
+    std::vector <std::thread> pool;
 };
 
 template <typename Time, typename Value,
