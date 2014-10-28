@@ -797,8 +797,10 @@ struct MyExecutive : ExecutiveMono
 
     virtual ~MyExecutive() {}
 
-    virtual ExecutiveMono::children_t children() override final
+    virtual ExecutiveMono::children_t children(const vle::Common& common) override final
     {
+        (void)common;
+
         return {&cpt};
     }
 

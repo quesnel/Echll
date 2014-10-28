@@ -357,10 +357,6 @@ struct CoupledModel : ComposedModel <Time, Value>
 
         ComposedModel <Time, Value>::last_output_list.clear();
 
-        for (auto& b : bag) {
-            assert(b != this);
-        }
-
         policy(bag, time, heap);
 
         Model <Time, Value>::tl = time;
@@ -405,180 +401,179 @@ struct CoupledModel : ComposedModel <Time, Value>
 
 template <typename Time, typename Value,
           typename Policy = TransitionPolicyThread <Time, Value>>
-    struct Executive : ComposedModel <Time, Value>
+struct Executive : ComposedModel <Time, Value>
+{
+    typedef typename Time::time_type time_type;
+    typedef Value value_type;
+    typedef Policy transition_policy;
+
+    HeapType <Time, Value> heap;
+
+    typedef std::vector <Model <Time, Value>*> children_t;
+    time_type chi_tl, chi_tn;
+    typename HeapType <Time, Value>::handle_type chi_heapid;
+    mutable vle::PortList <Value> chi_x, chi_y;
+    transition_policy policy;
+    vle::Common localcommon;
+
+    virtual children_t children(const vle::Common& common) = 0;
+    virtual time_type init(const time_type& time) = 0;
+    virtual time_type delta(const time_type& time) = 0;
+    virtual void lambda() const = 0;
+    virtual void post(const UpdatedPort <Time, Value> &y,
+                      UpdatedPort <Time, Value> &x) const = 0;
+
+    Executive()
+        : ComposedModel <Time, Value>()
+    {}
+
+    Executive(std::initializer_list <std::string> lst_x,
+              std::initializer_list <std::string> lst_y)
+        : ComposedModel <Time, Value>(lst_x, lst_y)
+    {}
+
+    Executive(std::initializer_list <std::string> lst_x,
+              std::initializer_list <std::string> lst_y,
+              std::initializer_list <std::string> chi_lst_x,
+              std::initializer_list <std::string> chi_lst_y)
+        : ComposedModel <Time, Value>(lst_x, lst_y), chi_tl(-Time::infinity),
+        chi_tn(Time::infinity), chi_x(chi_lst_x), chi_y(chi_lst_y)
+    {}
+
+    virtual ~Executive()
+    {}
+
+    void insert(Model <Time, Value> *mdl)
     {
-        typedef typename Time::time_type time_type;
-        typedef Value value_type;
-        typedef Policy transition_policy;
+        mdl->parent = this;
+        mdl->start(localcommon, Executive::chi_tl);
 
-        HeapType <Time, Value> heap;
+        auto id = heap.emplace(mdl, mdl->tn);
+        mdl->heapid = id;
+        (*id).heapid = id;
+    }
 
-        typedef std::vector <Model <Time, Value>*> children_t;
-        time_type chi_tl, chi_tn;
-        typename HeapType <Time, Value>::handle_type chi_heapid;
-        mutable vle::PortList <Value> chi_x, chi_y;
-        transition_policy policy;
-        vle::Common localcommon;
+    void erase(Model <Time, Value >*mdl)
+    {
+        ComposedModel <Time, Value>::last_output_list.erase(mdl);
+        heap.erase(mdl->heapid);
+        mdl->parent = nullptr;
+    }
 
-        virtual children_t children() = 0;
-        virtual time_type init(const time_type& time) = 0;
-        virtual time_type delta(const time_type& time) = 0;
-        virtual void lambda() const = 0;
-        virtual void post(const UpdatedPort <Time, Value> &y,
-                          UpdatedPort <Time, Value> &x) const = 0;
+    virtual void start(const vle::Common& common, const time_type& time) override
+    {
+        localcommon = common;
+        chi_tl = time;
+        chi_tn = time + init(time);
+        auto id = heap.emplace(this, chi_tn);
+        chi_heapid = id;
+        (*id).heapid = id;
 
-        Executive()
-            : ComposedModel <Time, Value>()
-        {}
+        auto cs = children(localcommon);
 
-        Executive(std::initializer_list <std::string> lst_x,
-                  std::initializer_list <std::string> lst_y)
-            : ComposedModel <Time, Value>(lst_x, lst_y)
-        {}
+        for (auto child : cs) {
+            child->parent = this;
+            child->start(localcommon, time);
 
-        Executive(std::initializer_list <std::string> lst_x,
-                  std::initializer_list <std::string> lst_y,
-                  std::initializer_list <std::string> chi_lst_x,
-                  std::initializer_list <std::string> chi_lst_y)
-            : ComposedModel <Time, Value>(lst_x, lst_y), chi_tl(-Time::infinity),
-              chi_tn(Time::infinity), chi_x(chi_lst_x), chi_y(chi_lst_y)
-        {}
-
-        virtual ~Executive()
-        {}
-
-        void insert(Model <Time, Value> *mdl)
-        {
-            mdl->parent = this;
-            mdl->start(localcommon, Executive::chi_tl);
-
-            auto id = heap.emplace(mdl, mdl->tn);
-            mdl->heapid = id;
+            auto id = heap.emplace(child, child->tn);
+            child->heapid = id;
             (*id).heapid = id;
         }
 
-        void erase(Model <Time, Value >*mdl)
+        Model <Time, Value>::tl = time;
+        Model <Time, Value>::tn = heap.top().tn;
+    }
+
+    virtual void transition(const time_type &time) override
+    {
+        check_transition_synchronization <Time>(Model <Time, Value>::tl,
+                                                time,
+                                                Model <Time, Value>::tn);
+
+        if (time < Model <Time, Value>::tn && Model <Time, Value>::x.is_empty())
+            return;
+
+        Bag <Time, Value> bag;
+        bool have_chi = false;
+
         {
-            ComposedModel <Time, Value>::last_output_list.erase(mdl);
-            heap.erase(mdl->heapid);
-            mdl->parent = nullptr;
+            auto it = heap.ordered_begin();
+            auto et = heap.ordered_end();
+
+            for (; it != et && (*it).tn == time; ++it) {
+                if ((*it).element == this)
+                    have_chi = true;
+                else
+                    bag.insert(
+                        reinterpret_cast <Model <Time, Value>*>(
+                            (*it).element));
+            }
         }
 
-        virtual void start(const vle::Common& common, const time_type& time) override
-        {
-            localcommon = common;
+        if (not Model <Time, Value>::x.is_empty()) {
+            post({this}, ComposedModel <Time, Value>::last_output_list);
+            Model <Time, Value>::x.clear();
+        }
+
+        for (auto &child : ComposedModel <Time, Value>::last_output_list) {
+            if (child == this)
+                have_chi = true;
+            else
+                bag.insert(const_cast <Model <Time, Value>*>(child));
+        }
+
+        ComposedModel <Time, Value>::last_output_list.clear();
+
+        policy(bag, time, heap);
+
+        if (have_chi) {
+            time_type e = time - chi_tl;
             chi_tl = time;
-            chi_tn = time + init(time);
-            auto id = heap.emplace(this, chi_tn);
-            chi_heapid = id;
-            (*id).heapid = id;
-
-            auto cs = children();
-            std::for_each(cs.begin(), cs.end(),
-                          [=](Model <Time, Value> *child)
-          {
-              child->parent = this;
-              child->start(localcommon, time);
-
-              auto id = heap.emplace(child, child->tn);
-              (*id).heapid = id;
-              child->heapid = id;
-          });
-
-            Model <Time, Value>::tl = time;
-            Model <Time, Value>::tn = heap.top().tn;
+            chi_tn = time + delta(e);
             Model <Time, Value>::x.clear();
+            (*chi_heapid).tn = chi_tn;
+            heap.update(chi_heapid);
         }
 
-        virtual void transition(const time_type &time) override
-        {
-            check_transition_synchronization <Time>(Model <Time, Value>::tl,
-                                                    time,
-                                                    Model <Time, Value>::tn);
+        Model <Time, Value>::tl = time;
+        Model <Time, Value>::tn = heap.top().tn;
+    }
 
-            if (time < Model <Time, Value>::tn && Model <Time, Value>::x.is_empty())
-                return;
+    virtual void output(const time_type &time) override
+    {
+        check_output_synchronization <Time>(heap.top().tn, time);
 
-            Bag <Time, Value> bag;
-            bool have_chi = false;
+        if (time == Model <Time, Value>::tn && not heap.empty()) {
+            UpdatedPort <Time, Value> lst;
+            auto it = heap.ordered_begin();
+            auto et = heap.ordered_end();
 
-            {
-                auto it = heap.ordered_begin();
-                auto et = heap.ordered_end();
+            do {
+                auto id = (*it).heapid;
+                Model <Time, Value> *mdl =
+                    reinterpret_cast <Model <Time, Value>*>((*id).element);
 
-                for (; it != et && (*it).tn == time; ++it) {
-                    if ((*it).element == this)
-                        have_chi = true;
-                    else
-                        bag.insert(
-                            reinterpret_cast <Model <Time, Value>*>(
-                                (*it).element));
+                if (mdl == this) {
+                    lambda();
+                } else {
+                    mdl->output(time);
                 }
-            }
+                if (!(mdl->y.is_empty()))
+                    lst.emplace(mdl);
+                ++it;
+            } while (it != et && it->tn == Model <Time, Value>::tn);
 
-            {
-                if (not Model <Time, Value>::x.is_empty())
-                    post({this}, ComposedModel <Time, Value>::last_output_list);
+            post(lst, ComposedModel <Time, Value>::last_output_list);
 
-                for (auto &child : ComposedModel <Time, Value>::last_output_list) {
-                    if (child == this)
-                        have_chi = true;
-                    else
-                        bag.insert(const_cast <Model <Time, Value>*>(child));
-                }
+            /* If user adds this into the last_output_list, we need to remove it
+             * from before clearing output ports. */
+            ComposedModel <Time, Value>::last_output_list.erase(this);
 
-                ComposedModel <Time, Value>::last_output_list.clear();
-            }
-
-            policy(bag, time, heap);
-
-            if (have_chi) {
-                time_type e = time - chi_tl;
-                chi_tl = time;
-                chi_tn = time + delta(e);
-                (*chi_heapid).tn = chi_tn;
-                heap.update(chi_heapid);
-            }
-
-            Model <Time, Value>::tn = heap.top().tn;
-            Model <Time, Value>::tl = time;
-            Model <Time, Value>::x.clear();
+            for (auto *child : lst)
+                child->y.clear();
         }
-
-        virtual void output(const time_type &time) override
-        {
-            check_output_synchronization <Time>(heap.top().tn, time);
-
-            if (time == Model <Time, Value>::tn && not heap.empty()) {
-                UpdatedPort <Time, Value> lst;
-                auto it = heap.ordered_begin();
-                auto et = heap.ordered_end();
-
-                do {
-                    auto id = (*it).heapid;
-                    Model <Time, Value> *mdl =
-                        reinterpret_cast <Model <Time, Value>*>((*id).element);
-
-                    if (mdl == this) {
-                        lambda();
-                    } else {
-                        mdl->output(time);
-                    }
-                    if (!(mdl->y.is_empty()))
-                        lst.emplace(mdl);
-                    ++it;
-                } while (it != et && it->tn == Model <Time, Value>::tn);
-
-                post(lst, ComposedModel <Time, Value>::last_output_list);
-
-                std::for_each(lst.begin(), lst.end(),
-                              [](const Model <Time, Value> *child)
-                              {
-                                  child->y.clear();
-                              });
-            }
-        }
-    };
+    }
+};
 
 template <typename Time, typename Value>
 struct Engine
