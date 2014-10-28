@@ -48,7 +48,7 @@ namespace dtss {
 template <typename Time, typename Value>
 struct Model
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
 
     Model()
@@ -82,7 +82,7 @@ using UpdatedPort = std::set <const Model <Time, Value>*>;
 template <typename Time, typename Value>
 struct Fnss : Model <Time, Value>
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
 
     virtual void lambda() const = 0;
@@ -119,7 +119,7 @@ struct Fnss : Model <Time, Value>
 template <typename Time, typename Value>
 struct Moore : Model <Time, Value>
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
 
     virtual void init(const time_type& time) = 0;
@@ -176,7 +176,7 @@ struct Moore : Model <Time, Value>
 template <typename Time, typename Value>
 struct CoupledModel : Model <Time, Value>
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
 
     UpdatedPort <Time, Value> last_output_list;
@@ -277,7 +277,7 @@ struct CoupledModel : Model <Time, Value>
 template <typename Time, typename Value>
 struct Engine
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
     typedef Model <Time, Value> model_type;
 

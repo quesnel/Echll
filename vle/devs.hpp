@@ -48,7 +48,7 @@ namespace devs {
 template <typename Time, typename Value>
 struct Model
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
 
     Model()
@@ -79,7 +79,7 @@ struct Model
 template <typename Time, typename Value>
 struct AtomicModel : Model <Time, Value>
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
 
     virtual time_type ta() const = 0;
@@ -147,7 +147,7 @@ using UpdatedPort = std::set <const Model <Time, Value>*>;
 template <typename Time, typename Value>
 struct CoupledModel : Model <Time, Value>
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
 
     HeapType <Time, Value> heap;
@@ -246,7 +246,7 @@ struct CoupledModel : Model <Time, Value>
 template <typename Time, typename Value>
 struct Engine
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
     typedef Model <Time, Value> model_type;
 

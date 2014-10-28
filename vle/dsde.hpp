@@ -48,9 +48,9 @@ struct dsde_internal_error : std::logic_error
 namespace dsde {
 
 template <typename Time>
-inline void check_transition_synchronization(typename Time::type tl,
-                                             typename Time::type time,
-                                             typename Time::type tn)
+inline void check_transition_synchronization(typename Time::time_type tl,
+                                             typename Time::time_type time,
+                                             typename Time::time_type tn)
 {
 #ifndef VLE_OPTIMIZE
     if (!(tl <= time && time <= tn))
@@ -63,8 +63,8 @@ inline void check_transition_synchronization(typename Time::type tl,
 }
 
 template <typename Time>
-inline void check_output_synchronization(typename Time::type tn,
-                                         typename Time::type time)
+inline void check_output_synchronization(typename Time::time_type tn,
+                                         typename Time::time_type time)
 {
 #ifndef VLE_OPTIMIZE
     if (time != tn)
@@ -81,7 +81,7 @@ struct ComposedModel;
 template <typename Time, typename Value>
 struct Model
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
 
     Model()
@@ -116,7 +116,7 @@ using UpdatedPort = std::set <const Model <Time, Value>*>;
 template <typename Time, typename Value>
 struct ComposedModel : Model <Time, Value>
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
 
     ComposedModel()
@@ -140,7 +140,7 @@ struct ComposedModel : Model <Time, Value>
 template <typename Time, typename Value>
 struct AtomicModel : Model <Time, Value>
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
 
     virtual time_type init(const vle::Common& common, const time_type& time) = 0;
@@ -189,7 +189,7 @@ struct AtomicModel : Model <Time, Value>
 template <typename Time, typename Value>
 struct TransitionPolicyDefault
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
 
     void operator()(Bag <Time, Value>& bag, const time_type& time,
                     HeapType <Time, Value> &heap)
@@ -207,7 +207,7 @@ struct TransitionPolicyDefault
 template <typename Time, typename Value>
 struct TransitionPolicyThread
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
 
     std::vector <std::thread> pool;
 
@@ -273,7 +273,7 @@ template <typename Time, typename Value,
           typename Policy = TransitionPolicyThread <Time, Value>>
 struct CoupledModel : ComposedModel <Time, Value>
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
     typedef Policy transition_policy;
 
@@ -407,7 +407,7 @@ template <typename Time, typename Value,
           typename Policy = TransitionPolicyThread <Time, Value>>
     struct Executive : ComposedModel <Time, Value>
     {
-        typedef typename Time::type time_type;
+        typedef typename Time::time_type time_type;
         typedef Value value_type;
         typedef Policy transition_policy;
 
@@ -583,7 +583,7 @@ template <typename Time, typename Value,
 template <typename Time, typename Value>
 struct Engine
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
     typedef Model <Time, Value> model_type;
     vle::CommonPtr common;

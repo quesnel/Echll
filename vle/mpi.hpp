@@ -52,7 +52,7 @@ enum SynchronousTags
 template <typename Time, typename Value>
 struct SynchronousProxyModel : Model <Time, Value>
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
 
     boost::mpi::communicator communicator;
@@ -114,7 +114,7 @@ struct SynchronousProxyModel : Model <Time, Value>
 template <typename Time, typename Value>
 struct SynchronousLogicalProcessor
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
     typedef Model <Time, Value> model_type;
 

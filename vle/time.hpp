@@ -51,9 +51,9 @@ namespace vle {
 template <typename Type, typename Infinity>
 struct Time
 {
-    static constexpr Type negative_infinity = Infinity::negative;
+    typedef Type time_type;
+    static constexpr Type negative = Infinity::negative;
     static constexpr Type infinity = Infinity::positive;
-    typedef Type type;
 };
 
 }

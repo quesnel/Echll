@@ -52,9 +52,9 @@ struct HeapElement
 
     void *element;
     handle_t heapid;
-    typename Time::type tn;
+    typename Time::time_type tn;
 
-    HeapElement(void *elt, typename Time::type tn)
+    HeapElement(void *elt, typename Time::time_type tn)
         : element(elt), tn(tn)
     {}
 };

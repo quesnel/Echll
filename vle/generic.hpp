@@ -70,7 +70,7 @@ struct factory_error : std::invalid_argument
 template <typename Time, typename Value>
 struct Factory
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
 
     typedef std::unique_ptr <Model <Time, Value>> modelptr;
@@ -108,7 +108,7 @@ template <typename Time, typename Value,
          typename Policy = TransitionPolicyDefault <Time, Value>>
 struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
 {
-    typedef typename Time::type time_type;
+    typedef typename Time::time_type time_type;
     typedef Value value_type;
     typedef Policy transition_policy;
 
