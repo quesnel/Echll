@@ -197,7 +197,7 @@ struct NormalPixel : AtomicModel
         m_current_time += time;
         vle::debugf("NormalPixel %s: delta (time=%f)", m_name.c_str(), time);
 
-        if (x.is_empty())
+        if (x.empty())
             dint(m_current_time);
         else
             dext(m_current_time);

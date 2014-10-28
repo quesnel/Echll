@@ -368,10 +368,10 @@ private:
 
                     if (model_i == 0) {
                         src = this;
-                        port_i = src->x.add(str_port_i);
+                        port_i = src->x.add_port(str_port_i);
                     } else {
                         src = m_children[model_i - 1].get();
-                        port_i = src->y.add(str_port_i);
+                        port_i = src->y.add_port(str_port_i);
                     }
 
                     Model <Time, Value>* dst;
@@ -379,10 +379,10 @@ private:
                     try {
                         if (model_j == 0) {
                             dst = this;
-                            port_j = dst->y.add(str_port_j);
+                            port_j = dst->y.add_port(str_port_j);
                         } else {
                             dst = m_children[model_j - 1].get();
-                            port_j = dst->x.add(str_port_j);
+                            port_j = dst->x.add_port(str_port_j);
                         }
                     } catch (const std::exception& e) {
                         throw fileformat_error();

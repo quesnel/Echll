@@ -40,35 +40,48 @@ namespace vle {
 struct model_port_error : std::invalid_argument
 {
     model_port_error(int port)
-        : std::invalid_argument(std::to_string(port))
+        : std::invalid_argument(
+            vle::stringf("model_port_error: unknown port %d", port))
     {}
 
     model_port_error(const std::string &port)
-        : std::invalid_argument(port)
+        : std::invalid_argument(
+            vle::stringf("model_port_error: unknown port named %s",
+                         port.c_str()))
     {}
 };
+
+
+template <typename Values>
+void copy_values(const Values& src, Values& dst)
+{
+    dst.reserve(dst.size() + src.size());
+
+    std::copy(src.begin(), src.end(), std::back_inserter(dst));
+}
 
 template <typename Value>
 struct PortList
 {
     typedef std::vector <Value> Values;
-
-    std::vector <Values> ports;
-    std::map <std::string, int> accessor;
-    bool empty;
+    typedef typename std::vector <Value>::size_type size_type;
 
     PortList()
-        : empty(true)
     {}
 
-    PortList(std::initializer_list < std::string > lst)
-        : empty(true)
+    PortList(size_type port_number)
+        : ports(port_number)
+    {}
+
+    PortList(std::initializer_list <std::string> lst)
     {
+        ports.reserve(lst.size());
+
         for (const auto& str : lst)
-            add(str);
+            add_port(str);
     }
 
-    int index(const std::string& name) const
+    size_type index(const std::string& name) const
     {
         return accessor.at(name);
     }
@@ -78,14 +91,14 @@ struct PortList
         return accessor.find(name) != accessor.end();
     }
 
-    int add()
+    size_type add_port()
     {
         ports.emplace_back();
 
         return ports.size() - 1;
     }
 
-    int add(const std::string &name)
+    size_type add_port(const std::string &name)
     {
         auto ret = accessor.emplace(name, ports.size());
         if (ret.second)
@@ -94,19 +107,17 @@ struct PortList
         return ret.first->second;
     }
 
-    const Values& operator[](int i) const
+    const Values& operator[](size_type i) const
     {
         return ports[i];
     }
 
-    Values& operator[](int i)
+    Values& operator[](size_type i)
     {
-        empty = false;
-
         return ports[i];
     }
 
-    const Values& at(int i) const
+    const Values& at(size_type i) const
     {
         if (i > ports.size())
             throw model_port_error(i);
@@ -114,10 +125,8 @@ struct PortList
         return ports[i];
     }
 
-    Values& at(int i)
+    Values& at(size_type i)
     {
-        empty = false;
-
         if (i > ports.size())
             throw model_port_error(i);
 
@@ -135,8 +144,6 @@ struct PortList
 
     Values& operator[](const std::string &name)
     {
-        empty = false;
-
         auto it = accessor.find(name);
         if (it == accessor.end())
             throw model_port_error(name);
@@ -146,13 +153,11 @@ struct PortList
 
     void clear()
     {
-        empty = true;
-
         for (auto& port : ports)
             port.clear();
     }
 
-    bool is_empty() const
+    bool empty() const
     {
         for (const auto& port : ports)
             if (!port.empty())
@@ -161,7 +166,7 @@ struct PortList
         return true;
     }
 
-    std::size_t size() const
+    constexpr std::size_t size() const
     {
         return ports.size();
     }
@@ -174,8 +179,11 @@ struct PortList
 
         ar & ports;
         ar & accessor;
-        ar & empty;
     }
+
+private:
+    std::vector <Values> ports;
+    std::map <std::string, size_type> accessor;
 };
 
 }

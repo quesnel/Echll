@@ -79,7 +79,7 @@ struct Counter : AtomicModel
 
         double ret;
 
-        if (x.is_empty())
+        if (x.empty())
             ret = Infinity<double>::positive;
         else {
             ret = std::numeric_limits <double>::epsilon();
@@ -154,11 +154,11 @@ struct Network : CoupledModel
             if (!gen.y[0].empty())
                 in.emplace(&cpt);
 
-            cpt.x[0].insert(cpt.x[0].end(), gen.y[0].begin(), gen.y[0].end());
+            vle::copy_values(gen.y[0], cpt.x[0]);
         }
 
-        if (!cpt.y.is_empty())
-            y[0].insert(y[0].end(), cpt.y[0].begin(), cpt.y[0].end());
+        if (!cpt.y.empty())
+            vle::copy_values(cpt.y[0], y[0]);
     }
 };
 
@@ -196,11 +196,9 @@ struct RootNetwork : CoupledModelMono
         if (!out.empty()) {
             in.emplace(&cpt);
 
-            for (auto& o : out) {
-                if (o != &cpt) {
-                    cpt.x[0].insert(cpt.x[0].end(), o->y[0].begin(), o->y[0].end());
-                }
-            }
+            for (auto& o : out)
+                if (o != &cpt)
+                    vle::copy_values(o->y[0], cpt.x[0]);
         }
     }
 };

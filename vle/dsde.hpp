@@ -171,7 +171,7 @@ struct AtomicModel : Model <Time, Value>
                                                 time,
                                                 Model <Time, Value>::tn);
 
-        if (time < Model <Time, Value>::tn and Model <Time, Value>::x.is_empty())
+        if (time < Model <Time, Value>::tn and Model <Time, Value>::x.empty())
             return;
 
         Model <Time, Value>::tn = time + delta(time - Model <Time, Value>::tl);
@@ -345,7 +345,7 @@ struct CoupledModel : ComposedModel <Time, Value>
                                                 time,
                                                 Model <Time, Value>::tn);
 
-        if (time < Model <Time, Value>::tn && Model <Time, Value>::x.is_empty())
+        if (time < Model <Time, Value>::tn && Model <Time, Value>::x.empty())
             return;
 
         Bag <Time, Value> bag; /* The bag stores models in internal (where
@@ -362,7 +362,7 @@ struct CoupledModel : ComposedModel <Time, Value>
                         (*it).element));
         }
 
-        if (not Model <Time, Value>::x.is_empty()) {
+        if (not Model <Time, Value>::x.empty()) {
             post({this}, ComposedModel <Time, Value>::last_output_list);
             Model <Time, Value>::x.clear();
         }
@@ -397,7 +397,7 @@ struct CoupledModel : ComposedModel <Time, Value>
                         (*id).element);
 
                 mdl->output(time);
-                if (!(mdl->y.is_empty()))
+                if (!(mdl->y.empty()))
                     lst.emplace(mdl);
                 ++it;
             } while (it != et && it->tn == Model <Time, Value>::tn);
@@ -505,7 +505,7 @@ struct Executive : ComposedModel <Time, Value>
                                                 time,
                                                 Model <Time, Value>::tn);
 
-        if (time < Model <Time, Value>::tn && Model <Time, Value>::x.is_empty())
+        if (time < Model <Time, Value>::tn && Model <Time, Value>::x.empty())
             return;
 
         Bag <Time, Value> bag;
@@ -525,7 +525,7 @@ struct Executive : ComposedModel <Time, Value>
             }
         }
 
-        if (not Model <Time, Value>::x.is_empty()) {
+        if (not Model <Time, Value>::x.empty()) {
             post({this}, ComposedModel <Time, Value>::last_output_list);
             Model <Time, Value>::x.clear();
         }
@@ -573,7 +573,7 @@ struct Executive : ComposedModel <Time, Value>
                 } else {
                     mdl->output(time);
                 }
-                if (!(mdl->y.is_empty()))
+                if (!(mdl->y.empty()))
                     lst.emplace(mdl);
                 ++it;
             } while (it != et && it->tn == Model <Time, Value>::tn);

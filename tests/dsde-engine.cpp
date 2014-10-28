@@ -105,8 +105,8 @@ struct ModelA : AtomicModel
     ModelA()
         : AtomicModel()
     {
-        x.add("in");
-        y.add("out");
+        x.add_port("in");
+        y.add_port("out");
     }
 
     virtual ~ModelA() override
@@ -334,7 +334,7 @@ struct MyNetworkToCouple : Parent
     {
         (void) out;
 
-        if (!MyNetworkToCouple::x.is_empty()) {
+        if (!MyNetworkToCouple::x.empty()) {
             vle::debugf("Coupled (%p) send %lu to cpt %lu (%p)",
                         this,
                         MyNetworkToCouple::x[0].size(),
@@ -347,7 +347,7 @@ struct MyNetworkToCouple : Parent
             in.emplace(&cpt);
         }
 
-        if (!gen.y.is_empty()) {
+        if (!gen.y.empty()) {
             vle::debugf("Gen sends %lu to Coupled %lu",
                         gen.y[0].size(),
                         MyNetworkToCouple::y[0].size());
@@ -396,7 +396,7 @@ struct MyRootNetworkToCouple : Parent
     {
         (void) out;
 
-        if (!m_children[0].y.is_empty()) {
+        if (!m_children[0].y.empty()) {
             vle::debugf("MyRootNetworkToCouple move 0 to 1 (%lu vs %lu)",
                         m_children[1].x[0].size(),
                         m_children[0].y[0].size());
@@ -406,7 +406,7 @@ struct MyRootNetworkToCouple : Parent
             in.emplace(&m_children[1]);
         }
 
-        if (!m_children[1].y.is_empty()) {
+        if (!m_children[1].y.empty()) {
             vle::debugf("MyRootNetworkToCouple move 1 to 0 (%lu vs %lu)",
                         m_children[0].x[0].size(),
                         m_children[1].y[0].size());
