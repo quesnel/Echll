@@ -28,10 +28,65 @@
 #define __VLE_KERNEL_GENERIC_HPP__
 
 #include <vle/dsde.hpp>
+#include <vle/utils.hpp>
 #include <fstream>
+#include <memory>
 #include <sstream>
+#include <unordered_map>
 
 namespace vle { namespace dsde {
+
+struct fileformat_error: std::invalid_argument
+{
+    fileformat_error()
+        : std::invalid_argument("dsde::fileformat: file format error")
+    {}
+
+    fileformat_error(std::size_t idx, std::size_t size)
+        : std::invalid_argument(
+            vle::stringf("dsde::fileformat: child index [%" PRIuMAX "]"
+                         ">= size of the children list (%" PRIuMAX ")",
+                         (std::uintmax_t)idx,
+                         (std::uintmax_t)size))
+    {}
+
+    fileformat_error(std::size_t idx)
+        : std::invalid_argument(
+            vle::stringf("dsde::fileformat: port index [%" PRIuMAX "] too big",
+                         (std::uintmax_t)idx))
+    {}
+};
+
+
+struct factory_error : std::invalid_argument
+{
+    factory_error(const std::string& dynamicsname)
+        : std::invalid_argument(
+            vle::stringf("dsde::factory: unknown dynamics [%s]",
+                         dynamicsname.c_str()))
+    {}
+};
+
+template <typename Time, typename Value>
+struct Factory
+{
+    typedef typename Time::type time_type;
+    typedef Value value_type;
+
+    typedef std::unique_ptr <Model <Time, Value>> modelptr;
+    typedef std::function <modelptr(void)> function_t;
+
+    modelptr get(const std::string& dynamicsname) const
+    {
+        auto it = functions.find(dynamicsname);
+        if (it != functions.end())
+            return std::move(it->second());
+
+        throw factory_error(dynamicsname);
+    }
+
+    std::unordered_map <std::string, function_t> functions;
+};
 
 /*
  * @e GenericCoupledModel can read a TGF file format to initialize children
@@ -79,11 +134,9 @@ struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
 
     struct equalto_inputport
     {
-        constexpr bool operator()(const inputport& lhs,
-                                  const inputport& rhs) const
+        constexpr bool operator()(const inputport& lhs, const inputport& rhs) const
         {
-            return lhs.first == rhs.first &&
-                rhs.second == lhs.second;
+            return lhs.first == rhs.first && rhs.second == lhs.second;
         }
     };
 
