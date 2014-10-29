@@ -9,10 +9,6 @@ Here's a short list of things we can do
 - Parallel kernel
   - How to define parallel vle::Simulation class ?
 
-- Port
-  - fix the is_empty() function
-  - append a merge function instead of insert(it, it, it)
-
 - Engine
   - Initialization system:
     - Add a generic init system for all engines/models in CTOR?
@@ -34,7 +30,6 @@ Here's a short list of things we can do
   - Hide any boost type from public API
     - Hide boost::fibonacci_heap
   - Cleanup unit test.
-  - Cleanup and simplify autotools scripts.
   - Add a manager mode
   - Add a new vpz format
     - Add an xml parser
