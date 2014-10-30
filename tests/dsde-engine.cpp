@@ -522,6 +522,8 @@ struct MyNetworkOfNetwork : Parent
     virtual void post(const UpdatedPort &out,
                       UpdatedPort &/*in*/) const override final
     {
+        (void)out;
+
         assert(out.empty());
         assert(Parent::heap.size() == 4);
         assert(out.size() == 0 or out.size() == 4);
@@ -567,6 +569,8 @@ struct MyNetworkOfNetworkMono : Parent
     virtual void post(const UpdatedPort &out,
                       UpdatedPort &/*in*/) const override final
     {
+        (void) out;
+
         assert(out.empty());
     }
 };

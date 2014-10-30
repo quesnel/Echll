@@ -148,6 +148,7 @@ struct Network : CoupledModel
 
     virtual void post(const UpdatedPort &out, UpdatedPort &in) const override final
     {
+        (void)out;
         assert(out.size() == 0 or out.size() == 1);
 
         for (auto& gen : gens) {

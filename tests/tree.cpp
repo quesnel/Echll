@@ -85,6 +85,11 @@ static const std::string s1_string("top\n"
                                    "4 0 0 6\n"
                                    "5 0 0 7\n");
 
+void Assert(bool is_true)
+{
+    if (!is_true)
+        throw std::logic_error("Assertion failed");
+}
 
 template <typename T>
 struct Infinity
@@ -265,9 +270,11 @@ struct MyGenericCoupledModel_s0 : GenericCoupledModelThread
     {
         auto mdl = v[child].get();
 
+        typedef MyGenericCoupledModel_s0::edges::value_type edge_type;
+
         unsigned int nb = std::accumulate(
             e.cbegin(), e.cend(),
-            0u, [&mdl](unsigned int x, const auto& edge)
+            0u, [&mdl](unsigned int x, const edge_type& edge)
             {
                 return edge.second.first == mdl ? x + 1u : x;
             });
@@ -301,9 +308,11 @@ struct MyGenericCoupledModel_s1 : GenericCoupledModelThread
     {
         auto mdl = v[child].get();
 
+        typedef MyGenericCoupledModel_s1::edges::value_type edge_type;
+
         unsigned int nb = std::accumulate(
             e.cbegin(), e.cend(),
-            0u, [&mdl](unsigned int x, const auto& edge)
+            0u, [&mdl](unsigned int x, const edge_type& edge)
             {
                 return edge.second.first == mdl ? x + 1 : x;
             });
@@ -361,18 +370,18 @@ void check_f1(vle::CommonPtr common)
     vle::SimulationDbg <MyDSDE> sim(dsde_engine, root);
 
     double final_date = sim.run(0.0, 1.0);
-    assert(final_date == 1.0);
+    Assert(final_date == 1.0);
 
     MyGenericCoupledModel_s0* model_s0 =
         dynamic_cast <MyGenericCoupledModel_s0*>(root.m_children[0].get());
 
-    assert(model_s0);
+    Assert(model_s0);
 
     NormalPixel* model_s0_4 =
         dynamic_cast <NormalPixel*>(model_s0->m_children[4].get());
 
-    assert(model_s0_4);
-    assert(model_s0_4->m_last_received == 6);
+    Assert(model_s0_4);
+    Assert(model_s0_4->m_last_received == 6);
 }
 
 void check_f2(vle::CommonPtr common)
@@ -384,18 +393,18 @@ void check_f2(vle::CommonPtr common)
     vle::SimulationDbg <MyDSDE> sim(dsde_engine, root);
 
     double final_date = sim.run(0.0, 10.0);
-    assert(final_date == 10.0);
+    Assert(final_date == 10.0);
 
     MyGenericCoupledModel_s0* model_s0 =
         dynamic_cast <MyGenericCoupledModel_s0*>(root.m_children[0].get());
 
-    assert(model_s0);
+    Assert(model_s0);
 
     NormalPixel* model_s0_4 =
         dynamic_cast <NormalPixel*>(model_s0->m_children[4].get());
 
-    assert(model_s0_4);
-    assert(model_s0_4->m_last_received == (6 * final_date));
+    Assert(model_s0_4);
+    Assert(model_s0_4->m_last_received == (6 * final_date));
 }
 
 int main()

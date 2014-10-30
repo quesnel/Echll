@@ -45,7 +45,9 @@ VLE_API void debugf(const char* format, ...) VLE_GCC_PRINTF(1, 2);
 
 #ifdef NDEBUG
 inline void debugf(const char* format, ...)
-{}
+{
+    (void)format;
+}
 #else
 void debugf(const char* format, ...)
 {
