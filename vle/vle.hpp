@@ -28,7 +28,7 @@
 #define __VLE_KERNEL_VLE_HPP__
 
 #include <vle/time.hpp>
-#include <vle/dbg.hpp>
+#include <vle/context.hpp>
 
 namespace vle {
 
@@ -42,9 +42,10 @@ struct Simulation
 
     engine_type& engine;
     model_type& model;
+    Context ctx;
 
-    Simulation(engine_type& engine, model_type& model)
-        : engine(engine), model(model)
+    Simulation(const Context& ctx, engine_type& engine, model_type& model)
+        : engine(engine), model(model), ctx(ctx)
     {}
 
     time_type run(const time_type &begin, const time_type &end)
@@ -70,10 +71,11 @@ struct SimulationDbg
 
     engine_type& engine;
     model_type& model;
+    Context ctx;
     std::uintmax_t nbloop;
 
-    SimulationDbg(engine_type& engine, model_type& model)
-        : engine(engine), model(model)
+    SimulationDbg(const Context& ctx, engine_type& engine, model_type& model)
+        : engine(engine), model(model), ctx(ctx)
     {}
 
     time_type run(const time_type &begin, const time_type &end)
@@ -83,17 +85,17 @@ struct SimulationDbg
         std::uintmax_t localbag = 1;
         nbloop = 0;
 
-        vle::debugf("- - - - - - - - - - - - - start date %f", i);
+        vle_dbg(ctx, "- - - - - - - - - - - - - start date %f", i);
 
         for (; i < end; i = engine.run(model, i)) {
             if (prev < i) {
                 prev = i;
                 localbag = 1;
-                vle::debugf("- - - - - - - - - - - - - next date %f", i);
+                vle_dbg(ctx, "- - - - - - - - - - - - - next date %f", i);
             } else {
                 localbag++;
-                vle::debugf("- - - - - - - - - - - - - bag %" PRIuMAX,
-                            localbag);
+                vle_dbg(ctx, "- - - - - - - - - - - - - bag %" PRIuMAX,
+                        localbag);
             }
             nbloop++;
         }

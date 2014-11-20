@@ -54,8 +54,8 @@ struct Counter : AtomicModel
     int i;
     double current_time;
 
-    Counter()
-        : AtomicModel({"in"}, {"out"}),
+    Counter(const vle::Context& ctx)
+        : AtomicModel(ctx, {"in"}, {"out"}),
         is_rank_0(false),
         i(0)
     {}
@@ -99,8 +99,9 @@ struct Generator : AtomicModel
 {
     unsigned int timestep;
 
-    Generator(unsigned int timestep = 1)
-        : AtomicModel({}, {"out"})
+    Generator(const vle::Context& ctx,
+              unsigned int timestep = 1)
+        : AtomicModel(ctx, {}, {"out"})
         , timestep(timestep)
     {}
 
@@ -128,9 +129,11 @@ struct Network : CoupledModel
     std::vector <Generator> gens;
     Counter cpt;
 
-    Network() :
-        CoupledModel({}, {"out"}), gens(1)
-    {}
+    Network(const vle::Context& ctx) :
+        CoupledModel(ctx, {}, {"out"}), cpt(ctx)
+        {
+            gens.emplace_back(ctx);
+        }
 
     virtual ~Network() {}
 
@@ -169,11 +172,18 @@ struct RootNetwork : CoupledModelMono
     Network c;
     Counter cpt;
 
-    RootNetwork(boost::mpi::communicator* comm)
-        : CoupledModelMono(), pm(comm->size() - 1)
+    RootNetwork(const vle::Context& ctx)
+        : CoupledModelMono(ctx)
+          , c(ctx)
+          , cpt(ctx)
     {
-        for (int i = 0, e = pm.size(); i != e; ++i)
+        boost::mpi::communicator com;
+
+        pm.reserve(com.size()- 1);
+        for (int i = 0, e = com.size() - 1; i != e; ++i) {
+            pm.emplace_back(ctx);
             pm[i].rank = i + 1;
+        }
     }
 
     virtual ~RootNetwork()
@@ -208,6 +218,7 @@ int main(int argc, char *argv[])
 {
     boost::mpi::environment env(argc, argv);
     boost::mpi::communicator comm;
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     int ret = EXIT_FAILURE;
 
     if (comm.size() == 1) {
@@ -217,10 +228,10 @@ int main(int argc, char *argv[])
 
     if (comm.rank() == 0) {
         MyDSDE dsde_engine;
-        RootNetwork rn(&comm);
+        RootNetwork rn(ctx);
 
         std::cerr << "RootCoordinator " << comm.rank() << "\n";
-        vle::SimulationDbg <MyDSDE> sim(dsde_engine, rn);
+        vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, rn);
         rn.c.cpt.is_rank_0 = true;
         double final_date = sim.run(0.0, 1000.0);
 
@@ -245,7 +256,7 @@ int main(int argc, char *argv[])
         SynchronousLogicalProcessor sp;
         sp.parent = 0;
 
-        Network model;
+        Network model(ctx);
 
         sp.run(model);
 

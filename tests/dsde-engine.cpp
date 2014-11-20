@@ -70,8 +70,8 @@ struct ModelB : AtomicModel
 {
     int i;
 
-    ModelB()
-        : AtomicModel({"in"}, {"out"})
+    ModelB(const vle::Context& ctx)
+        : AtomicModel(ctx, {"in"}, {"out"})
     {}
 
     virtual ~ModelB()
@@ -102,8 +102,8 @@ struct ModelA : AtomicModel
 {
     int i;
 
-    ModelA()
-        : AtomicModel()
+    ModelA(const vle::Context& ctx)
+        : AtomicModel(ctx)
     {
         x.add_port("in");
         y.add_port("out");
@@ -137,8 +137,8 @@ struct Counter : AtomicModel
 {
     int i;
 
-    Counter()
-        : AtomicModel({"in"}, {}), i(0)
+    Counter(const vle::Context& ctx)
+        : AtomicModel(ctx, {"in"}, {}), i(0)
     {}
 
     Counter(const Counter& other)
@@ -156,7 +156,7 @@ struct Counter : AtomicModel
 
     virtual double delta(const double&) override final
     {
-        vle::debugf("Counter make a delta with %" PRIuMAX " message(s)"
+        vle_dbg(ctx, "Counter make a delta with %" PRIuMAX " message(s)"
                     " so, number of received message is %u",
                     (std::uintmax_t)x[0].size(), i);
 
@@ -180,13 +180,13 @@ struct Generator : AtomicModel
     std::mt19937 prng;
     std::normal_distribution < double > dist;
 
-    Generator()
-        : AtomicModel({}, {"out"}),
+    Generator(const vle::Context& ctx)
+        : AtomicModel(ctx, {}, {"out"}),
         timestep(1), i(0), prng(1234), dist(0., 5.)
     {}
 
-    Generator(unsigned int timestep)
-        : AtomicModel({}, {"out"}),
+    Generator(const vle::Context& ctx, unsigned int timestep)
+        : AtomicModel(ctx, {}, {"out"}),
         timestep(timestep), i(0), prng(1234), dist(0., 5.)
     {}
 
@@ -206,14 +206,14 @@ struct Generator : AtomicModel
 
     virtual double delta(const double&) override final
     {
-        vle::debugf("Generator %p delta", this);
+        vle_dbg(ctx, "Generator %p delta", this);
         i++;
         return timestep; // return std::abs(dist(prng));
     }
 
     virtual void lambda() const override final
     {
-        vle::debugf("Generator lambda %p sends two messages", this);
+        vle_dbg(ctx, "Generator lambda %p sends two messages", this);
         y[0] = { std::string("msg"), std::string("msg2") };
     }
 
@@ -225,7 +225,7 @@ struct Generator : AtomicModel
 
 struct MyModel : AtomicModel
 {
-    MyModel() : AtomicModel() {}
+    MyModel(const vle::Context& ctx) : AtomicModel(ctx) {}
     virtual ~MyModel() {}
 
     virtual double init(const vle::Common&, const double& t) override final
@@ -256,14 +256,13 @@ struct MyNetwork : Parent
     Generator gen1, gen2;
     Counter cpt;
 
-    MyNetwork() :
-        Parent()
+    MyNetwork(const vle::Context& ctx) :
+        Parent(ctx), gen1(ctx), gen2(ctx), cpt(ctx)
     {}
 
-    MyNetwork(unsigned int timestep1, unsigned int timestep2)
-        : Parent()
-          , gen1(timestep1)
-          , gen2(timestep2)
+    MyNetwork(const vle::Context& ctx, unsigned int timestep1,
+              unsigned int timestep2)
+        : Parent(ctx), gen1(ctx, timestep1), gen2(ctx, timestep2), cpt(ctx)
     {}
 
     virtual ~MyNetwork() {}
@@ -311,8 +310,8 @@ struct MyNetworkToCouple : Parent
     Generator gen;
     Counter cpt;
 
-    MyNetworkToCouple()
-        : Parent({"in"}, {"out"}), gen(1)
+    MyNetworkToCouple(const vle::Context& ctx)
+        : Parent(ctx, {"in"}, {"out"}), gen(ctx, 1), cpt(ctx)
     {}
 
     virtual ~MyNetworkToCouple() {}
@@ -335,11 +334,11 @@ struct MyNetworkToCouple : Parent
         (void) out;
 
         if (!MyNetworkToCouple::x.empty()) {
-            vle::debugf("Coupled (%p) send %lu to cpt %lu (%p)",
-                        this,
-                        MyNetworkToCouple::x[0].size(),
-                        cpt.x[0].size(),
-                        &cpt);
+            vle_dbg(Parent::ctx, "Coupled (%p) send %lu to cpt %lu (%p)",
+                    this,
+                    MyNetworkToCouple::x[0].size(),
+                    cpt.x[0].size(),
+                    &cpt);
 
             cpt.x[0].insert(cpt.x[0].end(),
                             MyNetworkToCouple::x[0].begin(),
@@ -348,9 +347,9 @@ struct MyNetworkToCouple : Parent
         }
 
         if (!gen.y.empty()) {
-            vle::debugf("Gen sends %lu to Coupled %lu",
-                        gen.y[0].size(),
-                        MyNetworkToCouple::y[0].size());
+            vle_dbg(Parent::ctx, "Gen sends %lu to Coupled %lu",
+                    gen.y[0].size(),
+                    MyNetworkToCouple::y[0].size());
 
             MyNetworkToCouple::y[0].insert(MyNetworkToCouple::y[0].end(),
                                            gen.y[0].begin(),
@@ -365,9 +364,12 @@ struct MyRootNetworkToCouple : Parent
 {
     std::vector <MyNetworkToCouple <Parent>> m_children;
 
-    MyRootNetworkToCouple()
-        : Parent(), m_children(2)
-    {}
+    MyRootNetworkToCouple(const vle::Context& ctx)
+        : Parent(ctx)
+    {
+        m_children.emplace_back(ctx);
+        m_children.emplace_back(ctx);
+    }
 
     virtual ~MyRootNetworkToCouple() {}
 
@@ -397,9 +399,9 @@ struct MyRootNetworkToCouple : Parent
         (void) out;
 
         if (!m_children[0].y.empty()) {
-            vle::debugf("MyRootNetworkToCouple move 0 to 1 (%lu vs %lu)",
-                        m_children[1].x[0].size(),
-                        m_children[0].y[0].size());
+            vle_dbg(Parent::ctx, "MyRootNetworkToCouple move 0 to 1 (%lu vs %lu)",
+                    m_children[1].x[0].size(),
+                    m_children[0].y[0].size());
             m_children[1].x[0].insert(m_children[1].x[0].end(),
                                       m_children[0].y[0].begin(),
                                       m_children[0].y[0].end());
@@ -407,9 +409,9 @@ struct MyRootNetworkToCouple : Parent
         }
 
         if (!m_children[1].y.empty()) {
-            vle::debugf("MyRootNetworkToCouple move 1 to 0 (%lu vs %lu)",
-                        m_children[0].x[0].size(),
-                        m_children[1].y[0].size());
+            vle_dbg(Parent::ctx, "MyRootNetworkToCouple move 1 to 0 (%lu vs %lu)",
+                    m_children[0].x[0].size(),
+                    m_children[1].y[0].size());
             m_children[0].x[0].insert(m_children[0].x[0].end(),
                                       m_children[1].y[0].begin(),
                                       m_children[1].y[0].end());
@@ -426,9 +428,15 @@ struct MyFlatNetwork : Parent
     std::vector <Generator> gens;
     std::vector <Counter> cpts;
 
-    MyFlatNetwork() :
-        Parent(), gens(8), cpts(4)
-    {}
+    MyFlatNetwork(const vle::Context& ctx) :
+        Parent(ctx)
+    {
+        for (int i = 0; i < 8; ++i)
+            gens.emplace_back(ctx);
+
+        for (int i = 0; i < 4; ++i)
+            cpts.emplace_back(ctx);
+    }
 
     virtual ~MyFlatNetwork() {}
 
@@ -488,9 +496,14 @@ struct MyNetworkOfNetwork : Parent
 {
     std::vector <MyNetwork <Parent>> models;
 
-    MyNetworkOfNetwork() :
-        Parent(), models(4)
-    {}
+    MyNetworkOfNetwork(const vle::Context& ctx) :
+        Parent(ctx)
+    {
+        models.emplace_back(ctx);
+        models.emplace_back(ctx);
+        models.emplace_back(ctx);
+        models.emplace_back(ctx);
+    }
 
     virtual ~MyNetworkOfNetwork() {}
 
@@ -535,9 +548,14 @@ struct MyNetworkOfNetworkMono : Parent
 {
     std::vector <MyNetwork <Parent>> models;
 
-    MyNetworkOfNetworkMono() :
-        Parent(), models(4)
-    {}
+    MyNetworkOfNetworkMono(const vle::Context& ctx) :
+        Parent(ctx)
+    {
+        models.emplace_back(ctx);
+        models.emplace_back(ctx);
+        models.emplace_back(ctx);
+        models.emplace_back(ctx);
+    }
 
     virtual ~MyNetworkOfNetworkMono() {}
 
@@ -581,9 +599,14 @@ struct MyBigNetworkMono : Parent
     std::vector <Generator> gens;
     Counter cpt;
 
-    MyBigNetworkMono() :
-        Parent(), gens(1000)
-    {}
+    MyBigNetworkMono(const vle::Context& ctx) :
+        Parent(ctx), cpt(ctx)
+    {
+        gens.reserve(1000);
+
+        for (int i = 0, e = 1000; i != e; ++i)
+            gens.emplace_back(ctx);
+    }
 
     virtual ~MyBigNetworkMono() {}
 
@@ -624,9 +647,14 @@ struct MyBigNetwork : Parent
     std::vector <Generator> gens;
     Counter cpt;
 
-    MyBigNetwork() :
-        Parent(), gens(1000)
-    {}
+    MyBigNetwork(const vle::Context& ctx) :
+        Parent(ctx), cpt(ctx)
+    {
+        gens.reserve(1000);
+
+        for (int i = 0, e = 1000; i != e; ++i)
+            gens.emplace_back(ctx);
+    }
 
     virtual ~MyBigNetwork() {}
 
@@ -666,12 +694,14 @@ struct MyGenNetwork : Parent
 {
     Generator gen;
 
-    MyGenNetwork(unsigned int timestep)
-        : Parent({}, {"out"}), gen(timestep)
+    MyGenNetwork(const vle::Context& ctx,
+                 unsigned int timestep)
+        : Parent(ctx, {}, {"out"}), gen(ctx, timestep)
     {}
 
-    MyGenNetwork(const MyGenNetwork& other)
-        : Parent(other), gen(other.gen)
+    MyGenNetwork(const vle::Context& ctx,
+                 const MyGenNetwork& other)
+        : Parent(ctx, other), gen(other.gen)
     {}
 
     virtual ~MyGenNetwork() {}
@@ -702,8 +732,8 @@ struct MyCptNetwork : Parent
 {
     Counter cpt;
 
-    MyCptNetwork()
-        : Parent({"in"}, {}), cpt()
+    MyCptNetwork(const vle::Context& ctx)
+        : Parent(ctx, {"in"}, {}), cpt(ctx)
     {}
 
     MyCptNetwork(const MyCptNetwork& other)
@@ -739,9 +769,11 @@ struct MyGlobalNetwork : Parent
     MyGenNetwork <Parent> gen2;
     MyCptNetwork <Parent> cpt;
 
-    MyGlobalNetwork(unsigned int timestep1, unsigned int timestep2)
-        : Parent(), gen1(timestep1),
-        gen2(timestep2), cpt()
+    MyGlobalNetwork(const vle::Context& ctx,
+                    unsigned int timestep1,
+                    unsigned int timestep2)
+        : Parent(ctx), gen1(ctx, timestep1),
+        gen2(ctx, timestep2), cpt(ctx)
     {}
 
     MyGlobalNetwork(const MyGlobalNetwork& other)
@@ -765,11 +797,11 @@ struct MyGlobalNetwork : Parent
     virtual void post(const UpdatedPort &out,
                       UpdatedPort &in) const override final
     {
-        vle::debugf("MyGlobalNetwork::post out.is_empty=%s"
-                    " event: %" PRIuMAX "%" PRIuMAX,
-                    ((out.empty()) ? "true" : "false"),
-                    (std::uintmax_t)out.count(&gen1),
-                    (std::uintmax_t)out.count(&gen2));
+        vle_dbg(Parent::ctx, "MyGlobalNetwork::post out.is_empty=%s"
+                " event: %" PRIuMAX "%" PRIuMAX,
+                ((out.empty()) ? "true" : "false"),
+                (std::uintmax_t)out.count(&gen1),
+                (std::uintmax_t)out.count(&gen2));
 
         if (out.count(&gen1) + out.count(&gen2) > 0) {
             in.emplace(&cpt);
@@ -779,8 +811,9 @@ struct MyGlobalNetwork : Parent
                             gen2.y[0].begin(),
                             gen2.y[0].end());
 
-            vle::debugf("MyGlobalNetwork::post message to cpt: %" PRIuMAX,
-                        cpt.x[0].size());
+            vle_dbg(Parent::ctx,
+                    "MyGlobalNetwork::post message to cpt: %" PRIuMAX,
+                    cpt.x[0].size());
         }
     }
 };
@@ -795,8 +828,8 @@ struct MyExecutive : ExecutiveMono
     MyCptNetwork <Parent> cpt;
     double previous, next;
 
-    MyExecutive()
-        : ExecutiveMono()
+    MyExecutive(const vle::Context& ctx)
+        : ExecutiveMono(ctx), cpt(ctx)
     {}
 
     virtual ~MyExecutive() {}
@@ -823,14 +856,14 @@ struct MyExecutive : ExecutiveMono
         previous += e;
 
         if (next == previous) {
-            vle::debugf("MyExecutive: previous == %f", next);
+            vle_dbg(ExecutiveMono::ctx, "MyExecutive: previous == %f", next);
             if (previous == 5.) {
-                vle::debugf("MyExecutive: destroy a model");
+                vle_dbg(ExecutiveMono::ctx, "MyExecutive: destroy a model");
                 erase(&generators.back());
                 generators.pop_back();
             } else {
-                vle::debugf("MyExecutive: build a new model");
-                generators.emplace_back(1u);
+                vle_dbg(ExecutiveMono::ctx, "MyExecutive: build a new model");
+                generators.emplace_back(ctx, 1u);
                 insert(&generators.back());
             }
             next++;
@@ -851,19 +884,19 @@ struct MyExecutive : ExecutiveMono
     virtual void post(const UpdatedPort &out,
                       UpdatedPort &in) const override final
     {
-        vle::debugf("MyExecutive::post out.is_emtpy %s",
+        vle_dbg(ctx, "MyExecutive::post out.is_emtpy %s",
                     ((out.empty() ? "true" : "false")));
 
         if (!out.empty()) {
             for (const auto *child : out) {
-                vle::debugf("MyExecutive need to copy message from a child");
+                vle_dbg(ctx, "MyExecutive need to copy message from a child");
                 cpt.x[0].insert(cpt.x[0].end(),
                                 child->y[0].begin(),
                                 child->y[0].end());
             }
             in.emplace(&cpt);
 
-            vle::debugf("MyExecutive::post `%" PRIuMAX "' message to cpt",
+            vle_dbg(ctx, "MyExecutive::post `%" PRIuMAX "' message to cpt",
                         cpt.x[0].size());
         }
     }
@@ -874,9 +907,10 @@ struct MyExecutive : ExecutiveMono
 
 TEST_CASE("main/synchronizer/hierarchy/simple_model_api1", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyModel model;
-    vle::Simulation <MyDSDE> sim(dsde_engine, model);
+    MyModel model(ctx);
+    vle::Simulation <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0, 10);
 
@@ -885,9 +919,10 @@ TEST_CASE("main/synchronizer/hierarchy/simple_model_api1", "run")
 
 TEST_CASE("main/synchronizer/hierarchy/simple_model_api2", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyModel model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyModel model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0, 10);
 
@@ -897,9 +932,10 @@ TEST_CASE("main/synchronizer/hierarchy/simple_model_api2", "run")
 
 TEST_CASE("main/synchronizer/hierarchy/flat-network", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyFlatNetwork <CoupledModelMono> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyFlatNetwork <CoupledModelMono> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -910,9 +946,10 @@ TEST_CASE("main/synchronizer/hierarchy/flat-network", "run")
 
 TEST_CASE("main/synchronizer/hierarchy/myrootnetworktocouple", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyRootNetworkToCouple <CoupledModelMono> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyRootNetworkToCouple <CoupledModelMono> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -923,9 +960,10 @@ TEST_CASE("main/synchronizer/hierarchy/myrootnetworktocouple", "run")
 
 TEST_CASE("main/synchronizer/hierarchy/network-of-network", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyNetworkOfNetwork <CoupledModelMono> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyNetworkOfNetwork <CoupledModelMono> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 2);
     REQUIRE(final_date == 2);
@@ -936,9 +974,10 @@ TEST_CASE("main/synchronizer/hierarchy/network-of-network", "run")
 
 TEST_CASE("main/synchronizer/hierarchy/network-of-network2", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyNetworkOfNetwork <CoupledModelMono> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyNetworkOfNetwork <CoupledModelMono> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 5);
     REQUIRE(final_date == 5);
@@ -949,9 +988,10 @@ TEST_CASE("main/synchronizer/hierarchy/network-of-network2", "run")
 
 TEST_CASE("main/synchronizer/hierarchy/network-of-network-mono", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyNetworkOfNetworkMono <CoupledModelMono> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyNetworkOfNetworkMono <CoupledModelMono> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -962,9 +1002,10 @@ TEST_CASE("main/synchronizer/hierarchy/network-of-network-mono", "run")
 
 TEST_CASE("main/synchronizer/hierarchy/network-1", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyNetwork <CoupledModelMono> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyNetwork <CoupledModelMono> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -977,41 +1018,44 @@ TEST_CASE("main/synchronizer/hierarchy/bignetwork-1-thread", "run")
 {
     auto mstart = std::chrono::system_clock::now();
 
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyBigNetwork <CoupledModelMono> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyBigNetwork <CoupledModelMono> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
 
     auto mend = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = mend - mstart;
-    vle::debugf("MyBigNetworkThread elapsed time: %f s.",
+    vle_dbg(ctx, "MyBigNetworkThread elapsed time: %f s.",
                 elapsed_seconds.count());
 }
 
 TEST_CASE("main/synchronizer/hierarchy/bignetwork-1-mono", "run")
 {
     auto mstart = std::chrono::system_clock::now();
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
 
     MyDSDE dsde_engine;
-    MyBigNetworkMono <CoupledModelMono> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyBigNetworkMono <CoupledModelMono> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
 
     auto mend = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = mend - mstart;
-    vle::debugf("MyBigNetworkMono elapsed time: %f s.",
+    vle_dbg(ctx, "MyBigNetworkMono elapsed time: %f s.",
                 elapsed_seconds.count());
 }
 
 TEST_CASE("main/synchronizer/hierarchy/network-2", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyNetwork <CoupledModelMono> model(1, 2);
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyNetwork <CoupledModelMono> model(ctx, 1, 2);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -1022,11 +1066,12 @@ TEST_CASE("main/synchronizer/hierarchy/network-2", "run")
 
 TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-1", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     std::cerr << std::boolalpha;
 
     MyDSDE dsde_engine;
-    MyGlobalNetwork <CoupledModelMono> model(1, 1);
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyGlobalNetwork <CoupledModelMono> model(ctx, 1, 1);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -1037,9 +1082,10 @@ TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-1", "run")
 
 TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-2", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyGlobalNetwork <CoupledModelMono> model(1, 2);
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyGlobalNetwork <CoupledModelMono> model(ctx, 1, 2);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -1050,13 +1096,14 @@ TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-2", "run")
 
 SCENARIO("User API can use copy constructor", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     GIVEN("A simple simulation")
     {
         MyDSDE dsde_engine;
-        MyGlobalNetwork <CoupledModelMono> model(1, 1);
+        MyGlobalNetwork <CoupledModelMono> model(ctx, 1, 1);
 
         WHEN("I run a simulation") {
-            vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+            vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
             double final_date = sim.run(0.0, 10);
             std::string result = model.observation();
 
@@ -1069,7 +1116,7 @@ SCENARIO("User API can use copy constructor", "run")
         WHEN("I copy the NetworkDynamics") {
             MyGlobalNetwork <CoupledModelMono> copy(model);
             WHEN("I run a simulation") {
-                vle::SimulationDbg <MyDSDE> sim(dsde_engine, copy);
+                vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, copy);
                 double final_date = sim.run(0.0, 10);
                 std::string result = copy.observation();
 
@@ -1081,7 +1128,7 @@ SCENARIO("User API can use copy constructor", "run")
         }
 
         WHEN("I run a simulation with same object") {
-            vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+            vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
             double final_date = sim.run(0.0, 10);
             std::string result = model.observation();
 
@@ -1095,9 +1142,10 @@ SCENARIO("User API can use copy constructor", "run")
 
 TEST_CASE("main/synchronizer/hierarchy/executive-network-1", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyExecutive <CoupledModelMono> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyExecutive <CoupledModelMono> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -1134,9 +1182,10 @@ TEST_CASE("main/synchronizer/hierarchy/executive-network-1", "run")
 
 TEST_CASE("main/synchronizer/hierarchy-thread/flat-network", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyFlatNetwork <CoupledModelThread> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyFlatNetwork <CoupledModelThread> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -1147,9 +1196,10 @@ TEST_CASE("main/synchronizer/hierarchy-thread/flat-network", "run")
 
 TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyNetworkOfNetwork <CoupledModelThread> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyNetworkOfNetwork <CoupledModelThread> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 2);
     REQUIRE(final_date == 2);
@@ -1160,9 +1210,10 @@ TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network", "run")
 
 TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network2", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyNetworkOfNetwork <CoupledModelThread> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyNetworkOfNetwork <CoupledModelThread> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 5);
     REQUIRE(final_date == 5);
@@ -1260,7 +1311,7 @@ TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network2", "run")
             //<MyTime, MyValue, vle::dsde::TransitionPolicyThread <
                                   //MyTime, MyValue>> model(is, factory);
 
-        //vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+        //vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
         //double final_date = sim.run(0.0, 10);
         //REQUIRE(final_date == 10.0);
@@ -1289,7 +1340,7 @@ TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network2", "run")
                                     //factory,
                                     //GenericCoupledModel::INDEXED_BY_STRING);
 
-        //vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+        //vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
         //double final_date = sim.run(0.0, 10);
         //REQUIRE(final_date == 10.0);
@@ -1304,9 +1355,10 @@ TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network2", "run")
 
 TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network-mono", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyNetworkOfNetworkMono <CoupledModelThread> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyNetworkOfNetworkMono <CoupledModelThread> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -1317,9 +1369,10 @@ TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network-mono", "run")
 
 TEST_CASE("main/synchronizer/hierarchy-thread/network-1", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyNetwork <CoupledModelThread> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyNetwork <CoupledModelThread> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -1332,40 +1385,43 @@ TEST_CASE("main/synchronizer/hierarchy-thread/bignetwork-1-thread", "run")
 {
     auto mstart = std::chrono::system_clock::now();
 
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyBigNetwork <CoupledModelThread> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyBigNetwork <CoupledModelThread> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
 
     auto mend = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = mend - mstart;
-    vle::debugf("MyBigNetworkThread elapsed time: %f s.", elapsed_seconds.count());
+    vle_dbg(ctx, "MyBigNetworkThread elapsed time: %f s.", elapsed_seconds.count());
 }
 
 TEST_CASE("main/synchronizer/hierarchy-thread/bignetwork-1-mono", "run")
 {
     auto mstart = std::chrono::system_clock::now();
 
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyBigNetworkMono <CoupledModelThread> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyBigNetworkMono <CoupledModelThread> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
 
     auto mend = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = mend - mstart;
-    vle::debugf("MyBigNetworkMono elapsed time: %f s. ",
+    vle_dbg(ctx, "MyBigNetworkMono elapsed time: %f s. ",
                 elapsed_seconds.count());
 }
 
 TEST_CASE("main/synchronizer/hierarchy-thread/network-2", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyNetwork <CoupledModelThread> model(1, 2);
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyNetwork <CoupledModelThread> model(ctx, 1, 2);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -1376,11 +1432,12 @@ TEST_CASE("main/synchronizer/hierarchy-thread/network-2", "run")
 
 TEST_CASE("main/synchronizer/hierarchy-thread/recursivenetwork-1", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     std::cerr << std::boolalpha;
 
     MyDSDE dsde_engine;
-    MyGlobalNetwork <CoupledModelThread> model(1, 1);
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyGlobalNetwork <CoupledModelThread> model(ctx, 1, 1);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -1391,9 +1448,10 @@ TEST_CASE("main/synchronizer/hierarchy-thread/recursivenetwork-1", "run")
 
 TEST_CASE("main/synchronizer/hierarchy-thread/recursivenetwork-2", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyGlobalNetwork <CoupledModelThread> model(1, 2);
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyGlobalNetwork <CoupledModelThread> model(ctx, 1, 2);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
@@ -1404,13 +1462,15 @@ TEST_CASE("main/synchronizer/hierarchy-thread/recursivenetwork-2", "run")
 
 SCENARIO("User API can use copy constructor with thread", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
+
     GIVEN("A simple simulation")
     {
         MyDSDE dsde_engine;
-        MyGlobalNetwork <CoupledModelThread> model(1, 1);
+        MyGlobalNetwork <CoupledModelThread> model(ctx, 1, 1);
 
         WHEN("I run a simulation") {
-            vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+            vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
             double final_date = sim.run(0.0, 10);
             std::string result = model.observation();
 
@@ -1423,7 +1483,7 @@ SCENARIO("User API can use copy constructor with thread", "run")
         WHEN("I copy the NetworkDynamics") {
             MyGlobalNetwork <CoupledModelThread> copy(model);
             WHEN("I run a simulation") {
-                vle::SimulationDbg <MyDSDE> sim(dsde_engine, copy);
+                vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, copy);
                 double final_date = sim.run(0.0, 10);
                 std::string result = copy.observation();
 
@@ -1435,7 +1495,7 @@ SCENARIO("User API can use copy constructor with thread", "run")
         }
 
         WHEN("I run a simulation with same object") {
-            vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+            vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
             double final_date = sim.run(0.0, 10);
             std::string result = model.observation();
 
@@ -1449,9 +1509,10 @@ SCENARIO("User API can use copy constructor with thread", "run")
 
 TEST_CASE("main/synchronizer/hierarchy-thread/executive-network-1", "run")
 {
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
-    MyExecutive <CoupledModelThread> model;
-    vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+    MyExecutive <CoupledModelThread> model(ctx);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);

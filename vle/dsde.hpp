@@ -27,6 +27,7 @@
 #ifndef __VLE_KERNEL_DSDE_HPP__
 #define __VLE_KERNEL_DSDE_HPP__
 
+#include <vle/context.hpp>
 #include <vle/common.hpp>
 #include <vle/time.hpp>
 #include <vle/port.hpp>
@@ -84,14 +85,16 @@ struct Model
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 
-    Model()
-        : tl(-Time::infinity), tn(Time::infinity), parent(nullptr)
+    Model(const Context &ctx)
+        : tl(-Time::infinity), tn(Time::infinity), parent(nullptr),
+        ctx(ctx)
     {}
 
-    Model(std::initializer_list <std::string> lst_x,
+    Model(const Context &ctx,
+          std::initializer_list <std::string> lst_x,
           std::initializer_list <std::string> lst_y)
         : x(lst_x), y(lst_y), tl(-Time::infinity), tn(Time::infinity),
-          parent(nullptr)
+          parent(nullptr), ctx(ctx)
     {}
 
     virtual ~Model()
@@ -101,6 +104,7 @@ struct Model
     time_type tl, tn;
     ComposedModel <Time, Value> *parent;
     typename HeapType <Time, Value>::handle_type heapid;
+    Context ctx;
 
     virtual void start(const Common& common, const time_type& time) = 0;
     virtual void transition(const time_type& time) = 0;
@@ -119,13 +123,14 @@ struct ComposedModel : Model <Time, Value>
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 
-    ComposedModel()
-        : Model <Time, Value>()
+    ComposedModel(const Context &ctx)
+        : Model <Time, Value>(ctx)
     {}
 
-    ComposedModel(std::initializer_list <std::string> lst_x,
+    ComposedModel(const Context &ctx,
+                  std::initializer_list <std::string> lst_x,
                   std::initializer_list <std::string> lst_y)
-        : Model <Time, Value>(lst_x, lst_y)
+        : Model <Time, Value>(ctx, lst_x, lst_y)
     {}
 
     virtual ~ComposedModel()
@@ -147,13 +152,14 @@ struct AtomicModel : Model <Time, Value>
     virtual time_type delta(const time_type& time) = 0;
     virtual void lambda() const = 0;
 
-    AtomicModel()
-        : Model <Time, Value>()
+    AtomicModel(const Context& ctx)
+        : Model <Time, Value>(ctx)
     {}
 
-    AtomicModel(std::initializer_list <std::string> lst_x,
+    AtomicModel(const Context& ctx,
+                std::initializer_list <std::string> lst_x,
                 std::initializer_list <std::string> lst_y)
-        : Model <Time, Value>(lst_x, lst_y)
+        : Model <Time, Value>(ctx, lst_x, lst_y)
     {}
 
     virtual ~AtomicModel()
@@ -310,13 +316,14 @@ struct CoupledModel : ComposedModel <Time, Value>
     virtual void post(const UpdatedPort <Time, Value> &out,
                       UpdatedPort <Time, Value> &in) const override = 0;
 
-    CoupledModel()
-        : ComposedModel <Time, Value>()
+    CoupledModel(const Context& ctx)
+        : ComposedModel <Time, Value>(ctx)
     {}
 
-    CoupledModel(std::initializer_list <std::string> lst_x,
+    CoupledModel(const Context& ctx,
+                 std::initializer_list <std::string> lst_x,
                  std::initializer_list <std::string> lst_y)
-        : ComposedModel <Time, Value>(lst_x, lst_y)
+        : ComposedModel <Time, Value>(ctx, lst_x, lst_y)
     {}
 
     virtual ~CoupledModel()
@@ -438,21 +445,24 @@ struct Executive : ComposedModel <Time, Value>
     virtual void post(const UpdatedPort <Time, Value> &y,
                       UpdatedPort <Time, Value> &x) const = 0;
 
-    Executive()
-        : ComposedModel <Time, Value>()
+    Executive(const vle::Context& ctx)
+        : ComposedModel <Time, Value>(ctx)
     {}
 
-    Executive(std::initializer_list <std::string> lst_x,
+    Executive(const vle::Context& ctx,
+              std::initializer_list <std::string> lst_x,
               std::initializer_list <std::string> lst_y)
-        : ComposedModel <Time, Value>(lst_x, lst_y)
+        : ComposedModel <Time, Value>(ctx, lst_x, lst_y)
     {}
 
-    Executive(std::initializer_list <std::string> lst_x,
+    Executive(const vle::Context& ctx,
+              std::initializer_list <std::string> lst_x,
               std::initializer_list <std::string> lst_y,
               std::initializer_list <std::string> chi_lst_x,
               std::initializer_list <std::string> chi_lst_y)
-        : ComposedModel <Time, Value>(lst_x, lst_y), chi_tl(-Time::infinity),
-        chi_tn(Time::infinity), chi_x(chi_lst_x), chi_y(chi_lst_y)
+        : ComposedModel <Time, Value>(ctx, lst_x, lst_y),
+        chi_tl(-Time::infinity), chi_tn(Time::infinity), chi_x(chi_lst_x),
+        chi_y(chi_lst_y)
     {}
 
     virtual ~Executive()

@@ -143,13 +143,14 @@ struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
     typedef std::unordered_multimap <
         inputport, outputport, hash_inputport, equalto_inputport> edges;
 
-    GenericCoupledModel()
-        : CoupledModel <Time, Value, Policy>()
+    GenericCoupledModel(const Context& ctx)
+        : CoupledModel <Time, Value, Policy>(ctx)
     {}
 
-    GenericCoupledModel(std::initializer_list <std::string> lst_x,
+    GenericCoupledModel(const Context& ctx,
+                        std::initializer_list <std::string> lst_x,
                         std::initializer_list <std::string> lst_y)
-        : CoupledModel <Time, Value, Policy>(lst_x, lst_y)
+        : CoupledModel <Time, Value, Policy>(ctx, lst_x, lst_y)
     {}
 
     virtual ~GenericCoupledModel()

@@ -27,51 +27,44 @@
 #ifndef __VLE_KERNEL_DBG_HPP__
 #define __VLE_KERNEL_DBG_HPP__
 
-#include <vle/export.hpp>
-#include <iostream>
-#include <vector>
-#include <cstdio>
-#include <cstdarg>
-#include <cstdint>
-#include <cinttypes>
 
-#if defined __GNUC__
-#define VLE_GCC_PRINTF(format__, args__) __attribute__ ((format (printf, format__, args__)))
-#endif
+//#if defined __GNUC__
+//#define VLE_GCC_PRINTF(format__, args__) __attribute__ ((format (printf, format__, args__)))
+//#endif
 
-namespace vle {
+//namespace vle {
 
-VLE_API void debugf(const char* format, ...) VLE_GCC_PRINTF(1, 2);
+//VLE_API void debugf(const char* format, ...) VLE_GCC_PRINTF(1, 2);
 
-#ifdef NDEBUG
-inline void debugf(const char* format, ...)
-{
-    (void)format;
-}
-#else
-void debugf(const char* format, ...)
-{
-    std::vector <char> buffer(1024, '\0');
-    int sz;
-    va_list ap;
+//#ifdef NDEBUG
+//inline void debugf(const char* format, ...)
+//{
+    //(void)format;
+//}
+//#else
+//void debugf(const char* format, ...)
+//{
+    //std::vector <char> buffer(1024, '\0');
+    //int sz;
+    //va_list ap;
 
-    for (;;) {
-        va_start(ap, format);
-        sz = std::vsnprintf(buffer.data(), buffer.size(), format, ap);
-        va_end(ap);
+    //for (;;) {
+        //va_start(ap, format);
+        //sz = std::vsnprintf(buffer.data(), buffer.size(), format, ap);
+        //va_end(ap);
 
-        if (sz < 0) {
-            return;
-        } else if (static_cast <std::size_t>(sz) < buffer.size()) {
-            std::clog << "DEBUG: " << buffer.data() << "\n";
-            return;
-        } else {
-            buffer.resize(sz + 1);
-        }
-    }
-}
-#endif
+        //if (sz < 0) {
+            //return;
+        //} else if (static_cast <std::size_t>(sz) < buffer.size()) {
+            //std::clog << "DEBUG: " << buffer.data() << "\n";
+            //return;
+        //} else {
+            //buffer.resize(sz + 1);
+        //}
+    //}
+//}
+//#endif
 
-}
+//}
 
 #endif

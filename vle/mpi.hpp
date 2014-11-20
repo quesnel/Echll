@@ -58,15 +58,16 @@ struct SynchronousProxyModel : Model <Time, Value>
     boost::mpi::communicator communicator;
     int rank;
 
-    SynchronousProxyModel()
-        : Model <Time, Value>()
+    SynchronousProxyModel(const vle::Context& ctx)
+        : Model <Time, Value>(ctx)
         , communicator()
         , rank(-1)
     {}
 
-    SynchronousProxyModel(std::initializer_list <std::string> lst_x,
+    SynchronousProxyModel(const vle::Context& ctx,
+                          std::initializer_list <std::string> lst_x,
                           std::initializer_list <std::string> lst_y)
-        : Model <Time, Value>(lst_x, lst_y)
+        : Model <Time, Value>(ctx, lst_x, lst_y)
         , communicator()
         , rank(-1)
     {}

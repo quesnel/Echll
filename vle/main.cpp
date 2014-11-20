@@ -57,8 +57,8 @@ struct Counter : AtomicModel
 {
     unsigned int i;
 
-    Counter()
-        : AtomicModel({"in"}, {})
+    Counter(const vle::Context& ctx)
+        : AtomicModel(ctx, {"in"}, {})
         , i(0u)
     {}
 
@@ -92,8 +92,8 @@ struct Generator : AtomicModel
     unsigned int timestep;
     unsigned int emitted;
 
-    Generator()
-        : AtomicModel({}, {"out"})
+    Generator(const vle::Context& ctx)
+        : AtomicModel(ctx, {}, {"out"})
         , timestep(1u)
         , emitted(0u)
     {}
@@ -134,19 +134,20 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
     std::shared_ptr <Factory> factory;
     typedef Factory::modelptr modelptr;
 
     factory->functions.emplace("Counter",
-                               []() -> modelptr
+                               [&ctx]() -> modelptr
                                {
-                                   return modelptr(new Counter());
+                                   return modelptr(new Counter(ctx));
                                });
 
     factory->functions.emplace("Generator",
-                               []() -> modelptr
+                               [&ctx]() -> modelptr
                                {
-                                   return modelptr(new Generator());
+                                   return modelptr(new Generator(ctx));
                                });
 
     vle::CommonPtr common = std::make_shared <vle::Common>();
@@ -158,8 +159,8 @@ int main(int argc, char *argv[])
 
         try {
             MyDSDE dsde_engine;
-            GenericCoupledModel model;
-            vle::SimulationDbg <MyDSDE> sim(dsde_engine, model);
+            GenericCoupledModel model(ctx);
+            vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
         } catch (const std::exception& e) {
             std::cerr << "Simulation failed: " << e.what() << "\n";
         }

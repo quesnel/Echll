@@ -24,7 +24,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <vle/dbg.hpp>
+#include <vle/context.hpp>
 #include <vle/utils.hpp>
 #include <cstring>
 
@@ -63,10 +63,11 @@ TEST_CASE("try-stringf-format", "run")
 
 TEST_CASE("try-debugf", "run")
 {
-    REQUIRE_NOTHROW(vle::debugf("%s%s%s%s%s",
-                                str500.c_str(),
-                                str500.c_str(),
-                                str500.c_str(),
-                                str500.c_str(),
-                                str500.c_str()));
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
+    REQUIRE_NOTHROW(vle_dbg(ctx, "%s%s%s%s%s",
+                            str500.c_str(),
+                            str500.c_str(),
+                            str500.c_str(),
+                            str500.c_str(),
+                            str500.c_str()));
 }
