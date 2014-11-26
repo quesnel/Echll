@@ -83,29 +83,6 @@ install(FILES ${Echll_CORE_HDRS}
   DESTINATION include/Echll-${Echll_STABLEVERSION}/vle)
 
 ### # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-## Executable
-#
-
-set(Echll_MAIN_SRCS vle/main.cpp)
-
-add_executable(echll ${Echll_MAIN_SRCS})
-target_link_libraries(echll ${Echll_LINK_LIBRARIES})
-
-if (MPI_CXX_COMPILE_FLAGS)
-  set_target_properties(echll PROPERTIES COMPILE_FLAGS "${MPI_CXX_COMPILE_FLAGS}")
-endif ()
-
-if (MPI_CXX_LINK_FLAGS)
-  set_target_properties(echll PROPERTIES LINK_FLAGS "${MPI_CXX_LINK_FLAGS}")
-endif ()
-
-set_target_properties(echll PROPERTIES
-  VERSION ${Echll_STABLEVERSION}
-  COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
-
-install(TARGETS echll DESTINATION bin)
-
-### # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 ## Testing
 #
 
