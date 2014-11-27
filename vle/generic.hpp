@@ -271,16 +271,28 @@ struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
                                 dst->y[portdst].insert(dst->y[portdst].end(),
                                                        model->y[i].begin(),
                                                        model->y[i].end());
+
+                                vle_dbg(GenericCoupledModel::ctx,
+                                        "Move from %p port %lu to coupled model %p port %lu\n",
+                                        model, i, dst, portdst);
                             }
                         } else {
                             if (model == this) {
                                 dst->x[portdst].insert(dst->x[portdst].end(),
                                                        model->x[i].begin(),
                                                        model->x[i].end());
+
+                                vle_dbg(GenericCoupledModel::ctx,
+                                        "Move from coupled model %p port %lu to %p port %lu\n",
+                                        model, i, dst, portdst);
                             } else {
                                 dst->x[portdst].insert(dst->x[portdst].end(),
                                                        model->y[i].begin(),
                                                        model->y[i].end());
+
+                                vle_dbg(GenericCoupledModel::ctx,
+                                        "Move from model %p port %lu to model %p port %lu\n",
+                                        model, i, dst, portdst);
                             }
                         }
                     }
