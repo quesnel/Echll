@@ -85,16 +85,16 @@ struct SimulationDbg
         std::uintmax_t localbag = 1;
         nbloop = 0;
 
-        vle_dbg(ctx, "- - - - - - - - - - - - - start date %f", i);
+        vle_dbg(ctx, "- - - - - - - - - - - - - start date %f\n", i);
 
         for (; i < end; i = engine.run(model, i)) {
             if (prev < i) {
                 prev = i;
                 localbag = 1;
-                vle_dbg(ctx, "- - - - - - - - - - - - - next date %f", i);
+                vle_dbg(ctx, "- - - - - - - - - - - - - next date %f\n", i);
             } else {
                 localbag++;
-                vle_dbg(ctx, "- - - - - - - - - - - - - bag %" PRIuMAX,
+                vle_dbg(ctx, "- - - - - - - - - - - - - bag %" PRIuMAX "\n",
                         localbag);
             }
             nbloop++;
