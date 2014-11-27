@@ -260,7 +260,7 @@ struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
                             const_cast <Model <Time, Value>*>(
                                 result.first->second.first);
 
-                        int portdst = result.first->second.second;
+                        std::size_t portdst = result.first->second.second;
 
                         in.emplace(dst);
 
