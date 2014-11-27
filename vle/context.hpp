@@ -133,7 +133,7 @@ struct ContextImpl
 
     void set_log_priority(int priority)
     {
-        m_log_priority = std::min(std::max(priority, 3), 0);
+        m_log_priority = std::max(std::min(priority, 3), 0);
     }
 
     unsigned get_thread_number() const
