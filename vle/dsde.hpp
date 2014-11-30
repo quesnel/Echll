@@ -196,6 +196,12 @@ struct TransitionPolicyDefault
 {
     typedef typename Time::time_type time_type;
 
+    TransitionPolicyDefault()
+    {}
+
+    TransitionPolicyDefault(unsigned)
+    {}
+
     void operator()(Bag <Time, Value>& bag, const time_type& time,
                     HeapType <Time, Value> &heap)
     {
@@ -215,20 +221,16 @@ struct TransitionPolicyThread
     typedef typename Time::time_type time_type;
 
     TransitionPolicyThread()
-        : pool(default_pool_size())
+        : pool(std::max(1u, std::thread::hardware_concurrency()))
     {}
 
-    TransitionPolicyThread(const TransitionPolicyThread& /*other*/)
-        : pool(default_pool_size())
+    TransitionPolicyThread(unsigned thread_number)
+        : pool(thread_number)
     {}
 
-    static constexpr unsigned int default_pool_size()
-    {
-        /* std::thread::hardware_concurrency returns number of concurrent
-         * threads supported. If the value is not well defined or not
-         * computable, returns 0. */
-        return std::max(1u, std::thread::hardware_concurrency());
-    }
+    TransitionPolicyThread(const TransitionPolicyThread& other)
+        : pool(other.pool.size())
+    {}
 
     void set_pool_size(unsigned int i)
     {
@@ -317,12 +319,14 @@ struct CoupledModel : ComposedModel <Time, Value>
 
     CoupledModel(const Context& ctx)
         : ComposedModel <Time, Value>(ctx)
+	  , policy(ctx->get_thread_number())
     {}
 
     CoupledModel(const Context& ctx,
                  std::initializer_list <std::string> lst_x,
                  std::initializer_list <std::string> lst_y)
         : ComposedModel <Time, Value>(ctx, lst_x, lst_y)
+	  , policy(ctx->get_thread_number())
     {}
 
     virtual ~CoupledModel()
