@@ -202,6 +202,9 @@ struct TransitionPolicyDefault
     TransitionPolicyDefault(unsigned)
     {}
 
+    void resize(unsigned)
+    {}
+
     void operator()(Bag <Time, Value>& bag, const time_type& time,
                     HeapType <Time, Value> &heap)
     {
@@ -226,13 +229,19 @@ struct TransitionPolicyThread
 
     TransitionPolicyThread(unsigned thread_number)
         : pool(thread_number)
-    {}
+    {
+        if (thread_number == 0)
+            pool.resize(1);
+    }
 
     TransitionPolicyThread(const TransitionPolicyThread& other)
         : pool(other.pool.size())
-    {}
+    {
+        if (pool.size() == 0)
+            pool.resize(1);
+    }
 
-    void set_pool_size(unsigned int i)
+    void resize(unsigned i)
     {
         if (i > 0)
             pool.resize(i);
@@ -322,11 +331,24 @@ struct CoupledModel : ComposedModel <Time, Value>
 	  , policy(ctx->get_thread_number())
     {}
 
+    CoupledModel(const Context& ctx, unsigned thread_number)
+        : ComposedModel <Time, Value>(ctx)
+	  , policy(thread_number)
+    {}
+
     CoupledModel(const Context& ctx,
                  std::initializer_list <std::string> lst_x,
                  std::initializer_list <std::string> lst_y)
         : ComposedModel <Time, Value>(ctx, lst_x, lst_y)
 	  , policy(ctx->get_thread_number())
+    {}
+
+    CoupledModel(const Context& ctx,
+                 unsigned thread_number,
+                 std::initializer_list <std::string> lst_x,
+                 std::initializer_list <std::string> lst_y)
+        : ComposedModel <Time, Value>(ctx, lst_x, lst_y)
+	  , policy(thread_number)
     {}
 
     virtual ~CoupledModel()

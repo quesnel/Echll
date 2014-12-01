@@ -147,10 +147,21 @@ struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
         : CoupledModel <Time, Value, Policy>(ctx)
     {}
 
+    GenericCoupledModel(const Context& ctx, unsigned thread_number)
+        : CoupledModel <Time, Value, Policy>(ctx, thread_number)
+    {}
+
     GenericCoupledModel(const Context& ctx,
                         std::initializer_list <std::string> lst_x,
                         std::initializer_list <std::string> lst_y)
         : CoupledModel <Time, Value, Policy>(ctx, lst_x, lst_y)
+    {}
+
+    GenericCoupledModel(const Context& ctx,
+                        unsigned thread_number,
+                        std::initializer_list <std::string> lst_x,
+                        std::initializer_list <std::string> lst_y)
+        : CoupledModel <Time, Value, Policy>(ctx, thread_number, lst_x, lst_y)
     {}
 
     virtual ~GenericCoupledModel()
