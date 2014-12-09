@@ -27,6 +27,7 @@
 #ifndef __VLE_KERNEL_DEVS_HPP__
 #define __VLE_KERNEL_DEVS_HPP__
 
+#include <vle/context.hpp>
 #include <vle/time.hpp>
 #include <vle/port.hpp>
 #include <vle/heap.hpp>
@@ -50,23 +51,35 @@ struct Model
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 
-    Model()
-        : tl(-Time::infinity), tn(Time::infinity), parent(nullptr)
+    Model(const Context &ctx)
+        : ctx(ctx)
+          , tl(-Time::infinity)
+          , tn(Time::infinity)
+          , parent(nullptr)
     {}
 
-    Model(std::initializer_list <std::string> lst_x,
+    Model(const Context &ctx,
+          std::initializer_list <std::string> lst_x,
           std::initializer_list <std::string> lst_y)
-        : x(lst_x), y(lst_y), tl(-Time::infinity), tn(Time::infinity),
-          e(0), parent(nullptr)
+        : ctx(ctx)
+          , x(lst_x)
+          , y(lst_y)
+          , tl(-Time::infinity)
+          , tn(Time::infinity)
+          , e(0)
+          , parent(nullptr)
     {}
 
     virtual ~Model()
     {}
 
+    Context ctx;
     mutable vle::PortList <Value> x, y;
     time_type tl, tn, e;
     Model *parent;
     typename HeapType <Time, Value>::handle_type heapid;
+
+    inline constexpr const Context& context() const { return ctx; }
 
     virtual void i_msg(const time_type& time) = 0;
     virtual void s_msg(const time_type& time) = 0;
@@ -86,13 +99,14 @@ struct AtomicModel : Model <Time, Value>
     virtual void internal() const = 0;
     virtual void external(const time_type& time) const = 0;
 
-    AtomicModel()
-        : Model <Time, Value>()
+    AtomicModel(const Context &ctx)
+        : Model <Time, Value>(ctx)
     {}
 
-    AtomicModel(std::initializer_list <std::string> lst_x,
+    AtomicModel(const Context &ctx,
+                std::initializer_list <std::string> lst_x,
                 std::initializer_list <std::string> lst_y)
-        : Model <Time, Value>(lst_x, lst_y)
+        : Model <Time, Value>(ctx, lst_x, lst_y)
     {}
 
     virtual ~AtomicModel()
@@ -156,9 +170,14 @@ struct CoupledModel : Model <Time, Value>
     virtual void post(const Model <Time, Value> &out,
                       UpdatedPort <Time, Value> &in) const = 0;
 
-    CoupledModel(std::initializer_list <std::string> lst_x,
+    CoupledModel(const Context &ctx)
+        : Model <Time, Value>(ctx)
+    {}
+
+    CoupledModel(const Context &ctx,
+                 std::initializer_list <std::string> lst_x,
                  std::initializer_list <std::string> lst_y)
-        : Model <Time, Value>(lst_x, lst_y)
+        : Model <Time, Value>(ctx, lst_x, lst_y)
     {}
 
     virtual ~CoupledModel()

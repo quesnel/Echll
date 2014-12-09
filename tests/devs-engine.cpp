@@ -54,10 +54,9 @@ using CoupledModel = vle::devs::CoupledModel <MyTime, std::string>;
 
 struct ModelA : AtomicModel
 {
-    ModelA()
-        : AtomicModel({"in"}, {"out"})
-    {
-    }
+    ModelA(const vle::Context &ctx)
+        : AtomicModel(ctx, {"in"}, {"out"})
+    {}
 
     virtual ~ModelA()
     {}
