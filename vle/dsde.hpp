@@ -105,6 +105,8 @@ struct Model
     typename HeapType <Time, Value>::handle_type heapid;
     Context ctx;
 
+    inline constexpr const Context& context() const { return ctx; }
+
     virtual void start(const Common& common, const time_type& time) = 0;
     virtual void transition(const time_type& time) = 0;
     virtual void output(const time_type& time) = 0;
