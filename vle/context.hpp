@@ -36,6 +36,11 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cinttypes>
+#include <unistd.h>
+
+#define ECHLL_YELLOW "\x1b[33m"
+#define ECHLL_RED "\x1b[31m"
+#define ECHLL_NORMAL "\x1b[0m"
 
 namespace vle {
 
@@ -54,10 +59,11 @@ void vle_log_null(const vle::Context& ctx, const char *format, ...)
 #define VLE_PRINTF(format__, args__) __attribute__ ((format (printf, format__, args__)))
 #endif
 
-#define vle_log_cond(ctx, prio, arg...)                           \
-    do {                                                          \
-        if (ctx->get_log_priority() >= prio)                      \
-        ctx->log(prio, __FILE__, __LINE__, __FUNCTION__, ## arg); \
+#define vle_log_cond(ctx, prio, arg...)        \
+    do {                                       \
+        if (ctx->get_log_priority() >= prio)   \
+        ctx->log(prio, __FILE__, __LINE__,     \
+                 __PRETTY_FUNCTION__, ## arg); \
     } while (0)
 
 #define LOG_DEBUG 3
@@ -93,6 +99,7 @@ struct ContextImpl
         : m_log_fn(log_to_stderr)
           , m_thread_number(0)
           , m_log_priority(1)
+          , m_is_a_tty(fileno(stderr))
     {}
 
     ContextImpl(const ContextImpl&) = default;
@@ -151,6 +158,11 @@ struct ContextImpl
         m_user_data = user_data;
     }
 
+    bool is_on_tty() const
+    {
+        return m_is_a_tty;
+    }
+
     const boost::any& get_user_data() const { return m_user_data; }
     boost::any& get_user_data() { return m_user_data; }
 
@@ -159,6 +171,7 @@ private:
     log_fn m_log_fn;
     unsigned int m_thread_number = 0;
     int m_log_priority = 1;
+    bool m_is_a_tty;
 };
 
 void log_to_stderr(const ContextImpl& ctx, int priority, const char *file,
@@ -169,7 +182,13 @@ void log_to_stderr(const ContextImpl& ctx, int priority, const char *file,
     (void)file;
     (void)line;
 
-    fprintf(stderr, "echll: %s ", fn);
+    if (ctx.is_on_tty()) {
+        fprintf(stderr, ECHLL_YELLOW "echll:" ECHLL_RED " %s\n\t"
+                ECHLL_NORMAL, fn);
+    } else {
+        fprintf(stderr, "echll: %s\n\t", fn);
+    }
+
     vfprintf(stderr, format, args);
 }
 
