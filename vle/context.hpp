@@ -59,29 +59,30 @@ inline void vle_log_null(const vle::Context& ctx, const char *format, ...)
 #define VLE_PRINTF(format__, args__) __attribute__ ((format (printf, format__, args__)))
 #endif
 
-#define vle_log_cond(ctx, prio, arg...)        \
-    do {                                       \
-        if (ctx->get_log_priority() >= prio)   \
-        ctx->log(prio, __FILE__, __LINE__,     \
-                 __PRETTY_FUNCTION__, ## arg); \
+#define vle_log_cond(ctx, prio, arg...)                                 \
+    do {                                                                \
+        if ((ctx) && (ctx)->get_log_priority() >= prio) {               \
+            (ctx)->log(prio, __FILE__, __LINE__, __PRETTY_FUNCTION__,   \
+                       ## arg);                                         \
+        }                                                               \
     } while (0)
 
 #define LOG_DEBUG 3
-#define LOG_INFO 2
-#define LOG_ERR 1
+#define LOG_INFO  2
+#define LOG_ERR   1
 
 #ifdef ENABLE_LOGGING
 #  ifdef ENABLE_DEBUG
-#    define vle_dbg(ctx, arg...) vle_log_cond(ctx, LOG_DEBUG, ## arg)
+#    define vle_dbg(ctx, arg...) vle_log_cond((ctx), LOG_DEBUG, ## arg)
 #  else
-#    define vle_dbg(ctx, arg...) vle_log_null(ctx, ## arg)
+#    define vle_dbg(ctx, arg...) vle_log_null((ctx), ## arg)
 #  endif
-#  define vle_info(ctx, arg...) vle_log_cond(ctx, LOG_INFO, ## arg)
-#  define vle_err(ctx, arg...) vle_log_cond(ctx, LOG_ERR, ## arg)
+#  define vle_info(ctx, arg...) vle_log_cond((ctx), LOG_INFO, ## arg)
+#  define vle_err(ctx, arg...) vle_log_cond((ctx), LOG_ERR, ## arg)
 #else
-#  define vle_dbg(ctx, arg...) vle_log_null(ctx, ## arg)
-#  define vle_info(ctx, arg...) vle_log_null(ctx, ## arg)
-#  define vle_err(ctx, arg...) vle_log_null(ctx, ## arg)
+#  define vle_dbg(ctx, arg...) vle_log_null((ctx), ## arg)
+#  define vle_info(ctx, arg...) vle_log_null((ctx), ## arg)
+#  define vle_err(ctx, arg...) vle_log_null((ctx), ## arg)
 #endif
 
 namespace vle {
@@ -98,7 +99,7 @@ struct ContextImpl
     ContextImpl()
         : m_log_fn(log_to_stderr)
         , m_thread_number(0)
-        , m_log_priority(1)
+        , m_log_priority(LOG_DEBUG)
         , m_is_a_tty(fileno(stderr))
     {}
 
@@ -184,13 +185,14 @@ inline void log_to_stderr(const ContextImpl& ctx, int priority,
     (void)line;
 
     if (ctx.is_on_tty()) {
-        ::dprintf(::fileno(stderr), ECHLL_YELLOW "echll:" ECHLL_RED " %s\n\t"
+        ::fprintf(stderr, ECHLL_YELLOW "echll:" ECHLL_RED " %s\n\t"
                   ECHLL_NORMAL, fn);
     } else {
-        ::dprintf(::fileno(stderr), "echll: %s\n\t", fn);
+        ::fprintf(stderr, "echll: %s\n\t", fn);
     }
 
-    ::vdprintf(::fileno(stderr), format, args);
+    ::vfprintf(stderr, format, args);
+    ::fputc('\n', stderr);
 }
 
 }

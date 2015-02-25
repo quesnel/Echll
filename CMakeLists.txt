@@ -14,6 +14,14 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_CXX_COMPILER_ID} STREQU
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -std=c++1y")
 
+  if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+    if (${CMAKE_CXX_COMPILER_VERSION} VERSION_EQUAL "3.5" OR ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER "3.5")
+      message(STATUS "Clang ${CMAKE_CXX_COMPILER_VERSION} so, remarks system enabled")
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Weverything")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Weverything")
+    endif ()
+  endif ()
+
   if ("${CMAKE_BUILD_TYPE}" EQUAL "Debug" OR "${CMAKE_BUILD_TYPE}" EQUAL "RelWithDebInfo")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb3")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb3")
@@ -74,8 +82,8 @@ install(FILES ${PROJECT_BINARY_DIR}/Echll-${Echll_STABLEVERSION}.pc
 #
 
 set(Echll_CORE_HDRS vle/common.hpp vle/context.hpp vle/devs.hpp
-  vle/dsde.hpp vle/dtss.hpp vle/export.hpp vle/generic.hpp
-  vle/heap.hpp vle/i18n.hpp vle/mpi-synchronous.hpp
+  vle/dsde.hpp vle/dsde/aqss.hpp vle/dtss.hpp vle/export.hpp
+  vle/generic.hpp vle/heap.hpp vle/i18n.hpp vle/mpi-synchronous.hpp
   vle/mpi-timewarp.hpp vle/port.hpp vle/time.hpp vle/utils.hpp
   vle/vle.hpp)
 
@@ -85,8 +93,19 @@ install(DIRECTORY vle DESTINATION include/Echll-${Echll_STABLEVERSION}/vle)
 ## Testing
 #
 
-enable_testing()
 
+option(WITH_LOGGING "Logging system in echll [default=ON]" ON)
+option(WITH_DEBUG "Debugging system in echll [default=ON]" ON)
+
+if (WITH_LOGGING)
+    set(echll_compile_flags "-DENABLE_LOGGING")
+endif ()
+
+if (WITH_DEBUG)
+    set(echll_compile_flags "-DENABLE_DEBUG ${echll_compile_flags}")
+endif ()
+
+enable_testing()
 message(STATUS "checking for 'catch.hpp'")
 find_path(CATCH_INCLUDE_DIR catch.hpp PATHS /usr/include /usr/local/include ENV CATCH_INCLUDE_DIR)
 
@@ -97,45 +116,59 @@ if (CATCH_INCLUDE_DIR)
   add_executable(test_utils tests/utils.cpp)
   target_link_libraries(test_utils ${Echll_LINK_LIBRARIES})
   set_target_properties(test_utils PROPERTIES
-    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
+    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests"
+    COMPILE_FLAGS "${echll_compile_flags}")
   add_test(NAME test_utils COMMAND test_utils)
 
   add_executable(test_devs-engine tests/devs-engine.cpp)
   target_link_libraries(test_devs-engine ${Echll_LINK_LIBRARIES})
   set_target_properties(test_devs-engine PROPERTIES
-    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
+    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests"
+    COMPILE_FLAGS "${echll_compile_flags}")
   add_test(NAME test_devs-engine COMMAND test_devs-engine)
 
   add_executable(test_dsde-engine tests/dsde-engine.cpp)
   target_link_libraries(test_dsde-engine ${Echll_LINK_LIBRARIES})
   set_target_properties(test_dsde-engine PROPERTIES
-    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
+    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests"
+    COMPILE_FLAGS "${echll_compile_flags}")
   add_test(NAME test_dsde-engine COMMAND test_dsde-engine)
+
+  add_executable(test_dsde-aqss-engine tests/dsde-aqss.cpp)
+  target_link_libraries(test_dsde-aqss-engine ${Echll_LINK_LIBRARIES})
+  set_target_properties(test_dsde-aqss-engine PROPERTIES
+    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests"
+    COMPILE_FLAGS "${echll_compile_flags}")
+  add_test(NAME test_dsde-aqss-engine COMMAND test_dsde-aqss-engine)
 
   add_executable(test_dtss-engine tests/dtss-engine.cpp)
   target_link_libraries(test_dtss-engine ${Echll_LINK_LIBRARIES})
   set_target_properties(test_dtss-engine PROPERTIES
-    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
+    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests"
+    COMPILE_FLAGS "${echll_compile_flags}")
   add_test(NAME test_dtss-engine COMMAND test_dtss-engine)
 
   add_executable(test_mpi-synchronous tests/mpi-synchronous.cpp)
   target_link_libraries(test_mpi-synchronous ${Echll_LINK_LIBRARIES})
   set_target_properties(test_mpi-synchronous PROPERTIES
-    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
+    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests"
+    COMPILE_FLAGS "${echll_compile_flags}")
   add_test(NAME test_mpi-synchronous COMMAND mpirun -np 4
     test_mpi-synchronous)
 
   add_executable(test_tree-mpi-synchronous tests/tree.cpp)
   target_link_libraries(test_tree-mpi-synchronous ${Echll_LINK_LIBRARIES})
   set_target_properties(test_tree-mpi-synchronous PROPERTIES
-    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
+    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests"
+    COMPILE_FLAGS "${echll_compile_flags}")
   add_test(NAME test_tree-mpi-synchronous COMMAND mpirun -np 4
     test_tree-mpi-synchronous)
 
   add_executable(test_mpi-timewarp tests/mpi-timewarp.cpp)
   target_link_libraries(test_mpi-timewarp ${Echll_LINK_LIBRARIES})
   set_target_properties(test_mpi-timewarp PROPERTIES
-    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests")
+    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests"
+    COMPILE_FLAGS "${echll_compile_flags}")
   add_test(NAME test_mpi-timewarp COMMAND mpirun -np 4
     test_mpi-timewarp)
 else ()

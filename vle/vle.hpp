@@ -123,7 +123,6 @@ struct SimulationStep
         : engine(engine)
         , model(model)
         , ctx(ctx)
-        , end(Engine::time_traits::infinity())
     {}
 
     time_type init(const time_type &begin)

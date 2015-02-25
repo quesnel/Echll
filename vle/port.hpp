@@ -49,33 +49,12 @@ struct model_port_error : std::invalid_argument
             vle::stringf("model_port_error: unknown port named %s",
                          port.c_str()))
     {}
+
+    model_port_error()
+        : std::invalid_argument(
+            "model_port_error: copy_port_value size are different")
+    {}
 };
-
-
-template <typename Values>
-void copy_values(const Values& src, Values& dst)
-{
-    dst.reserve(dst.size() + src.size());
-
-    std::copy(src.begin(), src.end(), std::back_inserter(dst));
-}
-
-template <typename Values>
-void move_values(Values& src, Values& dst)
-{
-    if (dst.empty())
-        dst = std::move(src);
-    else {
-        typedef typename Values::iterator iterator;
-
-        dst.reserve(dst.size() + src.size());
-
-        for (iterator it = src.begin(), et = src.end(); it != et; ++it)
-            dst.emplace_back(std::move(*it));
-
-        src.clear();
-    }
-}
 
 template <typename Value>
 struct PortList
@@ -106,6 +85,11 @@ struct PortList
     bool exists(const std::string& name) const
     {
         return accessor.find(name) != accessor.end();
+    }
+
+    void add_ports(std::size_t number)
+    {
+        ports.resize(ports.size() + number);
     }
 
     size_type add_port()
@@ -202,6 +186,41 @@ private:
     std::vector <Values> ports;
     std::map <std::string, size_type> accessor;
 };
+
+template <typename Values>
+void copy_values(const Values& src, Values& dst)
+{
+    dst.reserve(dst.size() + src.size());
+
+    std::copy(src.begin(), src.end(), std::back_inserter(dst));
+}
+
+template <typename Value>
+void copy_port_values(const PortList <Value>& src, PortList <Value>& dst)
+{
+    if (src.size() != dst.size())
+        throw model_port_error();
+
+    for (std::size_t i = 0, e = src.size(); i != e; ++i)
+        copy_values(src[i], dst[i]);
+}
+
+template <typename Values>
+void move_values(Values& src, Values& dst)
+{
+    if (dst.empty())
+        dst = std::move(src);
+    else {
+        typedef typename Values::iterator iterator;
+
+        dst.reserve(dst.size() + src.size());
+
+        for (iterator it = src.begin(), et = src.end(); it != et; ++it)
+            dst.emplace_back(std::move(*it));
+
+        src.clear();
+    }
+}
 
 }
 

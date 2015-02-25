@@ -91,6 +91,15 @@ struct Model
         , ctx(ctx)
     {}
 
+    Model(const Context &ctx, std::size_t input_size, std::size_t output_size)
+        : x(input_size)
+        , y(output_size)
+        , tl(Time::negative_infinity())
+        , tn(Time::infinity())
+        , parent(nullptr)
+        , ctx(ctx)
+    {}
+
     Model(const Context &ctx,
           std::initializer_list <std::string> lst_x,
           std::initializer_list <std::string> lst_y)
@@ -134,6 +143,10 @@ struct ComposedModel : Model <Time, Value>
         : Model <Time, Value>(ctx)
     {}
 
+    ComposedModel(const Context& ctx, std::size_t input_size, std::size_t output_size)
+        : Model <Time, Value>(ctx, input_size, output_size)
+    {}
+
     ComposedModel(const Context &ctx,
                   std::initializer_list <std::string> lst_x,
                   std::initializer_list <std::string> lst_y)
@@ -164,6 +177,10 @@ struct AtomicModel : Model <Time, Value>
 
     AtomicModel(const Context& ctx)
         : Model <Time, Value>(ctx)
+    {}
+
+    AtomicModel(const Context& ctx, std::size_t input_size, std::size_t output_size)
+        : Model <Time, Value>(ctx, input_size, output_size)
     {}
 
     AtomicModel(const Context& ctx,
@@ -341,19 +358,24 @@ struct CoupledModel : ComposedModel <Time, Value>
 
     CoupledModel(const Context& ctx)
         : ComposedModel <Time, Value>(ctx)
-	  , policy(ctx->get_thread_number())
+        , policy(ctx->get_thread_number())
+    {}
+
+    CoupledModel(const Context& ctx, std::size_t input_size, std::size_t output_size)
+        : ComposedModel <Time, Value>(ctx, input_size, output_size)
+        , policy(ctx->get_thread_number())
     {}
 
     CoupledModel(const Context& ctx, unsigned thread_number)
         : ComposedModel <Time, Value>(ctx)
-	  , policy(thread_number)
+        , policy(thread_number)
     {}
 
     CoupledModel(const Context& ctx,
                  std::initializer_list <std::string> lst_x,
                  std::initializer_list <std::string> lst_y)
         : ComposedModel <Time, Value>(ctx, lst_x, lst_y)
-	  , policy(ctx->get_thread_number())
+        , policy(ctx->get_thread_number())
     {}
 
     CoupledModel(const Context& ctx,
@@ -361,7 +383,7 @@ struct CoupledModel : ComposedModel <Time, Value>
                  std::initializer_list <std::string> lst_x,
                  std::initializer_list <std::string> lst_y)
         : ComposedModel <Time, Value>(ctx, lst_x, lst_y)
-	  , policy(thread_number)
+        , policy(thread_number)
     {}
 
     virtual ~CoupledModel()
