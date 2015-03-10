@@ -30,8 +30,9 @@
 #include <memory>
 #include <unordered_map>
 #include <string>
-#include <boost/any.hpp>
 #include <vle/utils.hpp>
+#include <boost/any.hpp>
+#include <boost/optional.hpp>
 
 namespace vle {
 
@@ -62,6 +63,16 @@ template <typename T>
 
         return boost::any_cast <T>(&it->second);
     }
+
+template <typename T>
+boost::optional <T> get(const Common &c, const std::string &name)
+{
+    auto it = c.find(name);
+    if (it == c.end())
+        return boost::none;
+    else
+        return boost::any_cast <T>(it->second);
+}
 
 typedef std::shared_ptr <Common> CommonPtr;
 
