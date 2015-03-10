@@ -60,6 +60,23 @@ void copy_values(const Values& src, Values& dst)
     std::copy(src.begin(), src.end(), std::back_inserter(dst));
 }
 
+template <typename Values>
+void move_values(Values& src, Values& dst)
+{
+    if (dst.empty())
+        dst = std::move(src);
+    else {
+        typedef typename Values::iterator iterator;
+
+        dst.reserve(dst.size() + src.size());
+
+        for (iterator it = src.begin(), et = src.end(); it != et; ++it)
+            dst.emplace_back(std::move(*it));
+
+        src.clear();
+    }
+}
+
 template <typename Value>
 struct PortList
 {
