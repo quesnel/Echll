@@ -53,21 +53,21 @@ struct Model
 
     Model(const Context &ctx)
         : ctx(ctx)
-          , tl(-Time::infinity)
-          , tn(Time::infinity)
-          , parent(nullptr)
+        , tl(Time::negative_infinity())
+        , tn(Time::infinity())
+        , parent(nullptr)
     {}
 
     Model(const Context &ctx,
           std::initializer_list <std::string> lst_x,
           std::initializer_list <std::string> lst_y)
         : ctx(ctx)
-          , x(lst_x)
-          , y(lst_y)
-          , tl(-Time::infinity)
-          , tn(Time::infinity)
-          , e(0)
-          , parent(nullptr)
+        , x(lst_x)
+        , y(lst_y)
+        , tl(Time::negative_infinity())
+        , tn(Time::infinity())
+        , e(0)
+        , parent(nullptr)
     {}
 
     virtual ~Model()

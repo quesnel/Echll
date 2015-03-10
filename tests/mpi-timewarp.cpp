@@ -36,7 +36,7 @@ struct Infinity
     static constexpr T positive = std::numeric_limits<T>::infinity();
 };
 
-typedef vle::Time <double, Infinity<double>> MyTime;
+typedef vle::DoubleTime MyTime;
 typedef int MyValue;
 typedef vle::dsde::Engine <MyTime, MyValue> MyDSDE;
 

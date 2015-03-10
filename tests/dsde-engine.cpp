@@ -37,18 +37,12 @@
 #include <random>
 #include <limits>
 #include <vle/vle.hpp>
+#include <vle/utils.hpp>
 #include <vle/generic.hpp>
 #include <boost/format.hpp>
 #include <list>
 
-template <typename T>
-struct Infinity
-{
-    static constexpr T negative = -std::numeric_limits<T>::infinity();
-    static constexpr T positive = std::numeric_limits<T>::infinity();
-};
-
-typedef vle::Time <double, Infinity<double>> MyTime;
+typedef vle::DoubleTime MyTime;
 typedef std::string MyValue;
 typedef vle::dsde::Engine <MyTime, MyValue> MyDSDE;
 
@@ -82,7 +76,8 @@ struct ModelB : AtomicModel
         return 0.;
     }
 
-    virtual double delta(const double&) override final
+    virtual double delta(const double&, const double&,
+                         const double&) override final
     {
         i++;
         return .1;
@@ -117,7 +112,7 @@ struct ModelA : AtomicModel
         return 0.;
     }
 
-    virtual double delta(const double&) override final
+    virtual double delta(const double&, const double&, const double&) override final
     {
         i++;
         return 1.;
@@ -150,17 +145,20 @@ struct Counter : AtomicModel
     virtual double init(const vle::Common&, const double&) override final
     {
         i = 0;
-        return Infinity<double>::positive;
+        return MyTime::infinity();
     }
 
-    virtual double delta(const double&) override final
+    virtual double delta(const double&, const double&,
+                         const double&) override final
     {
-        vle_dbg(ctx, "Counter make a delta with %" PRIuMAX " message(s)"
-                    " so, number of received message is %u",
-                    (std::uintmax_t)x[0].size(), i);
+        vle_dbg(ctx,
+                "Counter make a delta with %" PRIuMAX " message(s)"
+                " so, number of received message is %u",
+                (std::uintmax_t)x[0].size(), i);
 
         i += x[0].size();
-        return Infinity<double>::positive;
+
+        return MyTime::infinity();
     }
 
     virtual void lambda() const override final
@@ -203,7 +201,7 @@ struct Generator : AtomicModel
         return timestep; // return std::abs(dist(prng));
     }
 
-    virtual double delta(const double&) override final
+    virtual double delta(const double&, const double&, const double&) override final
     {
         vle_dbg(ctx, "Generator %p delta", this);
         i++;
@@ -233,9 +231,8 @@ struct MyModel : AtomicModel
         return 0.0;
     }
 
-    virtual double delta(const double& e) override final
+    virtual double delta(const double&, const double&, const double&) override final
     {
-        (void)e;
         return 1;
     }
 
@@ -825,7 +822,7 @@ struct MyExecutive : ExecutiveMono
     /* TODO segfault when resize: lost the vle::Child* in vle::HeapElement. */
     // std::vector <MyGenNetwork> generators;
     MyCptNetwork <Parent> cpt;
-    double previous, next;
+    double next;
 
     MyExecutive(const vle::Context& ctx)
         : ExecutiveMono(ctx), cpt(ctx)
@@ -844,19 +841,16 @@ struct MyExecutive : ExecutiveMono
     {
         generators.clear();
 
-        previous = t;
         next = t + 1;
 
-        return next - previous;
+        return next - t;
     }
 
-    virtual double delta(const double &e) override final
+    virtual double delta(const double &, const double &r, const double& t) override final
     {
-        previous += e;
-
-        if (next == previous) {
+        if (r == 0.0) {
             vle_dbg(ExecutiveMono::ctx, "MyExecutive: previous == %f", next);
-            if (previous == 5.) {
+            if (vle::is_almost_equal <double>(5.0, t)) {
                 vle_dbg(ExecutiveMono::ctx, "MyExecutive: destroy a model");
                 erase(&generators.back());
                 generators.pop_back();
@@ -865,10 +859,12 @@ struct MyExecutive : ExecutiveMono
                 generators.emplace_back(ctx, 1u);
                 insert(&generators.back());
             }
-            next++;
+            next = t + 1;
+
+            return 1;
         }
 
-        return next - previous;
+        return r;
     }
 
     virtual void lambda() const override final

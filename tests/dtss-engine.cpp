@@ -33,19 +33,12 @@
 #include <vector>
 #include <iostream>
 #include <random>
-#include <limits>
 #include <vle/vle.hpp>
 #include <vle/dtss.hpp>
 #include <boost/format.hpp>
 #include <list>
 
-template < typename T > struct Infinity
-{
-    static constexpr T negative = -std::numeric_limits<T>::infinity();
-    static constexpr T positive = std::numeric_limits<T>::infinity();
-};
-
-typedef vle::Time <int, Infinity<int>> MyTime;
+typedef vle::Time <vle::StandardConstants <int>> MyTime;
 
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"

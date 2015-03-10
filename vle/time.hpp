@@ -27,34 +27,92 @@
 #ifndef __VLE_KERNEL_TIME_HPP__
 #define __VLE_KERNEL_TIME_HPP__
 
+#include <limits>
+
 namespace vle {
 
 /**
- * @class Time
- * @brief Time
+ * @class Time The reprensetation of the simulated time in model.
  *
- * The template parameter Type is the type to represent the time is the
- * simulation. The template parameter Infinity defines a structure with
- * constant representation of positive and negative infinity.
- *
- * @example
- * template <typename T>
- * struct Infinity
- * {
- *   static constexpr T negative = -std::numeric_limits<T>::infinity();
- *   static constexpr T positive = std::numeric_limits<T>::infinity();
- * };
- *
- * typedef vle::Time <double, Infinity<double>> MyTime;
- * @endexample
+ * The template parameter T defines (i) the type of time and (ii) several
+ * constants to be use. The type and constants are used in many place into
+ * kernel and user land.
  */
-template <typename Type, typename Infinity>
+template <typename T>
 struct Time
 {
-    typedef Type time_type;
-    static constexpr Type negative = Infinity::negative;
-    static constexpr Type infinity = Infinity::positive;
+    typedef typename T::time_type time_type;
+
+    static constexpr time_type negative_infinity()
+    {
+        return T::negative_infinity();
+    }
+
+    static constexpr time_type infinity()
+    {
+        return T::infinity();
+    }
+
+    static constexpr time_type null()
+    {
+        return T::null();
+    }
+
+    static constexpr bool is_negative_infinity(const time_type &t)
+    {
+        return T::is_negative_infinity(t);
+    }
+
+    static constexpr bool is_infinity(const time_type &t)
+    {
+        return T::is_infinity(t);
+    }
+
+    static constexpr bool is_null(const time_type &t)
+    {
+        return T::is_null(t);
+    }
 };
+
+template <typename Type>
+struct StandardConstants
+{
+    typedef Type time_type;
+
+    static constexpr time_type negative_infinity()
+    {
+        return -std::numeric_limits <time_type>::infinity();
+    }
+
+    static constexpr time_type infinity()
+    {
+        return std::numeric_limits <time_type>::infinity();
+    }
+
+    static constexpr time_type null()
+    {
+        return time_type(0);
+    }
+
+    static constexpr bool is_negative_infinity(const time_type &t)
+    {
+        return t == StandardConstants <Type>::negative_infinity();
+    }
+
+    static constexpr bool is_infinity(const time_type &t)
+    {
+        return t == StandardConstants <Type>::infinity();
+    }
+
+    static constexpr bool is_null(const time_type &t)
+    {
+        return t == StandardConstants <Type>::null();
+    }
+};
+
+using FloatTime = Time <StandardConstants <float>>;
+using DoubleTime = Time <StandardConstants <double>>;
+using LongDoubleTime = Time <StandardConstants <long double>>;
 
 }
 

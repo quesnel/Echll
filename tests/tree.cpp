@@ -90,14 +90,7 @@ void Assert(bool is_true)
         throw std::logic_error("Assertion failed");
 }
 
-template <typename T>
-struct Infinity
-{
-    static constexpr T negative = -std::numeric_limits<T>::infinity();
-    static constexpr T positive = std::numeric_limits<T>::infinity();
-};
-
-typedef vle::Time <double, Infinity<double>> MyTime;
+typedef vle::DoubleTime MyTime;
 typedef double MyValue;
 typedef vle::dsde::Engine <MyTime, MyValue> MyDSDE;
 
@@ -137,7 +130,7 @@ struct TopPixel : AtomicModel
         return 0.0;
     }
 
-    virtual double delta(const double&) override final
+    virtual double delta(const double&, const double&, const double&) override final
     {
         vle_dbg(ctx, "TopPixel %s: delta", m_name.c_str());
 
@@ -168,8 +161,8 @@ struct NormalPixel : AtomicModel
     NormalPixel(const vle::Context& ctx)
         : AtomicModel(ctx, {"0"}, {"0"})
         , m_value(0.0)
-        , m_current_time(Infinity <double>::negative)
-        , m_last_time(Infinity <double>::negative)
+        , m_current_time(MyTime::negative_infinity())
+        , m_last_time(MyTime::infinity())
         , m_neighbour_number(0)
         , m_received(0)
         , m_last_received(0)
@@ -186,19 +179,23 @@ struct NormalPixel : AtomicModel
 
         m_value = 0.0;
         m_current_time = t;
-        m_last_time = Infinity <double>::negative;
+        m_last_time = MyTime::negative_infinity();
         m_name = boost::any_cast <std::string>(common.at("name"));
         m_neighbour_number = boost::any_cast <unsigned int>(common.at("neighbour_number"));
         m_received = 0;
         m_last_received = 0;
         m_phase = WAIT;
 
-        return Infinity <double>::positive;
+        return MyTime::infinity();
     }
 
-    virtual double delta(const double& time) override final
+    virtual double delta(const double& e, const double& remaining,
+                         const double& time) override final
     {
-        m_current_time += time;
+        (void)e;
+        (void)remaining;
+
+        m_current_time = time;
         vle_dbg(ctx, "NormalPixel %s: delta (time=%f)", m_name.c_str(), time);
 
         if (x.empty())
@@ -207,7 +204,7 @@ struct NormalPixel : AtomicModel
             dext(m_current_time);
 
         if (m_phase == WAIT)
-            return Infinity <double>::positive;
+            return MyTime::infinity();
 
         return 0.0;
     }

@@ -29,14 +29,7 @@
 #include <iostream>
 #include <cstdlib>
 
-template <typename T>
-struct Infinity
-{
-    static constexpr T negative = -std::numeric_limits<T>::infinity();
-    static constexpr T positive = std::numeric_limits<T>::infinity();
-};
-
-typedef vle::Time <double, Infinity<double>> MyTime;
+typedef vle::DoubleTime MyTime;
 typedef int MyValue;
 typedef vle::dsde::Engine <MyTime, MyValue> MyDSDE;
 
@@ -55,9 +48,9 @@ struct Counter : AtomicModel
     double current_time;
 
     Counter(const vle::Context& ctx)
-        : AtomicModel(ctx, {"in"}, {"out"}),
-        is_rank_0(false),
-        i(0)
+        : AtomicModel(ctx, {"in"}, {"out"})
+        , is_rank_0(false)
+        , i(0)
     {}
 
     virtual ~Counter()
@@ -69,18 +62,20 @@ struct Counter : AtomicModel
             current_time = time;
 
         i = 0;
-        return Infinity<double>::positive;
+
+        return MyTime::infinity();
     }
 
-    virtual double delta(const double& time) override final
+    virtual double delta(const double& , const double &,
+                         const double &t) override final
     {
         if (is_rank_0)
-            current_time += time;
+            current_time = t;
 
         double ret;
 
         if (x.empty())
-            ret = Infinity<double>::positive;
+            ret = MyTime::infinity();
         else {
             ret = std::numeric_limits <double>::epsilon();
             i += x[0].size();
@@ -113,7 +108,8 @@ struct Generator : AtomicModel
         return timestep;
     }
 
-    virtual double delta(const double&) override final
+    virtual double delta(const double&, const double&,
+                         const double&) override final
     {
         return timestep;
     }
@@ -130,10 +126,11 @@ struct Network : CoupledModel
     Counter cpt;
 
     Network(const vle::Context& ctx) :
-        CoupledModel(ctx, {}, {"out"}), cpt(ctx)
-        {
-            gens.emplace_back(ctx);
-        }
+        CoupledModel(ctx, {}, {"out"})
+        , cpt(ctx)
+    {
+        gens.emplace_back(ctx);
+    }
 
     virtual ~Network() {}
 
@@ -149,7 +146,8 @@ struct Network : CoupledModel
         return cs;
     }
 
-    virtual void post(const UpdatedPort &out, UpdatedPort &in) const override final
+    virtual void post(const UpdatedPort &out,
+                      UpdatedPort &in) const override final
     {
         (void)out;
         assert(out.size() == 0 or out.size() == 1);
@@ -174,8 +172,8 @@ struct RootNetwork : CoupledModelMono
 
     RootNetwork(const vle::Context& ctx)
         : CoupledModelMono(ctx)
-          , c(ctx)
-          , cpt(ctx)
+        , c(ctx)
+        , cpt(ctx)
     {
         boost::mpi::communicator com;
 
@@ -189,7 +187,8 @@ struct RootNetwork : CoupledModelMono
     virtual ~RootNetwork()
     {}
 
-    virtual CoupledModelMono::children_t children(const vle::Common&) override final
+    virtual CoupledModelMono::children_t children(
+        const vle::Common&) override final
     {
         CoupledModelMono::children_t ret;
 
@@ -202,7 +201,8 @@ struct RootNetwork : CoupledModelMono
         return ret;
     }
 
-    virtual void post(const UpdatedPort &out, UpdatedPort &in) const override final
+    virtual void post(const UpdatedPort &out,
+                      UpdatedPort &in) const override final
     {
         if (!out.empty()) {
             in.emplace(&cpt);

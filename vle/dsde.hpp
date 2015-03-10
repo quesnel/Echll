@@ -85,15 +85,21 @@ struct Model
     typedef Value value_type;
 
     Model(const Context &ctx)
-        : tl(-Time::infinity), tn(Time::infinity), parent(nullptr),
-        ctx(ctx)
+        : tl(Time::negative_infinity())
+        , tn(Time::infinity())
+        , parent(nullptr)
+        , ctx(ctx)
     {}
 
     Model(const Context &ctx,
           std::initializer_list <std::string> lst_x,
           std::initializer_list <std::string> lst_y)
-        : x(lst_x), y(lst_y), tl(-Time::infinity), tn(Time::infinity),
-          parent(nullptr), ctx(ctx)
+        : x(lst_x)
+        , y(lst_y)
+        , tl(Time::negative_infinity())
+        , tn(Time::infinity())
+        , parent(nullptr)
+        , ctx(ctx)
     {}
 
     virtual ~Model()
@@ -149,8 +155,11 @@ struct AtomicModel : Model <Time, Value>
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 
-    virtual time_type init(const vle::Common& common, const time_type& time) = 0;
-    virtual time_type delta(const time_type& time) = 0;
+    virtual time_type init(const vle::Common& common,
+                           const time_type& time) = 0;
+    virtual time_type delta(const time_type &elapsed,
+                            const time_type &remaining,
+                            const time_type &time) = 0;
     virtual void lambda() const = 0;
 
     AtomicModel(const Context& ctx)
@@ -181,7 +190,9 @@ struct AtomicModel : Model <Time, Value>
         if (time < Model <Time, Value>::tn and Model <Time, Value>::x.empty())
             return;
 
-        Model <Time, Value>::tn = time + delta(time - Model <Time, Value>::tl);
+        Model <Time, Value>::tn = time + delta(time - Model <Time, Value>::tl,
+                                               Model <Time, Value>::tn - time,
+                                               time);
         Model <Time, Value>::tl = time;
         Model <Time, Value>::x.clear();
     }
@@ -467,19 +478,25 @@ struct Executive : ComposedModel <Time, Value>
 
     virtual children_t children(const vle::Common& common) = 0;
     virtual time_type init(const time_type& time) = 0;
-    virtual time_type delta(const time_type& time) = 0;
+    virtual time_type delta(const time_type &elapsed,
+                            const time_type &remaining,
+                            const time_type &time) = 0;
     virtual void lambda() const = 0;
     virtual void post(const UpdatedPort <Time, Value> &y,
                       UpdatedPort <Time, Value> &x) const = 0;
 
     Executive(const vle::Context& ctx)
         : ComposedModel <Time, Value>(ctx)
+        , chi_tl(Time::negative_infinity())
+        , chi_tn(Time::infinity())
     {}
 
     Executive(const vle::Context& ctx,
               std::initializer_list <std::string> lst_x,
               std::initializer_list <std::string> lst_y)
         : ComposedModel <Time, Value>(ctx, lst_x, lst_y)
+        , chi_tl(Time::negative_infinity())
+        , chi_tn(Time::infinity())
     {}
 
     Executive(const vle::Context& ctx,
@@ -487,9 +504,11 @@ struct Executive : ComposedModel <Time, Value>
               std::initializer_list <std::string> lst_y,
               std::initializer_list <std::string> chi_lst_x,
               std::initializer_list <std::string> chi_lst_y)
-        : ComposedModel <Time, Value>(ctx, lst_x, lst_y),
-        chi_tl(-Time::infinity), chi_tn(Time::infinity), chi_x(chi_lst_x),
-        chi_y(chi_lst_y)
+        : ComposedModel <Time, Value>(ctx, lst_x, lst_y)
+        , chi_tl(Time::negative_infinity())
+        , chi_tn(Time::infinity())
+        , chi_x(chi_lst_x)
+        , chi_y(chi_lst_y)
     {}
 
     virtual ~Executive()
@@ -580,8 +599,9 @@ struct Executive : ComposedModel <Time, Value>
 
         if (have_chi) {
             time_type e = time - chi_tl;
+            time_type r = chi_tn - time;
             chi_tl = time;
-            chi_tn = time + delta(e);
+            chi_tn = time + delta(e, r, time);
             Model <Time, Value>::x.clear();
             (*chi_heapid).tn = chi_tn;
             heap.update(chi_heapid);
