@@ -106,7 +106,7 @@ inline std::string stringf(const char* format, ...)
         else if (static_cast <std::size_t>(sz) < buffer.size())
             return std::move(std::string(buffer.data(), buffer.size()));
         else
-            buffer.resize(sz + 1);
+            buffer.resize(sz + 1u);
     }
 }
 
