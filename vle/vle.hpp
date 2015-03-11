@@ -106,6 +106,46 @@ struct SimulationDbg
     }
 };
 
+template <typename Engine>
+struct SimulationStep
+{
+    typedef Engine engine_type;
+    typedef typename Engine::time_type time_type;
+    typedef typename Engine::value_type value_type;
+    typedef typename Engine::model_type model_type;
+
+    engine_type& engine;
+    model_type& model;
+    Context ctx;
+    time_type end;
+
+    SimulationStep(const Context& ctx, engine_type& engine, model_type& model)
+        : engine(engine)
+        , model(model)
+        , ctx(ctx)
+        , end(Engine::time_traits::infinity())
+    {}
+
+    time_type init(const time_type &begin)
+    {
+        return engine.pre(model, begin);
+    }
+
+    bool step(time_type& current, const time_type &end_)
+    {
+        end = end_;
+
+        current = engine.run(model, current);
+
+        return current < end;
+    }
+
+    void finish()
+    {
+        engine.post(model, end);
+    }
+};
+
 }
 
 #endif

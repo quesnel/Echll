@@ -79,8 +79,7 @@ set(Echll_CORE_HDRS vle/common.hpp vle/context.hpp vle/devs.hpp
   vle/mpi-timewarp.hpp vle/port.hpp vle/time.hpp vle/utils.hpp
   vle/vle.hpp)
 
-install(FILES ${Echll_CORE_HDRS}
-  DESTINATION include/Echll-${Echll_STABLEVERSION}/vle)
+install(DIRECTORY vle DESTINATION include/Echll-${Echll_STABLEVERSION}/vle)
 
 ### # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 ## Testing

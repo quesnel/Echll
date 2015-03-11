@@ -24,60 +24,128 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
-
-#include <string>
-#include <cmath>
-#include <vector>
 #include <iostream>
-#include <random>
-#include <limits>
 #include <vle/vle.hpp>
-#include <vle/devs.hpp>
+#include <vle/devs/devs.hpp>
+#include <vle/devs/devs-debug.hpp>
 #include <boost/format.hpp>
-#include <list>
-
-template < typename T > struct Infinity
-{
-    static constexpr T negative = -std::numeric_limits<T>::infinity();
-    static constexpr T positive = std::numeric_limits<T>::infinity();
-};
 
 typedef vle::DoubleTime MyTime;
-typedef vle::devs::Engine <MyTime, std::string> MyDEVS;
+typedef std::string MyValue;
+typedef vle::devs::Engine <MyTime, MyValue> MyDEVS;
 
-using UpdatedPort = vle::devs::UpdatedPort <MyTime, std::string>;
-using AtomicModel = vle::devs::AtomicModel <MyTime, std::string>;
-using CoupledModel = vle::devs::CoupledModel <MyTime, std::string>;
+using Model = vle::devs::Model <MyTime, MyValue>;
+using UpdatedPort = vle::devs::UpdatedPort <MyTime, MyValue>;
+using AtomicModel = vle::devs::AtomicModel <MyTime, MyValue>;
+using CoupledModel = vle::devs::CoupledModel <MyTime, MyValue>;
 
-struct ModelA : AtomicModel
+struct Generator : AtomicModel
 {
-    ModelA(const vle::Context &ctx)
-        : AtomicModel(ctx, {"in"}, {"out"})
+    Generator(const vle::Context &ctx)
+        : AtomicModel(ctx, 0u, 1u)
     {}
 
-    virtual ~ModelA()
+    virtual ~Generator()
     {}
 
     virtual double ta() const override final
     {
-        return 0.0;
+        return 1.0;
+    }
+
+    virtual void lambda() const override final
+    {
+        y[0] = { "coucou" };
+    }
+
+    virtual void internal() override final
+    {
+    }
+
+    virtual void external(const double& time) override final
+    {
+        (void)time;
+    }
+};
+
+struct Counter : AtomicModel
+{
+    unsigned long int msg;
+
+    Counter(const vle::Context &ctx)
+        : AtomicModel(ctx, 1u, 0u)
+        , msg(0u)
+    {}
+
+    virtual ~Counter()
+    {}
+
+    virtual double ta() const override final
+    {
+        return MyTime::infinity();
     }
 
     virtual void lambda() const override final
     {
     }
 
-    virtual void internal() const override final
+    virtual void internal() override final
     {
     }
 
-    virtual void external(const double& time) const override final
+    virtual void external(const double& time) override final
     {
         (void)time;
+
+        msg += x[0].size();
     }
+};
+
+struct Network : CoupledModel
+{
+    Generator gen1, gen2;
+    Counter counter;
+
+    Network(const vle::Context &ctx)
+        : CoupledModel(ctx, 0u, 0u)
+        , gen1(ctx)
+        , gen2(ctx)
+        , counter(ctx)
+    {}
+
+    virtual ~Network()
+    {}
+
+    virtual CoupledModel::children_t children()
+    {
+        return { &gen1, &gen2, &counter };
+    }
+
+    virtual void post(const Model& out, UpdatedPort &in) const
+    {
+        (void)out;
+
+        if (not gen1.y.empty()) {
+            vle::copy_values(gen1.y[0], counter.x[0]);
+            in.emplace(&counter);
+        }
+
+        if (not gen2.y.empty()) {
+            vle::copy_values(gen2.y[0], counter.x[0]);
+            in.emplace(&counter);
+        }
+    }
+
+    virtual std::size_t select(const std::vector <Model*>& models) const
+    {
+        /* Alway generator have the priority */
+        for (std::size_t i = 0, e = models.size(); i != e; ++i)
+            if (models[i] == &gen1 or models[i] == &gen2)
+                return i;
+
+        return 0u;
+    }
+
 };
 
 #define CATCH_CONFIG_MAIN
@@ -85,11 +153,21 @@ struct ModelA : AtomicModel
 
 TEST_CASE("engine/devs/model_a", "run")
 {
-    //MyDEVS devs_engine;
-    //ModelA model;
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
+    MyDEVS devs_engine;
+    Network model(ctx);
 
-    //vle::Simulation <MyDEVS> sim(devs_engine, model);
-    //double final_date = sim.run(0.0, 10.0);
+    vle::SimulationStep <MyDEVS> sim(ctx, devs_engine, model);
 
-    //REQUIRE(final_date == 10.0);
+    double current = sim.init(0.0);
+
+    std::cout << "Init:\n" << model << '\n';
+
+    while (sim.step(current, 10.0))
+        std::cout << current << " " << model << "\n";
+
+    sim.finish();
+
+    /* We need to receive 9 * 2 messages since simulation stops at 10.0. */
+    REQUIRE(model.counter.msg == 18u);
 }
