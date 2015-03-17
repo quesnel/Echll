@@ -25,7 +25,7 @@
  */
 
 #include <vle/vle.hpp>
-#include <vle/generic.hpp>
+#include <vle/dsde/generic.hpp>
 #include <sstream>
 #include <numeric>
 

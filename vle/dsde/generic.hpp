@@ -27,7 +27,7 @@
 #ifndef __VLE_KERNEL_GENERIC_HPP__
 #define __VLE_KERNEL_GENERIC_HPP__
 
-#include <vle/dsde.hpp>
+#include <vle/dsde/dsde.hpp>
 #include <vle/utils.hpp>
 #include <fstream>
 #include <memory>

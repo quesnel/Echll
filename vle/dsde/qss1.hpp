@@ -27,7 +27,7 @@
 #ifndef __VLE_KERNEL_DSDE_QSS1_HPP__
 #define __VLE_KERNEL_DSDE_QSS1_HPP__
 
-#include <vle/dsde.hpp>
+#include <vle/dsde/dsde.hpp>
 #include <valarray>
 
 namespace vle { namespace dsde { namespace qss1 {

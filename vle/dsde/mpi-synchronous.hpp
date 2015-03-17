@@ -32,7 +32,7 @@
 #include <vle/port.hpp>
 #include <vle/utils.hpp>
 #include <vle/heap.hpp>
-#include <vle/dsde.hpp>
+#include <vle/dsde/dsde.hpp>
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <stdexcept>

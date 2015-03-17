@@ -24,10 +24,6 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
-
 #include <string>
 #include <cmath>
 #include <chrono>
@@ -38,7 +34,8 @@
 #include <limits>
 #include <vle/vle.hpp>
 #include <vle/utils.hpp>
-#include <vle/generic.hpp>
+#include <vle/dsde/generic.hpp>
+#include <vle/dsde/dsde-debug.hpp>
 #include <boost/format.hpp>
 #include <list>
 
@@ -1357,6 +1354,8 @@ TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network-mono", "run")
 
     double final_date = sim.run(0.0, 10);
     REQUIRE(final_date == 10.0);
+
+    std::cout << model << "\n";
 
     std::string result = model.observation();
     REQUIRE(result == "36 9 9 36 9 9 36 9 9 36 9 9");

@@ -24,10 +24,10 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_AQSS_HPP__
-#define __VLE_KERNEL_AQSS_HPP__
+#ifndef __VLE_KERNEL_DSDE_AQSS_HPP__
+#define __VLE_KERNEL_DSDE_AQSS_HPP__
 
-#include <vle/dsde.hpp>
+#include <vle/dsde/dsde.hpp>
 
 namespace vle { namespace dsde {
 

@@ -24,8 +24,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DSDE_HPP__
-#define __VLE_KERNEL_DSDE_HPP__
+#ifndef __VLE_KERNEL_DSDE_DSDE_HPP__
+#define __VLE_KERNEL_DSDE_DSDE_HPP__
 
 #include <vle/context.hpp>
 #include <vle/common.hpp>
@@ -50,30 +50,11 @@ namespace dsde {
 template <typename Time>
 inline void check_transition_synchronization(typename Time::time_type tl,
                                              typename Time::time_type time,
-                                             typename Time::time_type tn)
-{
-#ifndef VLE_OPTIMIZE
-    if (!(tl <= time && time <= tn))
-        throw dsde_internal_error("Synchronization error");
-#else
-    (void)tl;
-    (void)time;
-    (void)tn;
-#endif
-}
+                                             typename Time::time_type tn);
 
 template <typename Time>
 inline void check_output_synchronization(typename Time::time_type tn,
-                                         typename Time::time_type time)
-{
-#ifndef VLE_OPTIMIZE
-    if (time != tn)
-        throw dsde_internal_error("Synchronization error");
-#else
-    (void)tn;
-    (void)time;
-#endif
-}
+                                         typename Time::time_type time);
 
 template <typename Time, typename Value>
 struct ComposedModel;
@@ -709,5 +690,7 @@ struct Engine
 };
 
 }}
+
+#include <vle/dsde/detail/dsde-implementation.hpp>
 
 #endif

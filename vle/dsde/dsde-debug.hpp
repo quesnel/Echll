@@ -24,24 +24,40 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DEVS_DEBUG_HPP__
-#define __VLE_KERNEL_DEVS_DEBUG_HPP__
+#ifndef __VLE_KERNEL_DSDE_DSDE_DEBUG_HPP__
+#define __VLE_KERNEL_DSDE_DSDE_DEBUG_HPP__
 
-#include <vle/devs/devs.hpp>
+#include <vle/dsde/dsde.hpp>
 #include <ostream>
 
-namespace vle { namespace devs {
+namespace vle { namespace dsde {
 
 template <typename Time, typename Value>
 std::ostream& operator<<(std::ostream& out, const AtomicModel <Time, Value>& model)
 {
-    out << "AtomicModel" << &model
+    out << "AtomicModel " << &model
         << ": X=" << model.x.size()
         << ", Y=" << model.y.size()
         << ", tl=" << model.tl
         << ", tn=" << model.tn
-        << ", e=" << model.e
         << ", parent=" << model.parent;
+
+    return out;
+}
+
+template <typename Time, typename Value>
+std::ostream& operator<<(std::ostream& out, const UpdatedPort <Time, Value>& lst)
+{
+    if (not lst.empty()) {
+        out << '(';
+
+        auto it = lst.cbegin();
+        do {
+            out << *it++;
+        } while (it != lst.cend());
+
+        out << ')';
+    }
 
     return out;
 }
@@ -49,13 +65,13 @@ std::ostream& operator<<(std::ostream& out, const AtomicModel <Time, Value>& mod
 template <typename Time, typename Value>
 std::ostream& operator<<(std::ostream& out, const CoupledModel <Time, Value>& model)
 {
-    out << "CoupledModel" << &model
+    out << "CoupledModel " << &model
         << ": X=" << model.x.size()
         << ", Y=" << model.y.size()
         << ", tl=" << model.tl
         << ", tn=" << model.tn
-        << ", e=" << model.e
         << ", parent=" << model.parent
+        << ", last_output_list=" << model.last_output_list
         << ", child=\n";
 
     auto copyheap = model.heap;
@@ -66,14 +82,63 @@ std::ostream& operator<<(std::ostream& out, const CoupledModel <Time, Value>& mo
         const auto *mdl = reinterpret_cast <const Model <Time, Value>*>((*it).element);
 
         out << "- node " << it->element
-            << " heapid " << &it->heapid
-            << " tn " << it->tn;
+            << " heapid " << &it->heapid << " tn " << it->tn;
 
         const auto *atom = dynamic_cast <const AtomicModel <Time, Value>*>(mdl);
         if (atom) {
             out << '\t' << *atom;
         } else {
-            out << '\t' << *(dynamic_cast <const CoupledModel <Time, Value>*>(mdl));
+            const auto *cpld = dynamic_cast <const CoupledModel <Time, Value>*>(mdl);
+            if (cpld) {
+                out << '\t' << *cpld;
+            } else {
+                out << '\t' << dynamic_cast <const Executive <Time, Value>*>(mdl);
+            }
+        }
+
+        out << '\n';
+    }
+
+    return out;
+}
+
+template <typename Time, typename Value>
+std::ostream& operator<<(std::ostream& out, const Executive <Time, Value>& model)
+{
+    out << "Executive " << &model
+        << ": chi_X=" << model.chi_x.size()
+        << ", chi_Y=" << model.chi_y.size()
+        << ", chi_tl=" << model.chi_tl
+        << ", chi_tn=" << model.chi_tn
+        << ": X=" << model.x.size()
+        << ", Y=" << model.y.size()
+        << ", tl=" << model.tl
+        << ", tn=" << model.tn
+        << ", e=" << model.e
+        << ", parent=" << model.parent
+        << ", last_output_list=" << model.last_output_list
+        << ", child=\n";
+
+    auto copyheap = model.heap;
+    auto it = copyheap.ordered_begin();
+    auto et = copyheap.ordered_end();
+
+    for (; it != et; ++it) {
+        const auto *mdl = reinterpret_cast <const Model <Time, Value>*>((*it).element);
+
+        out << "- node " << it->element
+            << " heapid " << &it->heapid << " tn " << it->tn;
+
+        const auto *atom = dynamic_cast <const AtomicModel <Time, Value>*>(mdl);
+        if (atom) {
+            out << '\t' << *atom;
+        } else {
+            const auto *cpld = dynamic_cast <const CoupledModel <Time, Value>*>(mdl);
+            if (cpld) {
+                out << '\t' << *cpld;
+            } else {
+                out << '\t' << dynamic_cast <const Executive <Time, Value>*>(mdl);
+            }
         }
 
         out << '\n';

@@ -24,8 +24,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <iostream>
-#include <vle/dsde.hpp>
+#include <vle/dsde/dsde.hpp>
 #include <vle/dsde/aqss.hpp>
 #include <vle/dsde/qss1.hpp>
 #include <vle/dsde/qss2.hpp>

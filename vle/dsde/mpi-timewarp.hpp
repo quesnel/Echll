@@ -24,15 +24,15 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_TIMEWARP_MPI_HPP__
-#define __VLE_KERNEL_TIMEWARP_MPI_HPP__
+#ifndef __VLE_KERNEL_DSDE_MPI_TIMEWARP_HPP__
+#define __VLE_KERNEL_DSDE_MPI_TIMEWARP_HPP__
 
 #include <vle/common.hpp>
 #include <vle/time.hpp>
 #include <vle/port.hpp>
 #include <vle/utils.hpp>
 #include <vle/heap.hpp>
-#include <vle/dsde.hpp>
+#include <vle/dsde/dsde.hpp>
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <stdexcept>
