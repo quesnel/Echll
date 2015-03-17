@@ -24,7 +24,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <vle/mpi-synchronous.hpp>
+#include <vle/dsde/mpi-synchronous.hpp>
 #include <vle/vle.hpp>
 #include <iostream>
 #include <cstdlib>

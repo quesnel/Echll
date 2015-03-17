@@ -257,6 +257,7 @@ struct TimeWarpSynchroniser
     typedef typename Time::type time_type;
     typedef Value value_type;
 
+    Context ctx;
     std::vector <TimeWarpChild <Time, Value>> children;
 
     boost::mpi::environment* environment;
@@ -267,11 +268,13 @@ struct TimeWarpSynchroniser
     std::uintmax_t id;
     int rank;
 
-    TimeWarpSynchroniser()
-        : environment(nullptr)
+    TimeWarpSynchroniser(const Context& ctx)
+        : ctx(ctx)
+        , environment(nullptr)
         , communicator(nullptr)
         , rank(-1)
-    {}
+    {
+    }
 
     constexpr bool is_initialized() const
     {
@@ -319,10 +322,10 @@ struct TimeWarpSynchroniser
                        static_cast <std::size_t>(children[i].processor),
                        i);
 
-            //vle::debugf("TimeWarpSynchronizer %d: child %" PRIuMAX
-                        //" prioriy %" PRIuMAX,
-                        //(std::uintmax_t)i,
-                        //(std::uintmax_t)children.processor);
+            vle_dbg(ctx,"TimeWarpSynchronizer %d: child %" PRIuMAX
+                    " prioriy %" PRIuMAX,
+                    (std::uintmax_t)i,
+                    (std::uintmax_t)children.processor);
         }
 
         std::random_shuffle(ret.begin(), ret.end());

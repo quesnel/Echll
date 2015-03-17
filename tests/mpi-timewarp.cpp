@@ -24,7 +24,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <vle/mpi-timewarp.hpp>
+#include <vle/dsde/mpi-timewarp.hpp>
 #include <vle/vle.hpp>
 #include <iostream>
 #include <cstdlib>
