@@ -27,7 +27,6 @@
 #ifndef __VLE_KERNEL_UTILS_HPP__
 #define __VLE_KERNEL_UTILS_HPP__
 
-#include <vle/export.hpp>
 #include <functional>
 #include <limits>
 #include <string>
@@ -44,7 +43,7 @@
 
 namespace vle {
 
-VLE_API std::string stringf(const char* format, ...) VLE_GCC_PRINTF(1, 2);
+std::string stringf(const char* format, ...) VLE_GCC_PRINTF(1, 2);
 
 /**
  * The @e ScopeExit structure permits the use of the @c Scope_Guard C++

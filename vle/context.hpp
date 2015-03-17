@@ -27,7 +27,6 @@
 #ifndef __VLE_KERNEL_CONTEXT_HPP__
 #define __VLE_KERNEL_CONTEXT_HPP__
 
-#include <vle/export.hpp>
 #include <boost/any.hpp>
 #include <algorithm>
 #include <functional>
