@@ -34,7 +34,7 @@
 #include <iostream>
 #include <random>
 #include <vle/vle.hpp>
-#include <vle/dtss.hpp>
+#include <vle/dtss/dtss.hpp>
 #include <boost/format.hpp>
 #include <list>
 

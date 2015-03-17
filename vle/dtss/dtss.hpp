@@ -24,8 +24,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DTSS_HPP__
-#define __VLE_KERNEL_DTSS_HPP__
+#ifndef __VLE_KERNEL_DTSS_DTSS_HPP__
+#define __VLE_KERNEL_DTSS_DTSS_HPP__
 
 #include <vle/time.hpp>
 #include <vle/port.hpp>
