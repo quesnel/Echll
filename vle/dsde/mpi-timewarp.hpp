@@ -97,10 +97,9 @@ struct DistantChild : Model <Time, Value>
     typedef typename Time::type time_type;
     typedef Value value_type;
 
-    boost::mpi::environment* environment;
-    boost::mpi::communicator* communicator;
+    boost::mpi::communicator communicator;
     std::uintmax_t id;
-    int rank; // rank of distant @e TimeWarpSynchroniser.
+    int rank; // rank of distant @e model
 
     DistantChild()
         : Model <Time, Value>()
@@ -149,6 +148,22 @@ struct DistantChild : Model <Time, Value>
     {
         (void) time;
     }
+};
+
+template <typename Time, typename Value>
+struct DistantParent : ComposedModel <Time, Value>
+{
+    typedef typename Time::type time_type;
+    typedef Value value_type;
+
+    boost::mpi::communicatorr communicator;
+
+    DistantParent(const Context &ctx)
+        : CompledModel <Time, Value>(ctx)
+    {}
+
+    virtual ~DistantParent()
+    {}
 };
 
 template <typename Time, typename T>
@@ -251,6 +266,12 @@ struct TimeWarpChild
     }
 };
 
+/*
+ * @e TimeWarpSynchronizer:
+ * - stores TimeWarpChild (i.e. atomic, coupled or executive models or
+ *   distant models. These components do not have connection between them.
+ * - manages mpi isend/irecv/iprobe.
+ */
 template <typename Time, typename Value>
 struct TimeWarpSynchroniser
 {
@@ -260,105 +281,47 @@ struct TimeWarpSynchroniser
     Context ctx;
     std::vector <TimeWarpChild <Time, Value>> children;
 
-    boost::mpi::environment* environment;
-    boost::mpi::communicator* communicator;
-
+    boost::mpi::communicator communicator;
     time_type minimal_time;
-
-    std::uintmax_t id;
-    int rank;
 
     TimeWarpSynchroniser(const Context& ctx)
         : ctx(ctx)
-        , environment(nullptr)
-        , communicator(nullptr)
-        , rank(-1)
+        , minimum_time(Time::negative_infinity())
     {
-    }
-
-    constexpr bool is_initialized() const
-    {
-        return environment && communicator;
     }
 
     ~TimeWarpSynchroniser()
-    {}
-
-    std::vector <int>  initialize_child_processor()
     {
-        float sum = std::accumulate(children.cbegin(), children.cend(), 0.0f,
-                                    [](const auto& child)
-                                    {
-                                        return child.processor;
-                                    });
+    }
 
-        std::vector <float> reduce(children.size(), 0.0f);
-
-        std::transform(children.cbegin(), children.cend(),
-                       reduce.begin(),
-                       [&sum](const auto& child)
-                       {
-                           return child.processor / sum;
-                       });
-
-        float min = std::min_element(children.begin(), children.end(),
-                                     [](const auto& rhs, const auto& lhs)
-                                     {
-                                         return rhs.processor  < lhs.processor;
-                                     }) / sum;
-
-        std::vector <int> ret;
-        ret.reserve(children.size() * 100u);
-
-        for (std::size_t i = 0, e = children.size(); i != e; ++i) {
-            children[i].processor = children[i].processor / min;
-
-            if (children[i].processor < 1)
-                children[i].processor = 1.0f;
-            else if (children[i].processor > children[i].size() * 100.0f)
-                children[i].processor = children[i].size() * 100.0f;
-
-            ret.insert(ret.end(),
-                       static_cast <std::size_t>(children[i].processor),
-                       i);
-
-            vle_dbg(ctx,"TimeWarpSynchronizer %d: child %" PRIuMAX
-                    " prioriy %" PRIuMAX,
-                    (std::uintmax_t)i,
-                    (std::uintmax_t)children.processor);
-        }
-
-        std::random_shuffle(ret.begin(), ret.end());
-
-        return std::move(ret);
+    void run()
+    {
+        // TODO: starts global_virtual_time compuation thread
+        //       starts simulation thread
     }
 
     void run_global_virtual_time()
     {
-        if (!is_initialized())
-            return;
+        // TODO: get minimal_time from all TimeWarpSynchroniser and clear
+        // TimeWarpChild state history.
 
-        if (communicator->rank() == 0) {
-            // TODO sleep ?
-            //boost::mpi::all_reduce(*world,
-                                   //minimal_time,
-                                   //boost::mpi::minimum <time_type>());
+        // Perhaps store into the context the durection between to check
 
-            //boost::mpi::broadcast(*world,
-                                  //minimal_time,
-                                  //0);
-        }
+        time_type minimum;
 
+        boost::mpi::all_reduce(communicator,
+                               minimal_time,
+                               minimum,
+                               boost::mpi::minimum <time_type>());
+
+        for (auto& child : children)
+            children.clean_state_until(minimum);
     }
 
     void run_simulation()
     {
-        if (!is_initialized())
-            return;
-
         time_type time;
 
-        auto process = initialize_child_processor();
         for (auto it : children)
             it->start(vle::Common(), time);
 
