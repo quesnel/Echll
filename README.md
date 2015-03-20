@@ -1,6 +1,6 @@
 # Echll
 
-Copyright © 2014 INRA
+Copyright © 2014-15 INRA
 
 Gauthier Quesnel <gauthier.quesnel@toulouse.inra.fr>
 
