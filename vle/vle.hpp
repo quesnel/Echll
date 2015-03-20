@@ -36,6 +36,7 @@ template <typename Engine>
 struct Simulation
 {
     typedef Engine engine_type;
+    typedef typename Engine::time_format time_format;
     typedef typename Engine::time_type time_type;
     typedef typename Engine::value_type value_type;
     typedef typename Engine::model_type model_type;
@@ -65,6 +66,7 @@ template <typename Engine>
 struct SimulationDbg
 {
     typedef Engine engine_type;
+    typedef typename Engine::time_format time_format;
     typedef typename Engine::time_type time_type;
     typedef typename Engine::value_type value_type;
     typedef typename Engine::model_type model_type;
@@ -110,6 +112,7 @@ template <typename Engine>
 struct SimulationStep
 {
     typedef Engine engine_type;
+    typedef typename Engine::time_format time_format;
     typedef typename Engine::time_type time_type;
     typedef typename Engine::value_type value_type;
     typedef typename Engine::model_type model_type;

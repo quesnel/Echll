@@ -46,6 +46,7 @@ struct devs_internal_error : std::logic_error
 template <typename Time, typename Value>
 struct Model
 {
+    typedef Time time_format;
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 
@@ -79,6 +80,7 @@ struct Model
 template <typename Time, typename Value>
 struct AtomicModel : Model <Time, Value>
 {
+    typedef Time time_format;
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 
@@ -115,6 +117,7 @@ using UpdatedPort = std::set <const Model <Time, Value>*>;
 template <typename Time, typename Value>
 struct CoupledModel : Model <Time, Value>
 {
+    typedef Time time_format;
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 
@@ -150,7 +153,7 @@ struct CoupledModel : Model <Time, Value>
 template <typename Time, typename Value>
 struct Engine
 {
-    typedef Time time_traits;
+    typedef Time time_format;
     typedef typename Time::time_type time_type;
     typedef Value value_type;
     typedef Model <Time, Value> model_type;

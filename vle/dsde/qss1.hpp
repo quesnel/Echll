@@ -46,6 +46,7 @@ typedef std::function <
 template <typename Time, typename Value>
 struct Variable : AtomicModel <Time, Value>
 {
+    typedef Time time_format;
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 

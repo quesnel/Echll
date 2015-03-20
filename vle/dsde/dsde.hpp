@@ -62,6 +62,7 @@ struct ComposedModel;
 template <typename Time, typename Value>
 struct Model
 {
+    typedef Time time_format;
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 
@@ -117,6 +118,7 @@ using UpdatedPort = std::set <const Model <Time, Value>*>;
 template <typename Time, typename Value>
 struct ComposedModel : Model <Time, Value>
 {
+    typedef Time time_format;
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 
@@ -146,6 +148,7 @@ struct ComposedModel : Model <Time, Value>
 template <typename Time, typename Value>
 struct AtomicModel : Model <Time, Value>
 {
+    typedef Time time_format;
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 
@@ -205,6 +208,7 @@ struct AtomicModel : Model <Time, Value>
 template <typename Time, typename Value>
 struct TransitionPolicyDefault
 {
+    typedef Time time_format;
     typedef typename Time::time_type time_type;
 
     TransitionPolicyDefault()
@@ -232,6 +236,7 @@ struct TransitionPolicyDefault
 template <typename Time, typename Value>
 struct TransitionPolicyThread
 {
+    typedef Time time_format;
     typedef typename Time::time_type time_type;
 
     TransitionPolicyThread()
@@ -315,6 +320,7 @@ template <typename Time, typename Value,
           typename Policy = TransitionPolicyThread <Time, Value>>
 struct CoupledModel : ComposedModel <Time, Value>
 {
+    typedef Time time_format;
     typedef typename Time::time_type time_type;
     typedef Value value_type;
     typedef Policy transition_policy;
@@ -466,6 +472,7 @@ template <typename Time, typename Value,
           typename Policy = TransitionPolicyThread <Time, Value>>
 struct Executive : ComposedModel <Time, Value>
 {
+    typedef Time time_format;
     typedef typename Time::time_type time_type;
     typedef Value value_type;
     typedef Policy transition_policy;
@@ -653,6 +660,7 @@ struct Executive : ComposedModel <Time, Value>
 template <typename Time, typename Value>
 struct Engine
 {
+    typedef Time time_format;
     typedef typename Time::time_type time_type;
     typedef Value value_type;
     typedef Model <Time, Value> model_type;

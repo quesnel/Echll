@@ -276,6 +276,7 @@ struct CoupledModel : Model <Time, Value>
 template <typename Time, typename Value>
 struct Engine
 {
+    typedef Time time_format;
     typedef typename Time::time_type time_type;
     typedef Value value_type;
     typedef Model <Time, Value> model_type;
