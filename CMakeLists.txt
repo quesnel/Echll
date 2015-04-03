@@ -82,7 +82,7 @@ install(FILES ${PROJECT_BINARY_DIR}/Echll-${Echll_STABLEVERSION}.pc
 #
 
 install(DIRECTORY vle
-  DESTINATION include/Echll-${Echll_STABLEVERSION}/vle)
+  DESTINATION include/Echll-${Echll_STABLEVERSION})
 
 ### # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 ## Testing
