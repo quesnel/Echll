@@ -24,11 +24,18 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DSDE_DETAIL_DSDE_IMPLEMENTATION_HPP__
-#define __VLE_KERNEL_DSDE_DETAIL_DSDE_IMPLEMENTATION_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_DSDE_DETAIL_DSDE_IMPLEMENTATION_HPP
+#define ORG_VLEPROJECT_KERNEL_DSDE_DETAIL_DSDE_IMPLEMENTATION_HPP
 
 namespace vle {
 namespace dsde {
+
+dsde_internal_error::dsde_internal_error(const std::string& msg)
+    : std::logic_error(msg)
+{}
+
+dsde_internal_error::~dsde_internal_error() noexcept
+{}
 
 template <typename Time>
 inline void check_transition_synchronization(typename Time::time_type tl,

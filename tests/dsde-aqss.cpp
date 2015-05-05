@@ -45,8 +45,8 @@ using ExecutiveThread = vle::dsde::Executive <MyTime, MyValue,
 using ExecutiveMono = vle::dsde::Executive <MyTime, MyValue,
       vle::dsde::TransitionPolicyDefault <MyTime, MyValue>>;
 
-vle::dsde::qss1::compute_fct x_fct  = [](const std::valarray <double>& csts,
-                                         const std::valarray <double>& values)
+vle::dsde::qss1::compute_fct x_fct = [](const std::valarray <double>& csts,
+                                        const std::valarray <double>& values)
 {
     return csts[0] * values[0] - csts[1] * values[0] * values[1];
 };
@@ -57,11 +57,118 @@ vle::dsde::qss1::compute_fct y_fct = [](const std::valarray <double>& csts,
     return csts[2] * values[0] * values[1] - csts[3] * values[0];
 };
 
+vle::dsde::qss1::compute_fct h_fct = [](const std::valarray <double>& csts,
+    const std::valarray <double>& value)
+{
+    double dirac_part = csts[2] * value[1];
+
+    return 1.0 / (1 + csts[0] * std::pow(value[0], -1) + csts[1] * std::pow(value[0], -2))
+        + dirac_part;
+};
+
+vle::dsde::qss1::compute_fct dirac_fct = [](const std::valarray <double>& csts,
+    const std::valarray <double>& value)
+{
+    double v = (1.0 / 3.1515926) * csts[3] / ((csts[3] * csts[3]) + (value[0] * value[0]));
+
+    if (v < 0.0001)
+        return 0.0;
+
+    return v;
+};
+
+struct LTI : CoupledModelMono
+{
+    const std::valarray <double> csts { 10.0, 1000.0 };
+    vle::dsde::qss1::Equation <MyTime> h;
+
+    LTI(const vle::Context& ctx, double dq, double epsilon)
+        : CoupledModelMono(ctx)
+        , h(ctx, dq, epsilon, 0.0, 1u, h_fct, csts)
+    {}
+
+    virtual typename CoupledModelMono::children_t children(
+        const vle::Common&) override final
+    {
+        return { &h };
+    }
+
+    virtual void post(const UpdatedPort &out,
+                      UpdatedPort &in) const override final
+    {
+        (void)out;
+        (void)in;
+    }
+};
+
+struct SingleEvent : AtomicModel
+{
+    SingleEvent(const vle::Context& ctx)
+        : AtomicModel(ctx, 0, 1)
+    {}
+
+    virtual ~SingleEvent()
+    {}
+
+    virtual double init(const vle::Common&, const double&) override final
+    {
+        return 1.33;
+    }
+
+    virtual double delta(const double&, const double&,
+                         const double&) override final
+    {
+        return MyTime::infinity();
+    }
+
+    virtual void lambda() const override final
+    {
+        y[0] = { 77.77 };
+    }
+};
+
+struct LTI_2 : CoupledModelMono
+{
+    const std::valarray <double> csts { 10.0, 1000.0, 1.0, 1 / 8 };
+    vle::dsde::qss1::Equation <MyTime> h;
+    vle::dsde::qss1::Equation <MyTime> dirac;
+    SingleEvent single_event;
+
+    LTI_2(const vle::Context& ctx, double dq, double epsilon)
+        : CoupledModelMono(ctx)
+        , h(ctx, dq, epsilon, 0.0, 2u, h_fct, csts)
+        , dirac(ctx, dq, epsilon, 0.0, 2u, dirac_fct, csts)
+        , single_event(ctx)
+    {}
+
+    virtual typename CoupledModelMono::children_t children(
+        const vle::Common&) override final
+    {
+        return { &h, &dirac, &single_event };
+    }
+
+    virtual void post(const UpdatedPort &out,
+                      UpdatedPort &in) const override final
+    {
+        (void)out;
+
+        if (not dirac.y.empty()) {
+            vle::copy_values(dirac.y[0], h.x[1]);
+            in.emplace(&h);
+        }
+
+        if (not single_event.y.empty()) {
+            vle::copy_values(single_event.y[0], dirac.x[0]);
+            in.emplace(&dirac);
+        }
+    }
+};
+
 struct MySystem1 : CoupledModelMono
 {
     const std::valarray <double> csts = { 1.0, 0.05, 0.02, 0.5 };
-    vle::dsde::qss1::Equation <MyTime, MyValue> prey;
-    vle::dsde::qss1::Equation <MyTime, MyValue> predator;
+    vle::dsde::qss1::Equation <MyTime> prey;
+    vle::dsde::qss1::Equation <MyTime> predator;
 
     MySystem1(const vle::Context& ctx, double dq, double epsilon)
         : CoupledModelMono(ctx)
@@ -180,6 +287,49 @@ TEST_CASE("main/dsde/Qss_2", "run")
         ofs << current << '\t'
             << model.prey.m_integrator.X << '\t'
             << model.predator.m_integrator.X << '\n';
+    }
+
+    sim.finish();
+}
+
+TEST_CASE("main/dsde/LTI_1", "run")
+{
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
+    MyDSDE dsde_engine;
+    const double dq = 0.1;
+    const double epsilon = 0.1;
+
+    LTI model(ctx, dq, epsilon);
+    std::ofstream ofs("output3.dat");
+
+    vle::SimulationStep <MyDSDE> sim(ctx, dsde_engine, model);
+
+    double current = sim.init(0.0);
+
+    while (sim.step(current, 100.0)) {
+        REQUIRE(model.h.m_integrator.X == 0.0);
+    }
+
+    sim.finish();
+}
+
+TEST_CASE("main/dsde/LTI_2", "run")
+{
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
+    MyDSDE dsde_engine;
+    const double dq = 0.1;
+    const double epsilon = 0.1;
+
+    LTI_2 model(ctx, dq, epsilon);
+    std::ofstream ofs("output3.dat");
+
+    vle::SimulationStep <MyDSDE> sim(ctx, dsde_engine, model);
+
+    double current = sim.init(0.0);
+
+    while (sim.step(current, 100.0)) {
+        ofs << current << '\t'
+            << model.h.m_integrator.X << '\n';
     }
 
     sim.finish();

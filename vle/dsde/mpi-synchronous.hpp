@@ -24,8 +24,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_SYNCHRONOUS_MPI_HPP__
-#define __VLE_KERNEL_SYNCHRONOUS_MPI_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_SYNCHRONOUS_MPI_HPP
+#define ORG_VLEPROJECT_KERNEL_SYNCHRONOUS_MPI_HPP
 
 #include <vle/common.hpp>
 #include <vle/time.hpp>
@@ -64,6 +64,8 @@ struct SynchronousProxyModel : Model <Time, Value>
         , rank(-1)
     {}
 
+    SynchronousProxyModel(const SynchronousProxyModel&) = default;
+
     SynchronousProxyModel(const vle::Context& ctx,
                           std::initializer_list <std::string> lst_x,
                           std::initializer_list <std::string> lst_y)
@@ -92,7 +94,7 @@ struct SynchronousProxyModel : Model <Time, Value>
         Model <Time, Value>::x.clear();
     }
 
-    virtual void transition(const time_type& time)
+    virtual void transition(const time_type& time) override
     {
         communicator.send(rank, proxy_send_transition_tag, time);
         communicator.send(rank, proxy_send_transition_tag, Model <Time, Value>::x);
@@ -105,7 +107,7 @@ struct SynchronousProxyModel : Model <Time, Value>
         Model <Time, Value>::x.clear();
     }
 
-    virtual void output(const time_type& time)
+    virtual void output(const time_type& time) override
     {
         communicator.send(rank, proxy_send_output_tag, time);
         communicator.recv(rank, proxy_recv_output_tag, Model <Time, Value>::y);

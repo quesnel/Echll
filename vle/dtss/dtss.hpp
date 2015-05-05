@@ -24,8 +24,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DTSS_DTSS_HPP__
-#define __VLE_KERNEL_DTSS_DTSS_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_DTSS_DTSS_HPP
+#define ORG_VLEPROJECT_KERNEL_DTSS_DTSS_HPP
 
 #include <vle/time.hpp>
 #include <vle/port.hpp>
@@ -189,10 +189,18 @@ struct CoupledModel : Model <Time, Value>
      * The @e children function is called only once by the simulation layer
      * after the constructor.
      *
-     * @return
+     * @return a list of model.
      */
     virtual children_fnss_t fnss_children() = 0;
 
+    /**
+     * @brief Get the children of the @e CoupledModel.
+     *
+     * The @e children function is called only once by the simulation layer
+     * after the constructor.
+     *
+     * @return a list of model.
+     */
     virtual children_moore_t moore_children() = 0;
 
     virtual void post(const UpdatedPort <Time, Value> &out,
@@ -304,6 +312,6 @@ struct Engine
 };
 }
 
-};
+}
 
 #endif

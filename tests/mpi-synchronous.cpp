@@ -53,9 +53,6 @@ struct Counter : AtomicModel
         , i(0)
     {}
 
-    virtual ~Counter()
-    {}
-
     virtual double init(const vle::Common&, const double& time) override final
     {
         if (is_rank_0)
@@ -100,9 +97,6 @@ struct Generator : AtomicModel
         , timestep(timestep)
     {}
 
-    virtual ~Generator()
-    {}
-
     virtual double init(const vle::Common&, const double&) override final
     {
         return timestep;
@@ -131,8 +125,6 @@ struct Network : CoupledModel
     {
         gens.emplace_back(ctx);
     }
-
-    virtual ~Network() {}
 
     virtual CoupledModel::children_t children(const vle::Common&) override final
     {
@@ -177,15 +169,12 @@ struct RootNetwork : CoupledModelMono
     {
         boost::mpi::communicator com;
 
-        pm.reserve(com.size()- 1);
+        pm.reserve(boost::numeric_cast <std::size_t>(com.size() - 1));
         for (int i = 0, e = com.size() - 1; i != e; ++i) {
             pm.emplace_back(ctx);
-            pm[i].rank = i + 1;
+            pm[boost::numeric_cast <std::size_t>(i)].rank = i + 1;
         }
     }
-
-    virtual ~RootNetwork()
-    {}
 
     virtual CoupledModelMono::children_t children(
         const vle::Common&) override final

@@ -24,8 +24,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_PORT_HPP__
-#define __VLE_KERNEL_PORT_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_PORT_HPP
+#define ORG_VLEPROJECT_KERNEL_PORT_HPP
 
 #include <vle/utils.hpp>
 #include <algorithm>
@@ -37,23 +37,26 @@
 
 namespace vle {
 
-struct model_port_error : std::invalid_argument
+class invalid_port : std::invalid_argument
 {
-    model_port_error(int port)
-        : std::invalid_argument(
-            vle::stringf("model_port_error: unknown port %d", port))
-    {}
+public:
+    invalid_port(const invalid_port&) = default;
 
-    model_port_error(const std::string &port)
-        : std::invalid_argument(
-            vle::stringf("model_port_error: unknown port named %s",
-                         port.c_str()))
-    {}
+    invalid_port(int port);
 
-    model_port_error()
-        : std::invalid_argument(
-            "model_port_error: copy_port_value size are different")
-    {}
+    invalid_port(const std::string &port);
+
+    ~invalid_port() noexcept;
+};
+
+class invalid_port_size : std::invalid_argument
+{
+public:
+    invalid_port_size();
+
+    invalid_port_size(const invalid_port_size&) = default;
+
+    ~invalid_port_size() noexcept;
 };
 
 template <typename Value>
@@ -121,7 +124,7 @@ struct PortList
     const Values& at(size_type i) const
     {
         if (i > ports.size())
-            throw model_port_error(i);
+            throw invalid_port(i);
 
         return ports[i];
     }
@@ -129,7 +132,7 @@ struct PortList
     Values& at(size_type i)
     {
         if (i > ports.size())
-            throw model_port_error(i);
+            throw invalid_port(i);
 
         return ports[i];
     }
@@ -138,7 +141,7 @@ struct PortList
     {
         auto it = accessor.find(name);
         if (it == accessor.end())
-            throw model_port_error(name);
+            throw invalid_port(name);
 
         return ports[it->second];
     }
@@ -147,7 +150,7 @@ struct PortList
     {
         auto it = accessor.find(name);
         if (it == accessor.end())
-            throw model_port_error(name);
+            throw invalid_port(name);
 
         return ports[it->second];
     }
@@ -199,7 +202,7 @@ template <typename Value>
 void copy_port_values(const PortList <Value>& src, PortList <Value>& dst)
 {
     if (src.size() != dst.size())
-        throw model_port_error();
+        throw invalid_port_size();
 
     for (std::size_t i = 0, e = src.size(); i != e; ++i)
         copy_values(src[i], dst[i]);
@@ -223,5 +226,7 @@ void move_values(Values& src, Values& dst)
 }
 
 }
+
+#include <vle/detail/port-implementation.hpp>
 
 #endif

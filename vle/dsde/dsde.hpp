@@ -24,8 +24,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DSDE_DSDE_HPP__
-#define __VLE_KERNEL_DSDE_DSDE_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_DSDE_DSDE_HPP
+#define ORG_VLEPROJECT_KERNEL_DSDE_DSDE_HPP
 
 #include <vle/context.hpp>
 #include <vle/common.hpp>
@@ -37,15 +37,17 @@
 #include <thread>
 
 namespace vle {
-
-struct dsde_internal_error : std::logic_error
-{
-    explicit dsde_internal_error(const std::string& msg)
-        : std::logic_error(msg)
-    {}
-};
-
 namespace dsde {
+
+class dsde_internal_error : std::logic_error
+{
+public:
+    dsde_internal_error(const std::string& msg);
+
+    dsde_internal_error(const dsde_internal_error&) = default;
+
+    virtual ~dsde_internal_error() noexcept;
+};
 
 template <typename Time>
 inline void check_transition_synchronization(typename Time::time_type tl,
@@ -66,23 +68,28 @@ struct Model
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 
-    Model(const Context &ctx)
+    Model(const Model&) = default;
+    Model(Model&&) = default;
+    Model& operator=(const Model&) = default;
+    Model& operator=(Model&&) = default;
+
+    Model(const Context &ctx_)
         : tl(Time::negative_infinity())
         , tn(Time::infinity())
         , parent(nullptr)
-        , ctx(ctx)
+        , ctx(ctx_)
     {}
 
-    Model(const Context &ctx, std::size_t input_size, std::size_t output_size)
+    Model(const Context &ctx_, std::size_t input_size, std::size_t output_size)
         : x(input_size)
         , y(output_size)
         , tl(Time::negative_infinity())
         , tn(Time::infinity())
         , parent(nullptr)
-        , ctx(ctx)
+        , ctx(ctx_)
     {}
 
-    Model(const Context &ctx,
+    Model(const Context &ctx_,
           std::initializer_list <std::string> lst_x,
           std::initializer_list <std::string> lst_y)
         : x(lst_x)
@@ -90,7 +97,7 @@ struct Model
         , tl(Time::negative_infinity())
         , tn(Time::infinity())
         , parent(nullptr)
-        , ctx(ctx)
+        , ctx(ctx_)
     {}
 
     virtual ~Model()
@@ -122,18 +129,23 @@ struct ComposedModel : Model <Time, Value>
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 
-    ComposedModel(const Context &ctx)
-        : Model <Time, Value>(ctx)
+    ComposedModel(const ComposedModel&) = default;
+    ComposedModel(ComposedModel&&) = default;
+    ComposedModel& operator=(const ComposedModel&) = default;
+    ComposedModel& operator=(ComposedModel&&) = default;
+
+    ComposedModel(const Context &ctx_)
+        : Model <Time, Value>(ctx_)
     {}
 
-    ComposedModel(const Context& ctx, std::size_t input_size, std::size_t output_size)
-        : Model <Time, Value>(ctx, input_size, output_size)
+    ComposedModel(const Context& ctx_, std::size_t input_size, std::size_t output_size)
+        : Model <Time, Value>(ctx_, input_size, output_size)
     {}
 
-    ComposedModel(const Context &ctx,
+    ComposedModel(const Context &ctx_,
                   std::initializer_list <std::string> lst_x,
                   std::initializer_list <std::string> lst_y)
-        : Model <Time, Value>(ctx, lst_x, lst_y)
+        : Model <Time, Value>(ctx_, lst_x, lst_y)
     {}
 
     virtual ~ComposedModel()
@@ -152,6 +164,11 @@ struct AtomicModel : Model <Time, Value>
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 
+    AtomicModel(const AtomicModel&) = default;
+    AtomicModel(AtomicModel&&) = default;
+    AtomicModel& operator=(const AtomicModel&) = default;
+    AtomicModel& operator=(AtomicModel&&) = default;
+
     virtual time_type init(const vle::Common& common,
                            const time_type& time) = 0;
     virtual time_type delta(const time_type &elapsed,
@@ -159,18 +176,18 @@ struct AtomicModel : Model <Time, Value>
                             const time_type &time) = 0;
     virtual void lambda() const = 0;
 
-    AtomicModel(const Context& ctx)
-        : Model <Time, Value>(ctx)
+    AtomicModel(const Context& ctx_)
+        : Model <Time, Value>(ctx_)
     {}
 
-    AtomicModel(const Context& ctx, std::size_t input_size, std::size_t output_size)
-        : Model <Time, Value>(ctx, input_size, output_size)
+    AtomicModel(const Context& ctx_, std::size_t input_size, std::size_t output_size)
+        : Model <Time, Value>(ctx_, input_size, output_size)
     {}
 
-    AtomicModel(const Context& ctx,
+    AtomicModel(const Context& ctx_,
                 std::initializer_list <std::string> lst_x,
                 std::initializer_list <std::string> lst_y)
-        : Model <Time, Value>(ctx, lst_x, lst_y)
+        : Model <Time, Value>(ctx_, lst_x, lst_y)
     {}
 
     virtual ~AtomicModel()
@@ -271,7 +288,9 @@ struct TransitionPolicyThread
 
         std::size_t current_job_id = idx;
         auto it = bag.begin();
-        std::advance(it, idx);
+        std::advance(it,
+            boost::numeric_cast<typename Bag<Time, Value>::difference_type>(
+                idx));
 
         for (;;) {
             (*it)->transition(time);
@@ -280,7 +299,9 @@ struct TransitionPolicyThread
             if (current_job_id >= bag.size())
                 break;
 
-            std::advance(it, pool.size());
+            std::advance(it,
+                boost::numeric_cast<typename Bag<Time, Value>::difference_type>(
+                    pool.size()));
         }
     }
 
@@ -325,6 +346,11 @@ struct CoupledModel : ComposedModel <Time, Value>
     typedef Value value_type;
     typedef Policy transition_policy;
 
+    CoupledModel(const CoupledModel&) = default;
+    CoupledModel(CoupledModel&&) = default;
+    CoupledModel& operator=(const CoupledModel&) = default;
+    CoupledModel& operator=(CoupledModel&&) = default;
+
     HeapType <Time, Value> heap;
     transition_policy policy;
 
@@ -336,7 +362,7 @@ struct CoupledModel : ComposedModel <Time, Value>
      * The @e children function is called only once by the simulation layer
      * after the constructor.
      *
-     * @return
+     * @return A set of Model <Time, Value>.
      */
     virtual children_t children(const vle::Common& common) = 0;
 
@@ -442,7 +468,8 @@ struct CoupledModel : ComposedModel <Time, Value>
             auto et = heap.ordered_end();
 
             assert(it != et);
-            assert((std::size_t)std::distance(it, et) == heap.size());
+            assert(boost::numeric_cast<std::size_t>(std::distance(it, et))
+                   == heap.size());
 
             do {
                 auto id = (*it).heapid;
@@ -458,8 +485,8 @@ struct CoupledModel : ComposedModel <Time, Value>
 
             post(lst, ComposedModel <Time, Value>::last_output_list);
 
-            /* If user adds this into the last_output_list, we need to remove it
-             * from before clearing output ports. */
+            /* If user adds this into the last_output_list, we need to remove
+             * it from before clearing output ports. */
             ComposedModel <Time, Value>::last_output_list.erase(this);
 
             for (auto *child : lst)
@@ -477,6 +504,11 @@ struct Executive : ComposedModel <Time, Value>
     typedef Value value_type;
     typedef Policy transition_policy;
 
+    Executive(const Executive&) = default;
+    Executive(Executive&&) = default;
+    Executive& operator=(const Executive&) = default;
+    Executive& operator=(Executive&&) = default;
+
     HeapType <Time, Value> heap;
 
     typedef std::vector <Model <Time, Value>*> children_t;
@@ -492,8 +524,8 @@ struct Executive : ComposedModel <Time, Value>
                             const time_type &remaining,
                             const time_type &time) = 0;
     virtual void lambda() const = 0;
-    virtual void post(const UpdatedPort <Time, Value> &y,
-                      UpdatedPort <Time, Value> &x) const = 0;
+    virtual void post(const UpdatedPort <Time, Value> &out,
+                  UpdatedPort <Time, Value> &in) const override = 0;
 
     Executive(const vle::Context& ctx)
         : ComposedModel <Time, Value>(ctx)
@@ -556,9 +588,9 @@ struct Executive : ComposedModel <Time, Value>
             child->parent = this;
             child->start(localcommon, time);
 
-            auto id = heap.emplace(child, child->tn);
-            child->heapid = id;
-            (*id).heapid = id;
+            auto child_id = heap.emplace(child, child->tn);
+            child->heapid = child_id;
+            (*child_id).heapid = child_id;
         }
 
         Model <Time, Value>::tl = time;
@@ -670,8 +702,8 @@ struct Engine
         : common(std::make_shared <Common>())
     {}
 
-    Engine(vle::CommonPtr common)
-        : common(common)
+    Engine(vle::CommonPtr common_)
+        : common(common_)
     {}
 
     time_type pre(model_type& model, const time_type& time)

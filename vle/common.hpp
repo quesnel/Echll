@@ -24,8 +24,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_COMMON_HPP__
-#define __VLE_KERNEL_COMMON_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_COMMON_HPP
+#define ORG_VLEPROJECT_KERNEL_COMMON_HPP
 
 #include <memory>
 #include <unordered_map>

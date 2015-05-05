@@ -24,61 +24,72 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_GENERIC_HPP__
-#define __VLE_KERNEL_GENERIC_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_GENERIC_HPP
+#define ORG_VLEPROJECT_KERNEL_GENERIC_HPP
 
 #include <vle/dsde/dsde.hpp>
-#include <vle/utils.hpp>
+#include <boost/format.hpp>
 #include <fstream>
 #include <memory>
 #include <sstream>
 #include <unordered_map>
 
-namespace vle { namespace dsde {
+namespace vle {
+namespace dsde {
 
-struct fileformat_error: std::invalid_argument
+class fileformat_error : std::runtime_error
 {
+public:
     fileformat_error()
-        : std::invalid_argument("dsde::fileformat: file format error")
+        : std::runtime_error("dsde::fileformat: file format error")
     {}
 
+    fileformat_error(const fileformat_error&) = default;
+
     fileformat_error(std::size_t idx, std::size_t size)
-        : std::invalid_argument(
-            vle::stringf("dsde::fileformat: child index [%" PRIuMAX "]"
-                         ">= size of the children list (%" PRIuMAX ")",
-                         (std::uintmax_t)idx,
-                         (std::uintmax_t)size))
+        : std::runtime_error(
+            (boost::format("dsde_fileformat: child index [%1%]"
+                           ">= size of the children list (%2%)")
+                           % idx % size).str())
     {}
 
     fileformat_error(std::size_t idx)
-        : std::invalid_argument(
-            vle::stringf("dsde::fileformat: port index [%" PRIuMAX "] too big",
-                         (std::uintmax_t)idx))
+        : std::runtime_error(
+            (boost::format("dsde::fileformat: port index [%1%] too big")
+                % idx).str())
+    {}
+
+    ~fileformat_error() noexcept
     {}
 };
 
-
-struct factory_error : std::invalid_argument
+class factory_error : std::runtime_error
 {
-    factory_error(const std::string& dynamicsname)
-        : std::invalid_argument(
-            vle::stringf("dsde::factory: unknown dynamics [%s]",
-                         dynamicsname.c_str()))
+public:
+    factory_error(const std::string &dynamicsname)
+        : std::runtime_error(
+            (boost::format("dsde_factory: unknown dynamics [%1%]")
+                % dynamicsname).str())
+    {}
+
+    factory_error(const factory_error&) = default;
+
+    ~factory_error() noexcept
     {}
 };
 
 template <typename Time, typename Value>
-struct Factory
-{
+struct Factory {
     typedef typename Time::time_type time_type;
     typedef Value value_type;
 
     typedef std::unique_ptr <Model <Time, Value>> modelptr;
     typedef std::function <modelptr(void)> function_t;
 
-    modelptr get(const std::string& dynamicsname) const
+    modelptr get(const std::string &dynamicsname) const
     {
         auto it = functions.find(dynamicsname);
+
         if (it != functions.end())
             return std::move(it->second());
 
@@ -105,9 +116,8 @@ struct Factory
  * @TODO Move this class into a dsde-basic ?
  */
 template <typename Time, typename Value,
-         typename Policy = TransitionPolicyDefault <Time, Value>>
-struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
-{
+          typename Policy = TransitionPolicyDefault <Time, Value>>
+struct GenericCoupledModel : CoupledModel <Time, Value, Policy> {
     typedef typename Time::time_type time_type;
     typedef Value value_type;
     typedef Policy transition_policy;
@@ -116,48 +126,44 @@ struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
     typedef std::pair <Model <Time, Value>*, int> outputport;
     typedef std::vector <std::unique_ptr <Model <Time, Value>>> vertices;
 
-    enum ReaderOption
-    {
+    enum ReaderOption {
         INDEXED_BY_INT,
         INDEXED_BY_STRING
     };
 
-    struct hash_inputport
-    {
-        std::size_t operator()(const inputport& lhs) const
+    struct hash_inputport {
+        std::size_t operator()(const inputport &lhs) const
         {
             std::hash <Model <Time, Value>*> hasher;
-
             return hasher(lhs.first);
         }
     };
 
-    struct equalto_inputport
-    {
-        constexpr bool operator()(const inputport& lhs, const inputport& rhs) const
+    struct equalto_inputport {
+        constexpr bool operator()(const inputport &lhs, const inputport &rhs) const
         {
             return lhs.first == rhs.first && rhs.second == lhs.second;
         }
     };
 
     typedef std::unordered_multimap <
-        inputport, outputport, hash_inputport, equalto_inputport> edges;
+    inputport, outputport, hash_inputport, equalto_inputport > edges;
 
-    GenericCoupledModel(const Context& ctx)
+    GenericCoupledModel(const Context &ctx)
         : CoupledModel <Time, Value, Policy>(ctx)
     {}
 
-    GenericCoupledModel(const Context& ctx, unsigned thread_number)
+    GenericCoupledModel(const Context &ctx, unsigned thread_number)
         : CoupledModel <Time, Value, Policy>(ctx, thread_number)
     {}
 
-    GenericCoupledModel(const Context& ctx,
+    GenericCoupledModel(const Context &ctx,
                         std::initializer_list <std::string> lst_x,
                         std::initializer_list <std::string> lst_y)
         : CoupledModel <Time, Value, Policy>(ctx, lst_x, lst_y)
     {}
 
-    GenericCoupledModel(const Context& ctx,
+    GenericCoupledModel(const Context &ctx,
                         unsigned thread_number,
                         std::initializer_list <std::string> lst_x,
                         std::initializer_list <std::string> lst_y)
@@ -168,45 +174,42 @@ struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
     {}
 
     virtual typename CoupledModel <Time, Value>::children_t
-    children(const vle::Common& /*common*/) override final
+    children(const vle::Common & /*common*/) override final
     {
         return {};
     }
 
-    virtual void apply_common(const vle::Common& common)
+    virtual void apply_common(const vle::Common &common)
     {
         (void)common;
     }
 
-    virtual vle::Common update_common(const vle::Common& common,
-                                      const GenericCoupledModel::vertices& v,
-                                      const GenericCoupledModel::edges& e,
+    virtual vle::Common update_common(const vle::Common &common,
+                                      const GenericCoupledModel::vertices &v,
+                                      const GenericCoupledModel::edges &e,
                                       int child)
     {
         (void) common;
         (void) v;
         (void) e;
         (void) child;
-
         return vle::Common();
     }
 
-    virtual void start(const vle::Common& common,
-                       const time_type& time) override
+    virtual void start(const vle::Common &common,
+                       const time_type &time) override
     {
         apply_common(common);
-
         int tgf_source = common_get <int>(common, "tgf-source");
         int tgf_format = common_get <int>(common, "tgf-format");
-
         typedef std::shared_ptr <Factory <Time, Value>> FactoryPtr;
-
         FactoryPtr factory = common_get <FactoryPtr>(common, "tgf-factory");
 
         if (tgf_source == 0) {
             std::string tgf_filesource = common_get <std::string>(common,
-                                                                  "tgf-filesource");
+                                         "tgf-filesource");
             std::ifstream ifs(tgf_filesource);
+
             if (!ifs)
                 throw std::invalid_argument(
                     stringf("GenericCoupledModel: failed to open file %s",
@@ -216,10 +219,8 @@ struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
                  INDEXED_BY_STRING);
         } else {
             std::string string_source = common_get <std::string>(common,
-                                                                 "tgf-stringsource");
-
+                                        "tgf-stringsource");
             std::istringstream iss(string_source);
-
             read(iss, *factory.get(), (tgf_format == 0) ? INDEXED_BY_INT :
                  INDEXED_BY_STRING);
         }
@@ -227,24 +228,22 @@ struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
         typename CoupledModel <Time, Value>::children_t ret;
         ret.reserve(m_children.size());
 
-        for (int i = 0, e = m_children.size(); i != e; ++i) {
+        for (std::size_t i = 0, e = m_children.size(); i != e; ++i) {
             m_children[i]->parent = this;
             vle::Common localcommon = update_common(common,
                                                     m_children,
                                                     m_connections,
-                                                    i);
-
+                                                    boost::numeric_cast <int>(i));
             m_children[i]->start(localcommon, time);
-
             auto id = CoupledModel <Time, Value, Policy>::heap.emplace(
-                m_children[i].get(),
-                m_children[i]->tn);
-
+                          m_children[i].get(),
+                          m_children[i]->tn);
             m_children[i]->heapid = id;
             (*id).heapid = id;
         };
 
         Model <Time, Value>::tl = time;
+
         Model <Time, Value>::tn =
             CoupledModel <Time, Value, Policy>::heap.top().tn;
     }
@@ -252,27 +251,25 @@ struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
     virtual void post(const UpdatedPort <Time, Value> &out,
                       UpdatedPort <Time, Value> &in) const override final
     {
-        for (auto& model : out) {
+        for (auto &model : out) {
             std::size_t i = 0;
             std::size_t e = (model == this) ?
-                Model <Time, Value>::x.size() : model->y.size();
+                            Model <Time, Value>::x.size() : model->y.size();
 
             for (; i != e; ++i) {
                 if ((model == this &&
                      !Model <Time, Value>::x[i].empty()) or
                     (model != this && !model->y[i].empty())) {
                     auto result = m_connections.equal_range(
-                        std::make_pair(
-                            const_cast <Model <Time, Value>*>(model),
-                            i));
+                                      std::make_pair(
+                                          const_cast <Model <Time, Value>*>(model),
+                                          i));
 
                     for (; result.first != result.second; ++result.first) {
-                        Model <Time, Value>* dst =
+                        Model <Time, Value> *dst =
                             const_cast <Model <Time, Value>*>(
                                 result.first->second.first);
-
-                        std::size_t portdst = result.first->second.second;
-
+                        std::size_t portdst = boost::numeric_cast <std::size_t>(result.first->second.second);
                         in.emplace(dst);
 
                         if (dst == this) {
@@ -282,28 +279,16 @@ struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
                                 dst->y[portdst].insert(dst->y[portdst].end(),
                                                        model->y[i].begin(),
                                                        model->y[i].end());
-
-                                vle_dbg(GenericCoupledModel::ctx,
-                                        "Move from %p port %lu to coupled model %p port %lu\n",
-                                        model, i, dst, portdst);
                             }
                         } else {
                             if (model == this) {
                                 dst->x[portdst].insert(dst->x[portdst].end(),
                                                        model->x[i].begin(),
                                                        model->x[i].end());
-
-                                vle_dbg(GenericCoupledModel::ctx,
-                                        "Move from coupled model %p port %lu to %p port %lu\n",
-                                        model, i, dst, portdst);
                             } else {
                                 dst->x[portdst].insert(dst->x[portdst].end(),
                                                        model->y[i].begin(),
                                                        model->y[i].end());
-
-                                vle_dbg(GenericCoupledModel::ctx,
-                                        "Move from model %p port %lu to model %p port %lu\n",
-                                        model, i, dst, portdst);
                             }
                         }
                     }
@@ -316,11 +301,12 @@ struct GenericCoupledModel : CoupledModel <Time, Value, Policy>
     edges m_connections;
 
 private:
-    void read(std::istream& is, const Factory <Time, Value>& factory,
+    void read(std::istream &is, const Factory <Time, Value> &factory,
               ReaderOption opt)
     {
         while (is.good()) {
             std::string dynamics;
+
             if (is >> dynamics) {
                 if (!dynamics.empty() && dynamics[0] != '#') {
                     m_children.emplace_back(factory.get(dynamics));
@@ -343,7 +329,7 @@ private:
                     if (model_j > m_children.size())
                         throw fileformat_error(model_j, m_children.size());
 
-                    Model <Time, Value>* src;
+                    Model <Time, Value> *src;
 
                     if (model_i == 0) {
                         src = this;
@@ -357,7 +343,7 @@ private:
                             throw fileformat_error(port_i);
                     }
 
-                    Model <Time, Value>* dst;
+                    Model <Time, Value> *dst;
 
                     if (model_j == 0) {
                         dst = this;
@@ -388,7 +374,7 @@ private:
                     if (model_j > m_children.size())
                         throw fileformat_error(model_j, m_children.size());
 
-                    Model <Time, Value>* src;
+                    Model <Time, Value> *src;
 
                     if (model_i == 0) {
                         src = this;
@@ -398,7 +384,7 @@ private:
                         port_i = src->y.add_port(str_port_i);
                     }
 
-                    Model <Time, Value>* dst;
+                    Model <Time, Value> *dst;
 
                     try {
                         if (model_j == 0) {
@@ -408,7 +394,7 @@ private:
                             dst = m_children[model_j - 1].get();
                             port_j = dst->x.add_port(str_port_j);
                         }
-                    } catch (const std::exception& e) {
+                    } catch (const std::exception &/*e*/) {
                         throw fileformat_error();
                     }
 
@@ -420,6 +406,7 @@ private:
     }
 };
 
-}}
+}
+}
 
 #endif

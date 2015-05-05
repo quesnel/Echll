@@ -24,8 +24,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DSDE_MPI_TIMEWARP_HPP__
-#define __VLE_KERNEL_DSDE_MPI_TIMEWARP_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_DSDE_MPI_TIMEWARP_HPP
+#define ORG_VLEPROJECT_KERNEL_DSDE_MPI_TIMEWARP_HPP
 
 #include <vle/common.hpp>
 #include <vle/time.hpp>
@@ -38,7 +38,8 @@
 #include <stdexcept>
 #include <numeric>
 
-namespace vle { namespace dsde {
+namespace vle {
+namespace dsde {
 
 /*
  *  == Time warp or optimistic parallelization ==
@@ -75,8 +76,7 @@ namespace vle { namespace dsde {
  *     RC4 - {MC25..MCn}
  */
 
-enum TimeWarpTag
-{
+enum TimeWarpTag {
     anti_message_tag,
     proxy_send_ended_simulation_tag,
     proxy_send_start_tag,
@@ -92,13 +92,12 @@ enum TimeWarpTag
  * commands between parent and child are asynchronous.
  */
 template <typename Time, typename Value>
-struct DistantChild : Model <Time, Value>
-{
+struct DistantChild : Model <Time, Value> {
     typedef typename Time::type time_type;
     typedef Value value_type;
 
-    boost::mpi::environment* environment;
-    boost::mpi::communicator* communicator;
+    boost::mpi::environment *environment;
+    boost::mpi::communicator *communicator;
     std::uintmax_t id;
     int rank; // rank of distant @e TimeWarpSynchroniser.
 
@@ -121,16 +120,15 @@ struct DistantChild : Model <Time, Value>
     {
     }
 
-    virtual void start(const Common& common, const time_type& time) override
+    virtual void start(const Common &common, const time_type &time) override
     {
         (void) common;
-
         Model <Time, Value>::tl = time;
         Model <Time, Value>::tn = Time::infinity;
         Model <Time, Value>::x.clear();
     }
 
-    virtual void transition(const time_type& time)
+    virtual void transition(const time_type &time)
     {
         if (!Model <Time, Value>::x.empty()) {
             communicator->isend(rank, proxy_send_transition_tag,
@@ -145,26 +143,23 @@ struct DistantChild : Model <Time, Value>
         Model <Time, Value>::x.clear();
     }
 
-    virtual void output(const time_type& time)
+    virtual void output(const time_type &time)
     {
         (void) time;
     }
 };
 
 template <typename Time, typename T>
-struct ordered_data
-{
+struct ordered_data {
     typedef typename Time::type time_type;
 
-    struct State
-    {
+    struct State {
         time_type time;
         T state;
     };
 
-    struct StateCompare
-    {
-        bool operator()(const State& lhs, const State& rhs) const
+    struct StateCompare {
+        bool operator()(const State &lhs, const State &rhs) const
         {
             return lhs.time < rhs.time;
         }
@@ -172,7 +167,7 @@ struct ordered_data
 
     std::set <State, StateCompare> state;
 
-    void store(time_type time, const T& t)
+    void store(time_type time, const T &t)
     {
         state.emplace(time, t);
     }
@@ -187,8 +182,7 @@ struct ordered_data
 };
 
 template <typename Time, typename Value>
-struct TimeWarpChild
-{
+struct TimeWarpChild {
     typedef typename Time::type time_type;
     typedef Value value_type;
     typedef Model <Time, Value> model_type;
@@ -197,8 +191,8 @@ struct TimeWarpChild
     ordered_data <Time, PortList <Value>> ins;
     ordered_data <Time, PortList <Value>> outs;
 
-    boost::mpi::environment* environment;
-    boost::mpi::communicator* communicator;
+    boost::mpi::environment *environment;
+    boost::mpi::communicator *communicator;
 
     float processor;
     model_type model;
@@ -206,34 +200,34 @@ struct TimeWarpChild
 
     TimeWarpChild()
         : environment(nullptr)
-          , communicator(nullptr)
-          , processor(.5f)
-          , model(nullptr)
-          , rank(-1)
+        , communicator(nullptr)
+        , processor(.5f)
+        , model(nullptr)
+        , rank(-1)
     {}
 
-    void start(const Common& common, const time_type& time)
+    void start(const Common &common, const time_type &time)
     {
         (void) common;
         (void) time;
     }
 
-    void transition(const time_type& time)
+    void transition(const time_type &time)
     {
         (void) time;
     }
 
-    void output(const time_type& time)
+    void output(const time_type &time)
     {
         (void) time;
     }
 
-    void roolback(const time_type& time)
+    void roolback(const time_type &time)
     {
         if (model.tn >= time) {
             models.cleanup(time);
-
             auto antimessage = outs.from(time);
+
             for (auto it : antimessage)
                 communicator->send(rank, anti_message_tag,
                                    it->time);
@@ -252,23 +246,22 @@ struct TimeWarpChild
 };
 
 template <typename Time, typename Value>
-struct TimeWarpSynchroniser
-{
+struct TimeWarpSynchroniser {
     typedef typename Time::type time_type;
     typedef Value value_type;
 
     Context ctx;
     std::vector <TimeWarpChild <Time, Value>> children;
 
-    boost::mpi::environment* environment;
-    boost::mpi::communicator* communicator;
+    boost::mpi::environment *environment;
+    boost::mpi::communicator *communicator;
 
     time_type minimal_time;
 
     std::uintmax_t id;
     int rank;
 
-    TimeWarpSynchroniser(const Context& ctx)
+    TimeWarpSynchroniser(const Context &ctx)
         : ctx(ctx)
         , environment(nullptr)
         , communicator(nullptr)
@@ -287,26 +280,19 @@ struct TimeWarpSynchroniser
     std::vector <int>  initialize_child_processor()
     {
         float sum = std::accumulate(children.cbegin(), children.cend(), 0.0f,
-                                    [](const auto& child)
-                                    {
-                                        return child.processor;
-                                    });
-
+        [](const auto & child) {
+            return child.processor;
+        });
         std::vector <float> reduce(children.size(), 0.0f);
-
         std::transform(children.cbegin(), children.cend(),
                        reduce.begin(),
-                       [&sum](const auto& child)
-                       {
-                           return child.processor / sum;
-                       });
-
+        [&sum](const auto & child) {
+            return child.processor / sum;
+        });
         float min = std::min_element(children.begin(), children.end(),
-                                     [](const auto& rhs, const auto& lhs)
-                                     {
-                                         return rhs.processor  < lhs.processor;
-                                     }) / sum;
-
+        [](const auto & rhs, const auto & lhs) {
+            return rhs.processor  < lhs.processor;
+        }) / sum;
         std::vector <int> ret;
         ret.reserve(children.size() * 100u);
 
@@ -321,15 +307,11 @@ struct TimeWarpSynchroniser
             ret.insert(ret.end(),
                        static_cast <std::size_t>(children[i].processor),
                        i);
-
-            vle_dbg(ctx,"TimeWarpSynchronizer %d: child %" PRIuMAX
-                    " prioriy %" PRIuMAX,
-                    (std::uintmax_t)i,
-                    (std::uintmax_t)children.processor);
+            ctx->dbg() << "TimeWarpSynchronizer: " << i << "priority: "
+                       << children.processor << '\n';
         }
 
         std::random_shuffle(ret.begin(), ret.end());
-
         return std::move(ret);
     }
 
@@ -341,14 +323,12 @@ struct TimeWarpSynchroniser
         if (communicator->rank() == 0) {
             // TODO sleep ?
             //boost::mpi::all_reduce(*world,
-                                   //minimal_time,
-                                   //boost::mpi::minimum <time_type>());
-
+            //minimal_time,
+            //boost::mpi::minimum <time_type>());
             //boost::mpi::broadcast(*world,
-                                  //minimal_time,
-                                  //0);
+            //minimal_time,
+            //0);
         }
-
     }
 
     void run_simulation()
@@ -357,8 +337,8 @@ struct TimeWarpSynchroniser
             return;
 
         time_type time;
-
         auto process = initialize_child_processor();
+
         for (auto it : children)
             it->start(vle::Common(), time);
 
@@ -371,6 +351,7 @@ struct TimeWarpSynchroniser
     }
 };
 
-}}
+}
+}
 
 #endif

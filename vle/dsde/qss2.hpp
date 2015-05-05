@@ -24,20 +24,30 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DSDE_QSS2_HPP__
-#define __VLE_KERNEL_DSDE_QSS2_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_DSDE_QSS2_HPP
+#define ORG_VLEPROJECT_KERNEL_DSDE_QSS2_HPP
 
 #include <vle/dsde/dsde.hpp>
 #include <valarray>
 
 namespace vle { namespace dsde { namespace qss2 {
 
-struct internal_error : std::runtime_error
+class internal_error : std::runtime_error
 {
-    explicit internal_error(const std::string &msg)
-        : std::runtime_error(msg)
-    {}
+public:
+    internal_error(const std::string &msg);
+
+    internal_error(const internal_error&) = default;
+
+    virtual ~internal_error() noexcept;
 };
+
+internal_error::internal_error(const std::string &msg)
+    : std::runtime_error(msg)
+{}
+
+internal_error::~internal_error() noexcept
+{}
 
 typedef std::function <
     double(const std::valarray <double>& cst,
@@ -119,7 +129,7 @@ struct Variable : AtomicModel <Time, Value>
                         c[portid] = (fv - y1) / (vaux - v[portid]);
 
                     y2 = 0.0;
-                    for (std::size_t i = 0, e = mv.size(); i != e; ++i)
+                    for (std::size_t i = 0, end = mv.size(); i != end; ++i)
                         y2 += mv[i] * c[i];
                 }
             }
@@ -166,14 +176,15 @@ struct Integrator : AtomicModel <Time, Value>
 
     virtual void lambda() const
     {
-        if (sigma)
+        if (!Time::is_null(sigma)) {
             AtomicModel <Time, Value>::y[0] = {
                 X + dx * sigma + mdx / 2.0 * sigma * sigma,
                 dx + mdx * sigma };
-        else
+        } else {
             AtomicModel <Time, Value>::y[0] = {
                 X,
                 dx };
+        }
     }
 
     virtual time_type delta(const time_type& e, const time_type& r,
@@ -199,7 +210,7 @@ struct Integrator : AtomicModel <Time, Value>
             dx = AtomicModel <Time, Value>::x[0][0];
             mdx = AtomicModel <Time, Value>::x[0][1];
 
-            if (sigma != Time::null()) {
+            if (!Time::is_null(sigma)) {
                 q += mq * e;
                 a = mdx / 2.0;
                 b = dx - mq;
@@ -233,7 +244,6 @@ struct Integrator : AtomicModel <Time, Value>
                 }
             }
         }
-
         return sigma;
     }
 };

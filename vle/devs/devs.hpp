@@ -24,8 +24,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DEVS_HPP__
-#define __VLE_KERNEL_DEVS_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_DEVS_HPP
+#define ORG_VLEPROJECT_KERNEL_DEVS_HPP
 
 #include <vle/context.hpp>
 #include <vle/time.hpp>
@@ -36,11 +36,13 @@
 
 namespace vle { namespace devs {
 
-struct devs_internal_error : std::logic_error
+class devs_internal_error : public std::logic_error
 {
-    explicit devs_internal_error(const std::string& msg);
+public:
+    devs_internal_error(const std::string& msg);
+    devs_internal_error(const devs_internal_error&) = default;
 
-    virtual ~devs_internal_error();
+    virtual ~devs_internal_error() noexcept;
 };
 
 template <typename Time, typename Value>

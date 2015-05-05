@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014 INRA
+ * Copyright (C) 2015 INRA
  *
  * All rights reserved.
  *
@@ -24,69 +24,33 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ORG_VLEPROJECT_KERNEL_CONTEXT_HPP
-#define ORG_VLEPROJECT_KERNEL_CONTEXT_HPP
+#ifndef ORG_VLEPROJECT_KERNEL_PORT_IMPLEMENTATION_HPP
+#define ORG_VLEPROJECT_KERNEL_PORT_IMPLEMENTATION_HPP
 
-#include <boost/any.hpp>
-#include <memory>
+#include <boost/format.hpp>
 
 namespace vle {
 
-class ContextImpl;
+invalid_port::invalid_port(int port)
+    : std::invalid_argument(
+        (boost::format("invalid_port: unknown port id %1%") % port).str())
+{}
 
-using Context = std::shared_ptr <ContextImpl>;
+invalid_port::invalid_port(const std::string &port)
+    : std::invalid_argument(
+        (boost::format("invalid_port: unknown port %1%") % port).str())
+{}
 
-/**
- * Default @e ContextImpl initializes logger system with the standard error
- * output (@e stderr).
- */
-class ContextImpl
-{
-public:
-    ContextImpl();
+invalid_port::~invalid_port() noexcept
+{}
 
-    ContextImpl(const std::string& filename);
+invalid_port_size::invalid_port_size()
+    : std::invalid_argument("invalid_port_size: copy failed")
+{}
 
-    ContextImpl(const ContextImpl&) = default;
-
-    ContextImpl& operator=(const ContextImpl&) = default;
-
-    ContextImpl(ContextImpl&&) = default;
-
-    ContextImpl& operator=(ContextImpl&&) = default;
-
-    ~ContextImpl() = default;
-
-    std::ostream& log() const;
-
-    std::ostream& dbg() const;
-
-    int get_log_priority() const;
-
-    void set_log_priority(int priority);
-
-    unsigned get_thread_number() const;
-
-    void set_thread_number(unsigned thread_number);
-
-    void set_user_data(const boost::any &user_data);
-
-    bool is_on_tty() const;
-
-    const boost::any& get_user_data() const;
-
-    boost::any& get_user_data();
-
-private:
-    std::shared_ptr <std::ostream> m_log;
-    boost::any   m_user_data;
-    unsigned     m_thread_number = 1;
-    int          m_log_priority  = 1;
-    bool         m_is_a_tty;
-};
+invalid_port_size::~invalid_port_size() noexcept
+{}
 
 }
-
-#include <vle/detail/context-implementation.hpp>
 
 #endif

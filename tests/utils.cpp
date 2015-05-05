@@ -60,14 +60,3 @@ TEST_CASE("try-stringf-format", "run")
 
     REQUIRE(big.size() == (500u * 5 + 1));
 }
-
-TEST_CASE("try-debugf", "run")
-{
-    vle::Context ctx = std::make_shared <vle::ContextImpl>();
-    REQUIRE_NOTHROW(vle_dbg(ctx, "%s%s%s%s%s",
-                            str500.c_str(),
-                            str500.c_str(),
-                            str500.c_str(),
-                            str500.c_str(),
-                            str500.c_str()));
-}

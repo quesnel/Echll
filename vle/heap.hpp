@@ -24,8 +24,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_HEAP_HPP__
-#define __VLE_KERNEL_HEAP_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_HEAP_HPP
+#define ORG_VLEPROJECT_KERNEL_HEAP_HPP
 
 #include <boost/heap/fibonacci_heap.hpp>
 
@@ -53,8 +53,9 @@ struct HeapElement
     handle_t heapid;
     typename Time::time_type tn;
 
-    HeapElement(void *elt, typename Time::time_type tn)
-        : element(elt), tn(tn)
+    HeapElement(void *elt_, typename Time::time_type tn_)
+        : element(elt_)
+        , tn(tn_)
     {}
 };
 

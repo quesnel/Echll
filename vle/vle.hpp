@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014 INRA
+ * Copyright (C) 2013-2015 INRA
  *
  * All rights reserved.
  *
@@ -24,8 +24,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_VLE_HPP__
-#define __VLE_KERNEL_VLE_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_VLE_HPP
+#define ORG_VLEPROJECT_KERNEL_VLE_HPP
 
 #include <vle/time.hpp>
 #include <vle/context.hpp>
@@ -33,51 +33,53 @@
 namespace vle {
 
 template <typename Engine>
-struct Simulation
-{
+struct Simulation {
     typedef Engine engine_type;
     typedef typename Engine::time_format time_format;
     typedef typename Engine::time_type time_type;
     typedef typename Engine::value_type value_type;
     typedef typename Engine::model_type model_type;
 
-    engine_type& engine;
-    model_type& model;
+    engine_type &engine;
+    model_type &model;
     Context ctx;
 
-    Simulation(const Context& ctx, engine_type& engine, model_type& model)
-        : engine(engine), model(model), ctx(ctx)
+    Simulation(const Context &ctx_, engine_type &engine_, model_type &model_)
+        : engine(engine_)
+        , model(model_)
+        , ctx(ctx_)
     {}
 
     time_type run(const time_type &begin, const time_type &end)
     {
         time_type i;
+
         for (i = engine.pre(model, begin);
              i < end;
              i = engine.run(model, i));
 
         engine.post(model, i);
-
         return i;
     }
 };
 
 template <typename Engine>
-struct SimulationDbg
-{
+struct SimulationDbg {
     typedef Engine engine_type;
     typedef typename Engine::time_format time_format;
     typedef typename Engine::time_type time_type;
     typedef typename Engine::value_type value_type;
     typedef typename Engine::model_type model_type;
 
-    engine_type& engine;
-    model_type& model;
+    engine_type &engine;
+    model_type &model;
     Context ctx;
     std::uintmax_t nbloop;
 
-    SimulationDbg(const Context& ctx, engine_type& engine, model_type& model)
-        : engine(engine), model(model), ctx(ctx)
+    SimulationDbg(const Context &ctx_, engine_type &engine_, model_type &model_)
+        : engine(engine_)
+        , model(model_)
+        , ctx(ctx_)
     {}
 
     time_type run(const time_type &begin, const time_type &end)
@@ -87,45 +89,46 @@ struct SimulationDbg
         std::uintmax_t localbag = 1;
         nbloop = 0;
 
-        vle_dbg(ctx, "- - - - - - - - - - - - - start date %f\n", i);
+        ctx->dbg() << "- - - - - - - - - - - - - start date " << i << '\n';
 
         for (; i < end; i = engine.run(model, i)) {
             if (prev < i) {
                 prev = i;
                 localbag = 1;
-                vle_dbg(ctx, "- - - - - - - - - - - - - next date %f\n", i);
+                ctx->dbg() << "- - - - - - - - - - - - - next date "
+                           << i << "\n";
             } else {
                 localbag++;
-                vle_dbg(ctx, "- - - - - - - - - - - - - bag %" PRIuMAX "\n",
-                        localbag);
+                ctx->dbg() << "- - - - - - - - - - - - - bag "
+                           << localbag << "\n";
             }
+
             nbloop++;
         }
 
         engine.post(model, i);
-
         return i;
     }
 };
 
 template <typename Engine>
-struct SimulationStep
-{
+struct SimulationStep {
     typedef Engine engine_type;
     typedef typename Engine::time_format time_format;
     typedef typename Engine::time_type time_type;
     typedef typename Engine::value_type value_type;
     typedef typename Engine::model_type model_type;
 
-    engine_type& engine;
-    model_type& model;
+    engine_type &engine;
+    model_type &model;
     Context ctx;
     time_type end;
 
-    SimulationStep(const Context& ctx, engine_type& engine, model_type& model)
-        : engine(engine)
-        , model(model)
-        , ctx(ctx)
+    SimulationStep(const Context &ctx_, engine_type &engine_,
+                   model_type &model_)
+        : engine(engine_)
+        , model(model_)
+        , ctx(ctx_)
     {}
 
     time_type init(const time_type &begin)
@@ -133,12 +136,10 @@ struct SimulationStep
         return engine.pre(model, begin);
     }
 
-    bool step(time_type& current, const time_type &end_)
+    bool step(time_type &current, const time_type &end_)
     {
         end = end_;
-
         current = engine.run(model, current);
-
         return current < end;
     }
 

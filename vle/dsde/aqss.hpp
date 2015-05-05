@@ -24,19 +24,29 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DSDE_AQSS_HPP__
-#define __VLE_KERNEL_DSDE_AQSS_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_DSDE_AQSS_HPP
+#define ORG_VLEPROJECT_KERNEL_DSDE_AQSS_HPP
 
 #include <vle/dsde/dsde.hpp>
 
 namespace vle { namespace dsde {
 
-struct aqss_internal_error : std::logic_error
+class aqss_internal_error : std::logic_error
 {
-    explicit aqss_internal_error(const std::string &msg)
-        : std::logic_error(msg)
-    {}
+public:
+    aqss_internal_error(const std::string &msg);
+
+    aqss_internal_error(const aqss_internal_error&) = default;
+
+    virtual ~aqss_internal_error() noexcept;
 };
+
+aqss_internal_error::aqss_internal_error(const std::string &msg)
+    : std::logic_error(msg)
+{}
+
+aqss_internal_error::~aqss_internal_error() noexcept
+{}
 
 namespace details {
 
@@ -112,9 +122,6 @@ public:
             val = 0.0;
         m_state = INIT;
 
-        vle_dbg((Model <Time, Value>::context()),
-                "Integrator initialised with %f\n", m_current_value);
-
         return Time::null();
     }
 
@@ -128,9 +135,6 @@ public:
             AtomicModel <Time, Value>::y[I_out].emplace_back(m_current_value);
             break;
         default:
-            vle_dbg((AtomicModel <Time, Value>::context()),
-                    "Integrator %p tries an output transition in state %d\n",
-                    this, static_cast <int>(m_state));
             throw aqss_internal_error("integrator lambda error");
         }
     }
@@ -200,9 +204,6 @@ public:
             m_last_output_date = t;
             break;
         default:
-            vle_dbg((AtomicModel <Time, Value>::context()),
-                    "Integrator %p tries an internal transition in state %d\n",
-                    this, static_cast <int>(m_state));
             throw aqss_internal_error("Integrator delta failure");
         }
     }
@@ -214,7 +215,7 @@ public:
             {
                 double current_derivative = archive.back().value;
 
-                if(0 == current_derivative)
+                if (0 == current_derivative)
                     return Time::infinity();
 
                 if (current_derivative > 0)
@@ -324,11 +325,6 @@ public:
             throw std::invalid_argument(
                 "QSS quantifier: bad archive length value (should at least 3)");
 
-        vle_dbg((AtomicModel <Time, Value>::context()),
-                "QSS quantifier (adaptative = %d, zero_init_offset %d, "
-                "quantum = %f, past_lenght = %d)", m_adaptative,
-                m_zero_init_offset, m_step_size, m_past_length);
-
         m_offset = 0;
         m_state = INIT;
 
@@ -355,8 +351,8 @@ public:
         double shifting_factor = 0.0;
         int cnt;
 
-        for (size_t i = 0, e = AtomicModel <Time, Value>::x[0].size();
-             i != e; ++i) {
+        for (size_t i = 0, end = AtomicModel <Time, Value>::x[0].size();
+             i != end; ++i) {
             double val = AtomicModel <Time, Value>::x[0][i];
 
             if (INIT == m_state) {
@@ -398,16 +394,6 @@ public:
                                 update_thresholds(shifting_factor, UP);
                             }
 
-                            vle_dbg((AtomicModel <Time, Value>::context()),
-                                    " Quantifier  %p new quantas while treating"
-                                    " new val %f at date %f\n quantizer"
-                                    " interval :  [%f, %f]  , amplitude : %f"
-                                    " (default amplitude : %f)\n Quantifier"
-                                    " %p shifting : %f",  this, val, t,
-                                    m_downthreshold, m_upthreshold,
-                                    (m_upthreshold - m_downthreshold),
-                                    (2 * m_step_size), this, shifting_factor);
-
                             m_adapt_state=DONE;
                         } else {
                             update_thresholds();
@@ -419,19 +405,6 @@ public:
                         update_thresholds();
                         break;
                     }
-                }
-
-                if (cnt > 1) {
-                    vle_dbg((AtomicModel <Time, Value>::context()), "Warning :"
-                            " multiple quanta change at date: %f", t);
-                }
-
-                if(0 == cnt) {
-                    vle_dbg((AtomicModel <Time, Value>::context()), "Warning :"
-                            " useless ext transition call: no quanta change!"
-                            " input val : %f (quantizer interval : %f,%f at"
-                            " date: %f", val, m_downthreshold, m_upthreshold,
-                            t);
                 }
             }
         }
@@ -555,9 +528,7 @@ private:
 
         if (oscillating(m_past_length-1) &&
             archive.back().date - archive.front().date) {
-            vle_dbg((AtomicModel <Time, Value>::context()),
-                    "Oscillating, archive size=%zu (m_past_length = %u)",
-                    archive.size(), m_past_length);
+
             double acc = 0;
             double local_estim;
             int cnt = 0;
@@ -572,17 +543,6 @@ private:
                             / (archive[i + 2].date - archive[i].date);
                     }
 
-                    vle_dbg((AtomicModel <Time, Value>::context()),
-                            " Quantifier:  date 1 is  %f , date 2 is  %f,"
-                            " date 3 is  %f", archive[i].date,
-                            archive[i+1].date, archive[i+2].date);
-                    vle_dbg((AtomicModel <Time, Value>::context()),
-                            " Quantifier: delta time 1  %f ,delta time 2  %f",
-                            archive[i+1].date - archive[i].date,
-                            archive[i+2].date-archive[i+1].date);
-                    vle_dbg((AtomicModel <Time, Value>::context()),
-                            " Quantifier: local estim (%ld/%ld) : %f",
-                            (i+1), (archive.size() - 2), local_estim);
                     acc+=local_estim;
                     cnt++;
                 }
@@ -590,15 +550,8 @@ private:
 
             acc = acc / cnt;
 
-            vle_dbg((AtomicModel <Time, Value>::context()),
-                    " Quantifier: Global prospective offset: %f (%d values pooled)",
-                    acc, cnt);
             factor = acc;
             archive.clear();
-        } else {
-            vle_dbg((AtomicModel <Time, Value>::context()),
-                    " Quantifier: Not oscillating, archive size = %zu (m_past_length = %u)",
-                    archive.size(), m_past_length);
         }
 
         return factor;
@@ -674,21 +627,17 @@ struct Variable : public AtomicModel <Time, Value>
         (void)r;
         (void)t;
 
-        vle_dbg((AtomicModel <Time, Value>::context()), "compute delta at %f\n", t);
-
         /*
          * TODO by default, we take the first value in the variable
          * list.
          */
-        for (std::size_t i = 0, e = AtomicModel <Time, Value>::x.size(); i != e; ++i)
+        for (std::size_t i = 0, end = AtomicModel <Time, Value>::x.size(); i != end; ++i)
             if (not AtomicModel <Time, Value>::x[i].empty())
                 values[i] = AtomicModel <Time, Value>::x[i].front();
 
         double value = compute(values, constants);
         if (value != oldvalue) {
             values.front() = value;
-
-            vle_dbg((AtomicModel <Time, Value>::context()), "returns %f\n", values.front());
 
             return Time::null();
         }

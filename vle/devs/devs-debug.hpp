@@ -24,8 +24,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DEVS_DEBUG_HPP__
-#define __VLE_KERNEL_DEVS_DEBUG_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_DEVS_DEBUG_HPP
+#define ORG_VLEPROJECT_KERNEL_DEVS_DEBUG_HPP
 
 #include <vle/devs/devs.hpp>
 #include <ostream>

@@ -24,9 +24,10 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_UTILS_HPP__
-#define __VLE_KERNEL_UTILS_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_UTILS_HPP
+#define ORG_VLEPROJECT_KERNEL_UTILS_HPP
 
+#include <boost/numeric/conversion/cast.hpp>
 #include <functional>
 #include <limits>
 #include <string>
@@ -69,8 +70,8 @@ std::string stringf(const char* format, ...) VLE_GCC_PRINTF(1, 2);
  */
 struct ScopeExit
 {
-    ScopeExit(std::function <void (void)> fct)
-        : fct(fct)
+    ScopeExit(std::function <void (void)> fct_)
+        : fct(fct_)
     {}
 
     ~ScopeExit()
@@ -104,8 +105,14 @@ inline std::string stringf(const char* format, ...)
             return std::move(std::string());
         else if (static_cast <std::size_t>(sz) < buffer.size())
             return std::move(std::string(buffer.data(), buffer.size()));
-        else
-            buffer.resize(sz + 1u);
+        else {
+            try {
+                buffer.resize(boost::numeric_cast<std::size_t>(sz + 1));
+            } catch (const std::exception& /*e*/) {
+                //std::clog << "stringf failure" << e.what() << '\n';
+                return std::move(std::string());
+            }
+        }
     }
 }
 

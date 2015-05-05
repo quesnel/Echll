@@ -24,8 +24,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DEVS_DETAIL_DEVS_IMPLEMENTATION_HPP__
-#define __VLE_KERNEL_DEVS_DETAIL_DEVS_IMPLEMENTATION_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_DEVS_DETAIL_DEVS_IMPLEMENTATION_HPP
+#define ORG_VLEPROJECT_KERNEL_DEVS_DETAIL_DEVS_IMPLEMENTATION_HPP
 
 namespace vle { namespace devs {
 
@@ -34,13 +34,13 @@ devs_internal_error::devs_internal_error(const std::string& msg)
 {
 }
 
-devs_internal_error::~devs_internal_error()
+devs_internal_error::~devs_internal_error() noexcept
 {
 }
 
 template <typename Time, typename Value>
-Model <Time, Value>::Model(const Context &ctx)
-    : ctx(ctx)
+Model <Time, Value>::Model(const Context &ctx_)
+    : ctx(ctx_)
     , tl(Time::negative_infinity())
     , tn(Time::infinity())
     , e(Time::null())
@@ -49,10 +49,10 @@ Model <Time, Value>::Model(const Context &ctx)
 }
 
 template <typename Time, typename Value>
-Model <Time, Value>::Model(const Context &ctx,
+Model <Time, Value>::Model(const Context &ctx_,
                            std::size_t input_port_number,
                            std::size_t output_port_number)
-    : ctx(ctx)
+    : ctx(ctx_)
     , x(input_port_number)
     , y(output_port_number)
     , tl(Time::negative_infinity())
@@ -63,10 +63,10 @@ Model <Time, Value>::Model(const Context &ctx,
 }
 
 template <typename Time, typename Value>
-Model <Time, Value>::Model(const Context &ctx,
+Model <Time, Value>::Model(const Context &ctx_,
                            std::initializer_list <std::string> lst_x,
                            std::initializer_list <std::string> lst_y)
-    : ctx(ctx)
+    : ctx(ctx_)
     , x(lst_x)
     , y(lst_y)
     , tl(Time::negative_infinity())
@@ -290,9 +290,9 @@ void CoupledModel <Time, Value>::y_msg(Model <Time, Value>& model,
     post(model, receivers);
 
     std::for_each(receivers.begin(), receivers.end(),
-                  [=](const Model <Time, Value> *model)
+                  [=](const Model <Time, Value> *r)
                   {
-                      Model <Time, Value>* mdl = const_cast <Model <Time, Value>*>(model);
+                      Model <Time, Value>* mdl = const_cast <Model <Time, Value>*>(r);
 
                       if (mdl == this) {
                           Model <Time, Value>::parent->y_msg(*this, time);

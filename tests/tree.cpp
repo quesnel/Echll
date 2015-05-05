@@ -97,8 +97,9 @@ typedef vle::dsde::Engine <MyTime, MyValue> MyDSDE;
 using UpdatedPort = vle::dsde::UpdatedPort <MyTime, MyValue>;
 using AtomicModel = vle::dsde::AtomicModel <MyTime, MyValue>;
 using Factory = vle::dsde::Factory <MyTime, MyValue>;
-using GenericCoupledModelThread = vle::dsde::GenericCoupledModel <MyTime, MyValue,
-      vle::dsde::TransitionPolicyDefault <MyTime, MyValue>>;
+using GenericCoupledModelThread = vle::dsde::GenericCoupledModel
+                                  <MyTime, MyValue,
+                                  vle::dsde::TransitionPolicyDefault <MyTime, MyValue>>;
 using CoupledModelThread = vle::dsde::CoupledModel <MyTime, MyValue,
       vle::dsde::TransitionPolicyThread <MyTime, MyValue>>;
 using CoupledModelMono = vle::dsde::CoupledModel <MyTime, MyValue,
@@ -108,45 +109,37 @@ using ExecutiveThread = vle::dsde::Executive <MyTime, MyValue,
 using ExecutiveMono = vle::dsde::Executive <MyTime, MyValue,
       vle::dsde::TransitionPolicyDefault <MyTime, MyValue>>;
 
-struct TopPixel : AtomicModel
-{
+struct TopPixel : AtomicModel {
     std::string  m_name;
     double value;
 
-    TopPixel(const vle::Context& ctx)
+    TopPixel(const vle::Context &ctx)
         : AtomicModel(ctx, {}, {"0"})
-        , value(0)
+    , value(0)
     {}
 
     virtual ~TopPixel()
     {}
 
-    virtual double init(const vle::Common& common, const double&) override final
+    virtual double init(const vle::Common &common, const double &) override final
     {
-        vle_dbg(ctx, "TopPixel %s: init", m_name.c_str());
-
         m_name = boost::any_cast <std::string>(common.at("name"));
-
         return 0.0;
     }
 
-    virtual double delta(const double&, const double&, const double&) override final
+    virtual double delta(const double &, const double &,
+                         const double &) override final
     {
-        vle_dbg(ctx, "TopPixel %s: delta", m_name.c_str());
-
         return 1.0;
     }
 
     virtual void lambda() const override final
     {
-        vle_dbg(ctx, "TopPixel %s: lambda", m_name.c_str());
-
         y[0] = {value};
     }
 };
 
-struct NormalPixel : AtomicModel
-{
+struct NormalPixel : AtomicModel {
     enum Phase { WAIT, SEND };
 
     std::string  m_name;
@@ -158,45 +151,41 @@ struct NormalPixel : AtomicModel
     unsigned int m_last_received;
     Phase        m_phase;
 
-    NormalPixel(const vle::Context& ctx)
+    NormalPixel(const vle::Context &ctx)
         : AtomicModel(ctx, {"0"}, {"0"})
-        , m_value(0.0)
-        , m_current_time(MyTime::negative_infinity())
-        , m_last_time(MyTime::infinity())
-        , m_neighbour_number(0)
-        , m_received(0)
-        , m_last_received(0)
-        , m_phase(WAIT)
+    , m_value(0.0)
+    , m_current_time(MyTime::negative_infinity())
+    , m_last_time(MyTime::infinity())
+    , m_neighbour_number(0)
+    , m_received(0)
+    , m_last_received(0)
+    , m_phase(WAIT)
     {}
 
     virtual ~NormalPixel()
     {}
 
-    virtual double init(const vle::Common& common,
-                        const double& t) override final
+    virtual double init(const vle::Common &common,
+                        const double &t) override final
     {
-        vle_dbg(ctx, "NormalPixel %s: init", m_name.c_str());
-
         m_value = 0.0;
         m_current_time = t;
         m_last_time = MyTime::negative_infinity();
         m_name = boost::any_cast <std::string>(common.at("name"));
-        m_neighbour_number = boost::any_cast <unsigned int>(common.at("neighbour_number"));
+        m_neighbour_number = boost::any_cast <unsigned int>
+                             (common.at("neighbour_number"));
         m_received = 0;
         m_last_received = 0;
         m_phase = WAIT;
-
         return MyTime::infinity();
     }
 
-    virtual double delta(const double& e, const double& remaining,
-                         const double& time) override final
+    virtual double delta(const double &e, const double &remaining,
+                         const double &time) override final
     {
         (void)e;
         (void)remaining;
-
         m_current_time = time;
-        vle_dbg(ctx, "NormalPixel %s: delta (time=%f)", m_name.c_str(), time);
 
         if (x.empty())
             dint(m_current_time);
@@ -209,12 +198,8 @@ struct NormalPixel : AtomicModel
         return 0.0;
     }
 
-    void dint(const double& time)
+    void dint(const double &time)
     {
-        vle_dbg(ctx, "%s dint: m_received=%u size=%lu",
-                    m_name.c_str(), m_received,
-                    x[0].size());
-
         if (m_phase == SEND) {
             m_phase = WAIT;
             m_last_received += m_received;
@@ -223,16 +208,9 @@ struct NormalPixel : AtomicModel
         }
     }
 
-    void dext(const double& time)
+    void dext(const double &time)
     {
-        if (m_last_time == time)
-            vle_dbg(ctx, "oups !");
-
-        vle_dbg(ctx, "%s dext: m_received=%u size=%lu (needs=%u)",
-                    m_name.c_str(), m_received,
-                    x[0].size(),
-                    m_neighbour_number);
-
+        assert(m_last_time != time);
         m_received += x[0].size();
 
         if (m_received == m_neighbour_number) {
@@ -242,96 +220,73 @@ struct NormalPixel : AtomicModel
 
     virtual void lambda() const override final
     {
-        vle_dbg(ctx, "NormalPixel %s: lambda", m_name.c_str());
-
         if (m_phase == SEND)
             y[0] = {m_value};
     }
 };
 
-struct MyGenericCoupledModel_s0 : GenericCoupledModelThread
-{
-    MyGenericCoupledModel_s0(const vle::Context& ctx)
+struct MyGenericCoupledModel_s0 : GenericCoupledModelThread {
+    MyGenericCoupledModel_s0(const vle::Context &ctx)
         : GenericCoupledModelThread(ctx,
-                                    {"0", "1", "2", "6", "7"},
-                                    {"3", "4", "5"})
+    {"0", "1", "2", "6", "7"},
+    {"3", "4", "5"})
     {}
 
     virtual ~MyGenericCoupledModel_s0()
     {}
 
     virtual vle::Common update_common(
-        const vle::Common& common,
-        const MyGenericCoupledModel_s0::vertices& v,
-        const MyGenericCoupledModel_s0::edges& e,
+        const vle::Common &common,
+        const MyGenericCoupledModel_s0::vertices &v,
+        const MyGenericCoupledModel_s0::edges &e,
         int child)
     {
-        auto mdl = v[child].get();
-
+        auto mdl = v[boost::numeric_cast<std::size_t>(child)].get();
         typedef MyGenericCoupledModel_s0::edges::value_type edge_type;
-
         unsigned int nb = std::accumulate(
-            e.cbegin(), e.cend(),
-            0u, [&mdl](unsigned int x, const edge_type& edge)
-            {
-                return edge.second.first == mdl ? x + 1u : x;
-            });
-
+                              e.cbegin(), e.cend(),
+        0u, [&mdl](unsigned int x, const edge_type & edge) {
+            return edge.second.first == mdl ? x + 1u : x;
+        });
         vle::Common ret(common);
-
         ret["name"] = std::string("s0-") + std::to_string(child);
         ret["neighbour_number"] = nb;
-
-        vle_dbg(ctx, "model %d, neighbour_number %" PRIuMAX,
-                    child, (std::uintmax_t)nb);
-
         return std::move(ret);
     }
 };
 
-struct MyGenericCoupledModel_s1 : GenericCoupledModelThread
-{
-    MyGenericCoupledModel_s1(const vle::Context& ctx)
+struct MyGenericCoupledModel_s1 : GenericCoupledModelThread {
+    MyGenericCoupledModel_s1(const vle::Context &ctx)
         : GenericCoupledModelThread(ctx,
-                                    {"3", "4", "5"},
-                                    {"0", "1", "2", "6", "7"})
+    {"3", "4", "5"},
+    {"0", "1", "2", "6", "7"})
     {}
 
     virtual ~MyGenericCoupledModel_s1()
     {}
 
     virtual vle::Common update_common(
-        const vle::Common& common,
-        const MyGenericCoupledModel_s1::vertices& v,
-        const MyGenericCoupledModel_s1::edges& e,
+        const vle::Common &common,
+        const MyGenericCoupledModel_s1::vertices &v,
+        const MyGenericCoupledModel_s1::edges &e,
         int child)
     {
-        auto mdl = v[child].get();
-
+        auto mdl = v[boost::numeric_cast<std::size_t>(child)].get();
         typedef MyGenericCoupledModel_s1::edges::value_type edge_type;
-
         unsigned int nb = std::accumulate(
-            e.cbegin(), e.cend(),
-            0u, [&mdl](unsigned int x, const edge_type& edge)
-            {
-                return edge.second.first == mdl ? x + 1 : x;
-            });
-
+                              e.cbegin(), e.cend(),
+        0u, [&mdl](unsigned int x, const edge_type & edge) {
+            return edge.second.first == mdl ? x + 1 : x;
+        });
         vle::Common ret(common);
-
         ret["name"] = std::string("s1-") + std::to_string(child);
         ret["neighbour_number"] = nb;
-
-        vle_dbg(ctx, "model %d, neighbour_number %" PRIuMAX,
-                    child, (std::uintmax_t)nb);
-
         return std::move(ret);
     }
 };
 
-struct RootNetwork : GenericCoupledModelThread
-{
-    RootNetwork(const vle::Context& ctx)
+struct RootNetwork : GenericCoupledModelThread {
+    RootNetwork(const vle::Context &ctx)
         : GenericCoupledModelThread(ctx, {}, {})
     {}
 
@@ -339,15 +294,15 @@ struct RootNetwork : GenericCoupledModelThread
     {}
 
     virtual vle::Common update_common(
-        const vle::Common& common,
-        const MyGenericCoupledModel_s1::vertices& v,
-        const MyGenericCoupledModel_s1::edges& e,
+        const vle::Common &common,
+        const MyGenericCoupledModel_s1::vertices &v,
+        const MyGenericCoupledModel_s1::edges &e,
         int child)
     {
         (void) v;
         (void) e;
-
         vle::Common ret(common);
+
         if (child == 0)
             ret.at("tgf-stringsource") = s0_string;
         else if (child == 1)
@@ -361,48 +316,36 @@ struct RootNetwork : GenericCoupledModelThread
 
 typedef vle::dsde::Factory <MyTime, MyValue> MainFactory;
 
-void check_f1(const vle::Context& ctx, const vle::CommonPtr& common)
+void check_f1(const vle::Context &ctx, const vle::CommonPtr &common)
 {
     common->at("tgf-stringsource") = root_string;
-
     MyDSDE dsde_engine(common);
     RootNetwork root(ctx);
     vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, root);
-
     double final_date = sim.run(0.0, 1.0);
     Assert(final_date == 1.0);
-
-    MyGenericCoupledModel_s0* model_s0 =
-        dynamic_cast <MyGenericCoupledModel_s0*>(root.m_children[0].get());
-
+    MyGenericCoupledModel_s0 *model_s0 =
+        dynamic_cast <MyGenericCoupledModel_s0 *>(root.m_children[0].get());
     Assert(model_s0);
-
-    NormalPixel* model_s0_4 =
-        dynamic_cast <NormalPixel*>(model_s0->m_children[4].get());
-
+    NormalPixel *model_s0_4 =
+        dynamic_cast <NormalPixel *>(model_s0->m_children[4].get());
     Assert(model_s0_4);
     Assert(model_s0_4->m_last_received == 6);
 }
 
-void check_f2(const vle::Context& ctx, const vle::CommonPtr& common)
+void check_f2(const vle::Context &ctx, const vle::CommonPtr &common)
 {
     common->at("tgf-stringsource") = root_string;
-
     MyDSDE dsde_engine(common);
     RootNetwork root(ctx);
     vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, root);
-
     double final_date = sim.run(0.0, 10.0);
     Assert(final_date == 10.0);
-
-    MyGenericCoupledModel_s0* model_s0 =
-        dynamic_cast <MyGenericCoupledModel_s0*>(root.m_children[0].get());
-
+    MyGenericCoupledModel_s0 *model_s0 =
+        dynamic_cast <MyGenericCoupledModel_s0 *>(root.m_children[0].get());
     Assert(model_s0);
-
-    NormalPixel* model_s0_4 =
-        dynamic_cast <NormalPixel*>(model_s0->m_children[4].get());
-
+    NormalPixel *model_s0_4 =
+        dynamic_cast <NormalPixel *>(model_s0->m_children[4].get());
     Assert(model_s0_4);
     Assert(model_s0_4->m_last_received == (6 * final_date));
 }
@@ -410,37 +353,26 @@ void check_f2(const vle::Context& ctx, const vle::CommonPtr& common)
 int main()
 {
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
-
     std::shared_ptr <MainFactory> factory = std::make_shared <MainFactory>();
-
     typedef MainFactory::modelptr modelptr;
-
     factory->functions.emplace("normal",
-                               [&ctx]() -> modelptr
-                               {
-                                   return modelptr(new NormalPixel(ctx));
-                               });
-
+    [&ctx]() -> modelptr {
+        return modelptr(new NormalPixel(ctx));
+    });
     factory->functions.emplace("top",
-                               [&ctx]() -> modelptr
-                               {
-                                   return modelptr(new TopPixel(ctx));
-                               });
-
+    [&ctx]() -> modelptr {
+        return modelptr(new TopPixel(ctx));
+    });
     factory->functions.emplace("coupled_s0",
-                               [&ctx]() -> modelptr
-                               {
-                                   return modelptr(
-                                       new MyGenericCoupledModel_s0(ctx));
-                               });
-
+    [&ctx]() -> modelptr {
+        return modelptr(
+            new MyGenericCoupledModel_s0(ctx));
+    });
     factory->functions.emplace("coupled_s1",
-                               [&ctx]() -> modelptr
-                               {
-                                   return modelptr(
-                                       new MyGenericCoupledModel_s1(ctx));
-                               });
-
+    [&ctx]() -> modelptr {
+        return modelptr(
+            new MyGenericCoupledModel_s1(ctx));
+    });
     vle::CommonPtr common = std::make_shared <vle::Common>();
     int source = 1;
     int format = 1;
@@ -448,9 +380,7 @@ int main()
     common->emplace("tgf-source", source);
     common->emplace("tgf-format", format);
     common->emplace("tgf-stringsource", root_string);
-
     check_f1(ctx, common);
     check_f2(ctx, common);
-
     return EXIT_SUCCESS;
 }

@@ -24,31 +24,44 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VLE_KERNEL_DSDE_QSS1_HPP__
-#define __VLE_KERNEL_DSDE_QSS1_HPP__
+#ifndef ORG_VLEPROJECT_KERNEL_DSDE_QSS1_HPP
+#define ORG_VLEPROJECT_KERNEL_DSDE_QSS1_HPP
 
 #include <vle/dsde/dsde.hpp>
 #include <valarray>
 
 namespace vle { namespace dsde { namespace qss1 {
 
-struct internal_error : std::runtime_error
+class internal_error : std::runtime_error
 {
-    explicit internal_error(const std::string &msg)
-        : std::runtime_error(msg)
-    {}
+public:
+    internal_error(const std::string &msg);
+
+    internal_error(const internal_error&) = default;
+
+    virtual ~internal_error() noexcept;
 };
+
+internal_error::internal_error(const std::string &msg)
+    : std::runtime_error(msg)
+{}
+
+internal_error::~internal_error() noexcept
+{}
+
+typedef double port;
 
 typedef std::function <
     double(const std::valarray <double>& cst,
            const std::valarray <double>& v)> compute_fct;
 
-template <typename Time, typename Value>
-struct Variable : AtomicModel <Time, Value>
+template <typename Time>
+struct Variable : AtomicModel <Time, port>
 {
-    typedef Time time_format;
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
+    typedef AtomicModel <Time, port> parent_type;
+    typedef typename parent_type::time_format time_format;
+    typedef typename parent_type::time_type time_type;
+    typedef typename parent_type::value_type value_type;
 
     compute_fct computer;
 
@@ -60,7 +73,7 @@ struct Variable : AtomicModel <Time, Value>
              std::size_t system_size,
              compute_fct computer_,
              const std::valarray <double>& constants)
-        : AtomicModel <Time, Value>(ctx, system_size, 1u)
+        : AtomicModel <Time, port>(ctx, system_size, 1u)
         , computer(computer_)
         , c(constants)
         , u(system_size)
@@ -84,7 +97,7 @@ struct Variable : AtomicModel <Time, Value>
 
     virtual void lambda() const
     {
-        AtomicModel <Time, Value>::y[0] = { computer(c, u) };
+        AtomicModel <Time, port>::y[0] = { computer(c, u) };
     }
 
     virtual time_type delta(const time_type& e, const time_type& r,
@@ -96,9 +109,9 @@ struct Variable : AtomicModel <Time, Value>
 
         sigma = Time::infinity();
 
-        for (std::size_t i = 0, e = AtomicModel <Time, Value>::x.size(); i != e; ++i) {
-            if (not AtomicModel <Time, Value>::x[i].empty()) {
-                u[i] = AtomicModel <Time, Value>::x[i].front();
+        for (std::size_t i = 0, end = AtomicModel <Time, port>::x.size(); i != end; ++i) {
+            if (not AtomicModel <Time, port>::x[i].empty()) {
+                u[i] = AtomicModel <Time, port>::x[i].front();
                 sigma = Time::null();
             }
         }
@@ -107,17 +120,19 @@ struct Variable : AtomicModel <Time, Value>
     }
 };
 
-template <typename Time, typename Value>
-struct Integrator : AtomicModel <Time, Value>
+template <typename Time>
+struct Integrator : AtomicModel <Time, port>
 {
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
+    typedef AtomicModel <Time, port> parent_type;
+    typedef typename parent_type::time_format time_format;
+    typedef typename parent_type::time_type time_type;
+    typedef typename parent_type::value_type value_type;
 
     time_type sigma;
     double dq, epsilon, X, dX, q;
 
     Integrator(const Context &ctx, double dq_, double epsilon_, double x_)
-        : AtomicModel <Time, Value>(ctx, 1u, 1u)
+        : AtomicModel <Time, port>(ctx, 1u, 1u)
         , sigma(Time::null())
         , dq(dq_)
         , epsilon(epsilon_)
@@ -142,9 +157,9 @@ struct Integrator : AtomicModel <Time, Value>
     virtual void lambda() const
     {
         if (dX == 0.0) {
-            AtomicModel <Time, Value>::y[0] = { q };
+            parent_type::y[0] = { q };
         } else {
-            AtomicModel <Time, Value>::y[0] = { q + dq * dX / std::abs(dX) };
+            parent_type::y[0] = { q + dq * dX / std::abs(dX) };
         }
     }
 
@@ -154,7 +169,7 @@ struct Integrator : AtomicModel <Time, Value>
         (void)r;
         (void)t;
 
-        if (AtomicModel <Time, Value>::x.empty()) {
+        if (parent_type::x.empty()) {
             X += sigma * dX;
 
             if (dX > 0.0) {
@@ -167,7 +182,7 @@ struct Integrator : AtomicModel <Time, Value>
                 sigma = Time::infinity();
             }
         } else {
-            double xv = AtomicModel <Time, Value>::x[0].front();
+            double xv = parent_type::x[0].front();
             X += dX * e;
 
             if (xv > 0.0) {
@@ -185,14 +200,16 @@ struct Integrator : AtomicModel <Time, Value>
     }
 };
 
-template <typename Time, typename Value>
-struct Equation : CoupledModel <Time, Value>
+template <typename Time>
+struct Equation : CoupledModel <Time, port>
 {
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
+    typedef CoupledModel <Time, port> parent_type;
+    typedef typename parent_type::time_format time_format;
+    typedef typename parent_type::time_type time_type;
+    typedef typename parent_type::value_type value_type;
 
-    Integrator <Time, Value> m_integrator;
-    Variable <Time, Value> m_variable;
+    Integrator <Time> m_integrator;
+    Variable <Time> m_variable;
 
     Equation(const vle::Context &ctx,
              double dq,
@@ -201,7 +218,7 @@ struct Equation : CoupledModel <Time, Value>
              std::size_t system_size,
              compute_fct compute,
              const std::valarray <double>& constants)
-        : CoupledModel <Time, Value>(ctx, system_size, 1u)
+        : CoupledModel <Time, port>(ctx, system_size, 1u)
         , m_integrator(ctx, dq, epsilon, x)
         , m_variable(ctx, system_size, compute, constants)
     {
@@ -211,14 +228,14 @@ struct Equation : CoupledModel <Time, Value>
     {
     }
 
-    virtual typename CoupledModel <Time, Value>::children_t
+    virtual typename parent_type::children_t
     children(const vle::Common&) override final
     {
         return { &m_integrator, &m_variable };
     }
 
-    virtual void post(const UpdatedPort <Time, Value> &out,
-                      UpdatedPort <Time, Value> &in)
+    virtual void post(const UpdatedPort <Time, port> &out,
+                      UpdatedPort <Time, port> &in)
         const override final
     {
         (void)out;
@@ -231,13 +248,13 @@ struct Equation : CoupledModel <Time, Value>
 
         if (not m_integrator.y.empty()) {
             copy_values(m_integrator.y[0], m_variable.x[0]);
-            copy_values(m_integrator.y[0], CoupledModel <Time, Value>::y[0]);
+            copy_values(m_integrator.y[0], CoupledModel <Time, port>::y[0]);
 
             in.emplace(&m_variable);
         }
 
-        if (not CoupledModel <Time, Value>::x.empty()) {
-            copy_port_values(CoupledModel <Time, Value>::x, m_variable.x);
+        if (not CoupledModel <Time, port>::x.empty()) {
+            copy_port_values(CoupledModel <Time, port>::x, m_variable.x);
 
             in.emplace(&m_variable);
         }
