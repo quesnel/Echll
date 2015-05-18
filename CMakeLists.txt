@@ -128,12 +128,12 @@ if (CATCH_INCLUDE_DIR)
     COMPILE_FLAGS "${echll_compile_flags}")
   add_test(NAME test_dsde-engine COMMAND test_dsde-engine)
 
-  add_executable(test_dsde-aqss-engine tests/dsde-aqss.cpp)
-  target_link_libraries(test_dsde-aqss-engine ${Echll_LINK_LIBRARIES})
-  set_target_properties(test_dsde-aqss-engine PROPERTIES
+  add_executable(test_dsde-qss-engine tests/dsde-qss.cpp)
+  target_link_libraries(test_dsde-qss-engine ${Echll_LINK_LIBRARIES})
+  set_target_properties(test_dsde-qss-engine PROPERTIES
     COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests"
     COMPILE_FLAGS "${echll_compile_flags}")
-  add_test(NAME test_dsde-aqss-engine COMMAND test_dsde-aqss-engine)
+  add_test(NAME test_dsde-qss-engine COMMAND test_dsde-qss-engine)
 
   add_executable(test_dtss-engine tests/dtss-engine.cpp)
   target_link_libraries(test_dtss-engine ${Echll_LINK_LIBRARIES})

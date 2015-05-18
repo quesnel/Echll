@@ -64,9 +64,9 @@ struct ComposedModel;
 template <typename Time, typename Value>
 struct Model
 {
-    typedef Time time_format;
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
+    using time_format = Time;
+    using time_type = typename Time::time_type;
+    using value_type = Value;
 
     Model(const Model&) = default;
     Model(Model&&) = default;
@@ -125,9 +125,9 @@ using UpdatedPort = std::set <const Model <Time, Value>*>;
 template <typename Time, typename Value>
 struct ComposedModel : Model <Time, Value>
 {
-    typedef Time time_format;
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
+    using time_format = Time;
+    using time_type = typename Time::time_type;
+    using value_type = Value;
 
     ComposedModel(const ComposedModel&) = default;
     ComposedModel(ComposedModel&&) = default;
@@ -160,9 +160,9 @@ struct ComposedModel : Model <Time, Value>
 template <typename Time, typename Value>
 struct AtomicModel : Model <Time, Value>
 {
-    typedef Time time_format;
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
+    using time_format = Time;
+    using time_type = typename Time::time_type;
+    using value_type = Value;
 
     AtomicModel(const AtomicModel&) = default;
     AtomicModel(AtomicModel&&) = default;
@@ -225,8 +225,9 @@ struct AtomicModel : Model <Time, Value>
 template <typename Time, typename Value>
 struct TransitionPolicyDefault
 {
-    typedef Time time_format;
-    typedef typename Time::time_type time_type;
+    using time_format = Time;
+    using time_type = typename Time::time_type;
+    using value_type = Value;
 
     TransitionPolicyDefault()
     {}
@@ -253,8 +254,9 @@ struct TransitionPolicyDefault
 template <typename Time, typename Value>
 struct TransitionPolicyThread
 {
-    typedef Time time_format;
-    typedef typename Time::time_type time_type;
+    using time_format = Time;
+    using time_type = typename Time::time_type;
+    using value_type = Value;
 
     TransitionPolicyThread()
         : pool(std::max(1u, std::thread::hardware_concurrency()))
@@ -341,10 +343,10 @@ template <typename Time, typename Value,
           typename Policy = TransitionPolicyThread <Time, Value>>
 struct CoupledModel : ComposedModel <Time, Value>
 {
-    typedef Time time_format;
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
-    typedef Policy transition_policy;
+    using time_format = Time;
+    using time_type = typename Time::time_type;
+    using value_type = Value;
+    using transition_policy_type = Policy;
 
     CoupledModel(const CoupledModel&) = default;
     CoupledModel(CoupledModel&&) = default;
@@ -352,7 +354,7 @@ struct CoupledModel : ComposedModel <Time, Value>
     CoupledModel& operator=(CoupledModel&&) = default;
 
     HeapType <Time, Value> heap;
-    transition_policy policy;
+    transition_policy_type policy;
 
     typedef std::vector <Model <Time, Value>*> children_t;
 
@@ -502,7 +504,7 @@ struct Executive : ComposedModel <Time, Value>
     typedef Time time_format;
     typedef typename Time::time_type time_type;
     typedef Value value_type;
-    typedef Policy transition_policy;
+    typedef Policy transition_policy_type;
 
     Executive(const Executive&) = default;
     Executive(Executive&&) = default;
@@ -515,7 +517,7 @@ struct Executive : ComposedModel <Time, Value>
     time_type chi_tl, chi_tn;
     typename HeapType <Time, Value>::handle_type chi_heapid;
     mutable vle::PortList <Value> chi_x, chi_y;
-    transition_policy policy;
+    transition_policy_type policy;
     vle::Common localcommon;
 
     virtual children_t children(const vle::Common& common) = 0;
