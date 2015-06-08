@@ -40,27 +40,30 @@
 #include <list>
 
 typedef vle::DoubleTime MyTime;
-typedef std::string MyValue;
-typedef vle::dsde::Engine <MyTime, MyValue> MyDSDE;
+typedef vle::PortList <std::string> MyPort;
+typedef vle::dsde::Engine <MyTime> MyDSDE;
 
-using UpdatedPort = vle::dsde::UpdatedPort <MyTime, MyValue>;
-using AtomicModel = vle::dsde::AtomicModel <MyTime, MyValue>;
-using GenericCoupledModel = vle::dsde::GenericCoupledModel <MyTime, MyValue,
-      vle::dsde::TransitionPolicyThread <MyTime, MyValue>>;
-using CoupledModelThread = vle::dsde::CoupledModel <MyTime, MyValue,
-      vle::dsde::TransitionPolicyThread <MyTime, MyValue>>;
-using CoupledModelMono = vle::dsde::CoupledModel <MyTime, MyValue,
-      vle::dsde::TransitionPolicyDefault <MyTime, MyValue>>;
-using ExecutiveThread = vle::dsde::Executive <MyTime, MyValue,
-      vle::dsde::TransitionPolicyThread <MyTime, MyValue>>;
-using ExecutiveMono = vle::dsde::Executive <MyTime, MyValue,
-      vle::dsde::TransitionPolicyDefault <MyTime, MyValue>>;
+using AtomicModel = vle::dsde::AtomicModel <MyTime, MyPort, MyPort>;
+using GenericCoupledModel = vle::dsde::GenericCoupledModel <MyTime,
+      vle::dsde::TransitionPolicyThread <MyTime>>;
+using CoupledModelThread = vle::dsde::CoupledModel <MyTime, MyPort, MyPort,
+      MyPort, MyPort,
+      vle::dsde::TransitionPolicyThread <MyTime>>;
+using CoupledModelMono = vle::dsde::CoupledModel <MyTime, MyPort, MyPort,
+      MyPort, MyPort,
+      vle::dsde::TransitionPolicyDefault <MyTime>>;
+using ExecutiveThread = vle::dsde::Executive <MyTime, MyPort, MyPort,
+      MyPort, MyPort,
+      vle::dsde::TransitionPolicyThread <MyTime>>;
+using ExecutiveMono = vle::dsde::Executive <MyTime, MyPort, MyPort,
+      MyPort, MyPort,
+      vle::dsde::TransitionPolicyDefault <MyTime>>;
 
 struct ModelB : AtomicModel {
     int i;
 
     ModelB(const vle::Context &ctx)
-        : AtomicModel(ctx, {"in"}, {"out"})
+        : AtomicModel(ctx, 1u, 1u)
     {}
 
     virtual ~ModelB()
@@ -127,7 +130,7 @@ struct Counter : AtomicModel {
     int i;
 
     Counter(const vle::Context &ctx)
-        : AtomicModel(ctx, {"in"}, {}), i(0)
+        : AtomicModel(ctx, 1u, 0u), i(0)
     {}
 
     Counter(const Counter &other)
@@ -169,19 +172,19 @@ struct Generator : AtomicModel {
     std::normal_distribution < double > dist;
 
     Generator(const vle::Context &ctx)
-        : AtomicModel(ctx, {}, {"out"}),
-    timestep(1), i(0), prng(1234), dist(0., 5.)
+        : AtomicModel(ctx, 0u, 1u)
+        , timestep(1), i(0), prng(1234), dist(0., 5.)
     {}
 
     Generator(const vle::Context &ctx, unsigned int timestep)
-        : AtomicModel(ctx, {}, {"out"}),
-    timestep(timestep), i(0), prng(1234), dist(0., 5.)
+        : AtomicModel(ctx, 0u, 1u)
+        , timestep(timestep), i(0), prng(1234), dist(0., 5.)
     {}
 
     Generator(const Generator &other)
-        : AtomicModel(other),
-          timestep(other.timestep), i(other.i),
-          prng(other.prng), dist(other.dist)
+        : AtomicModel(other)
+        , timestep(other.timestep), i(other.i)
+        , prng(other.prng), dist(other.dist)
     {}
 
     virtual ~Generator()
@@ -265,8 +268,8 @@ struct MyNetwork : Parent {
         return ret;
     }
 
-    virtual void post(const UpdatedPort &out,
-                      UpdatedPort &in) const override final
+    virtual void post(const typename Parent::UpdatedPort &out,
+                      typename Parent::UpdatedPort &in) const override final
     {
         assert(Parent::heap.size() == 3);
 
@@ -295,7 +298,7 @@ struct MyNetworkToCouple : Parent {
     Counter cpt;
 
     MyNetworkToCouple(const vle::Context &ctx)
-        : Parent(ctx, {"in"}, {"out"}), gen(ctx, 1), cpt(ctx)
+        : Parent(ctx, 1u, 1u), gen(ctx, 1), cpt(ctx)
     {}
 
     virtual typename Parent::children_t children(const vle::Common &) override final
@@ -309,8 +312,8 @@ struct MyNetworkToCouple : Parent {
         return ret;
     }
 
-    virtual void post(const UpdatedPort &out,
-                      UpdatedPort &in) const override final
+    virtual void post(const typename Parent::UpdatedPort &out,
+                      typename Parent::UpdatedPort &in) const override final
     {
         (void) out;
 
@@ -325,7 +328,8 @@ struct MyNetworkToCouple : Parent {
             MyNetworkToCouple::y[0].insert(MyNetworkToCouple::y[0].end(),
                                            gen.y[0].begin(),
                                            gen.y[0].end());
-            in.emplace(this);
+            // TODO Remove this line but be sure is not possible
+            // in.emplace(this);
         }
     }
 };
@@ -363,8 +367,8 @@ struct MyRootNetworkToCouple : Parent {
         return std::move(ret);
     }
 
-    virtual void post(const UpdatedPort &out,
-                      UpdatedPort &in) const override final
+    virtual void post(const typename Parent::UpdatedPort &out,
+                      typename Parent::UpdatedPort &in) const override final
     {
         (void) out;
 
@@ -431,8 +435,8 @@ struct MyFlatNetwork : Parent {
         return ret;
     }
 
-    virtual void post(const UpdatedPort &out,
-                      UpdatedPort &in) const override final
+    virtual void post(const typename Parent::UpdatedPort &out,
+                      typename Parent::UpdatedPort &in) const override final
     {
         auto have_post = 0;
 
@@ -496,8 +500,8 @@ struct MyNetworkOfNetwork : Parent {
         return ret;
     }
 
-    virtual void post(const UpdatedPort &out,
-                      UpdatedPort &/*in*/) const override final
+    virtual void post(const typename Parent::UpdatedPort &out,
+                      typename Parent::UpdatedPort &/*in*/) const override final
     {
         (void)out;
         assert(out.empty());
@@ -547,8 +551,8 @@ struct MyNetworkOfNetworkMono : Parent {
         return ret;
     }
 
-    virtual void post(const UpdatedPort &out,
-                      UpdatedPort &/*in*/) const override final
+    virtual void post(const typename Parent::UpdatedPort &out,
+                      typename Parent::UpdatedPort &/*in*/) const override final
     {
         (void) out;
         assert(out.empty());
@@ -587,8 +591,8 @@ struct MyBigNetworkMono : Parent {
         return std::string();
     }
 
-    virtual void post(const UpdatedPort &/*out*/,
-                      UpdatedPort &in) const override final
+    virtual void post(const typename Parent::UpdatedPort &/*out*/,
+                      typename Parent::UpdatedPort &in) const override final
     {
         for (auto &gen : gens) {
             if (gen.y[0].size())
@@ -633,8 +637,8 @@ struct MyBigNetwork : Parent {
         return std::string();
     }
 
-    virtual void post(const UpdatedPort &/*out*/,
-                      UpdatedPort &in) const override final
+    virtual void post(const typename Parent::UpdatedPort &/*out*/,
+                      typename Parent::UpdatedPort &in) const override final
     {
         for (auto &gen : gens) {
             if (gen.y[0].size())
@@ -653,7 +657,7 @@ struct MyGenNetwork : Parent {
 
     MyGenNetwork(const vle::Context &ctx,
                  unsigned int timestep)
-        : Parent(ctx, {}, {"out"}), gen(ctx, timestep)
+        : Parent(ctx, 0u, 1u), gen(ctx, timestep)
     {}
 
     MyGenNetwork(const vle::Context &ctx,
@@ -671,8 +675,8 @@ struct MyGenNetwork : Parent {
         return gen.observation();
     }
 
-    virtual void post(const UpdatedPort &out,
-                      UpdatedPort &in) const override final
+    virtual void post(const typename Parent::UpdatedPort &out,
+                      typename Parent::UpdatedPort &in) const override final
     {
         (void)in;
 
@@ -687,7 +691,7 @@ struct MyCptNetwork : Parent {
     Counter cpt;
 
     MyCptNetwork(const vle::Context &ctx)
-        : Parent(ctx, {"in"}, {}), cpt(ctx)
+        : Parent(ctx, 1u, 0u), cpt(ctx)
     {}
 
     MyCptNetwork(const MyCptNetwork &other)
@@ -706,10 +710,10 @@ struct MyCptNetwork : Parent {
         return cpt.observation();
     }
 
-    virtual void post(const UpdatedPort &out,
-                      UpdatedPort &in) const override final
+    virtual void post(const typename Parent::UpdatedPort &/*out*/,
+                      typename Parent::UpdatedPort &in) const override final
     {
-        if (!out.empty()) {
+        if (!Parent::x[0].empty()) {
             cpt.x[0] = Parent::x[0];
             in.emplace(&cpt);
         }
@@ -747,8 +751,8 @@ struct MyGlobalNetwork : Parent {
                 % gen1.observation() % gen2.observation()).str();
     }
 
-    virtual void post(const UpdatedPort &out,
-                      UpdatedPort &in) const override final
+    virtual void post(const typename Parent::UpdatedPort &out,
+                      typename Parent::UpdatedPort &in) const override final
     {
         if (out.count(&gen1) + out.count(&gen2) > 0) {
             in.emplace(&cpt);
@@ -817,8 +821,8 @@ struct MyExecutive : ExecutiveMono {
         return cpt.observation();
     }
 
-    virtual void post(const UpdatedPort &out,
-                      UpdatedPort &in) const override final
+    virtual void post(const typename Parent::UpdatedPort &out,
+                      typename Parent::UpdatedPort &in) const override final
     {
         if (!out.empty()) {
             for (const auto *child : out) {
@@ -840,8 +844,8 @@ TEST_CASE("main/synchronizer/hierarchy/simple_model_api1", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyModel model(ctx);
-    vle::Simulation <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0, 10);
+    vle::Simulation <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0, 10);
     REQUIRE(final_date == 10);
 }
 
@@ -850,8 +854,8 @@ TEST_CASE("main/synchronizer/hierarchy/simple_model_api2", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyModel model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0, 10);
     REQUIRE(final_date == 10);
     REQUIRE(sim.nbloop == 10);
 }
@@ -861,8 +865,8 @@ TEST_CASE("main/synchronizer/hierarchy/flat-network", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyFlatNetwork <CoupledModelMono> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     std::string result = model.observation();
     REQUIRE(result == "36 36 36 36");
@@ -873,8 +877,8 @@ TEST_CASE("main/synchronizer/hierarchy/myrootnetworktocouple", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyRootNetworkToCouple <CoupledModelMono> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     std::string result = model.observation();
     REQUIRE(result == "18 9 18 9 ");
@@ -885,8 +889,8 @@ TEST_CASE("main/synchronizer/hierarchy/network-of-network", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyNetworkOfNetwork <CoupledModelMono> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 2);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 2);
     REQUIRE(final_date == 2);
     std::string result = model.observation();
     REQUIRE(result == "4 1 1 4 1 1 4 1 1 4 1 1");
@@ -897,8 +901,8 @@ TEST_CASE("main/synchronizer/hierarchy/network-of-network2", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyNetworkOfNetwork <CoupledModelMono> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 5);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 5);
     REQUIRE(final_date == 5);
     std::string result = model.observation();
     REQUIRE(result == "16 4 4 16 4 4 16 4 4 16 4 4");
@@ -909,8 +913,8 @@ TEST_CASE("main/synchronizer/hierarchy/network-of-network-mono", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyNetworkOfNetworkMono <CoupledModelMono> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     std::string result = model.observation();
     REQUIRE(result == "36 9 9 36 9 9 36 9 9 36 9 9");
@@ -921,8 +925,8 @@ TEST_CASE("main/synchronizer/hierarchy/network-1", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyNetwork <CoupledModelMono> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     std::string result = model.observation();
     REQUIRE(result == "36 9 9");
@@ -934,8 +938,8 @@ TEST_CASE("main/synchronizer/hierarchy/bignetwork-1-thread", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyBigNetwork <CoupledModelMono> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     auto mend = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = mend - mstart;
@@ -949,8 +953,8 @@ TEST_CASE("main/synchronizer/hierarchy/bignetwork-1-mono", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyBigNetworkMono <CoupledModelMono> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     auto mend = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = mend - mstart;
@@ -963,8 +967,8 @@ TEST_CASE("main/synchronizer/hierarchy/network-2", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyNetwork <CoupledModelMono> model(ctx, 1, 2);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     std::string result = model.observation();
     REQUIRE(result == "26 9 4");
@@ -976,8 +980,8 @@ TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-1", "run")
     std::cerr << std::boolalpha;
     MyDSDE dsde_engine;
     MyGlobalNetwork <CoupledModelMono> model(ctx, 1, 1);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     std::string result = model.observation();
     REQUIRE(result == "36 9 9");
@@ -988,8 +992,8 @@ TEST_CASE("main/synchronizer/hierarchy/recursivenetwork-2", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyGlobalNetwork <CoupledModelMono> model(ctx, 1, 2);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     std::string result = model.observation();
     REQUIRE(result == "26 9 4");
@@ -1002,8 +1006,8 @@ SCENARIO("User API can use copy constructor", "run")
         MyDSDE dsde_engine;
         MyGlobalNetwork <CoupledModelMono> model(ctx, 1, 1);
         WHEN("I run a simulation") {
-            vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-            double final_date = sim.run(0.0, 10);
+            vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+            double final_date = sim.run(model, 0.0, 10);
             std::string result = model.observation();
             THEN("The simulation results are correct") {
                 REQUIRE(final_date == 10.0);
@@ -1013,8 +1017,8 @@ SCENARIO("User API can use copy constructor", "run")
         WHEN("I copy the NetworkDynamics") {
             MyGlobalNetwork <CoupledModelMono> copy(model);
             WHEN("I run a simulation") {
-                vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, copy);
-                double final_date = sim.run(0.0, 10);
+                vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+                double final_date = sim.run(copy, 0.0, 10);
                 std::string result = copy.observation();
                 THEN("The simulation results are the same") {
                     REQUIRE(final_date == 10.0);
@@ -1023,8 +1027,8 @@ SCENARIO("User API can use copy constructor", "run")
             }
         }
         WHEN("I run a simulation with same object") {
-            vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-            double final_date = sim.run(0.0, 10);
+            vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+            double final_date = sim.run(model, 0.0, 10);
             std::string result = model.observation();
             THEN("The simulation results are correct") {
                 REQUIRE(final_date == 10.0);
@@ -1039,8 +1043,8 @@ TEST_CASE("main/synchronizer/hierarchy/executive-network-1", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyExecutive <CoupledModelMono> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     /*
      56 messages must be observed:
@@ -1076,8 +1080,8 @@ TEST_CASE("main/synchronizer/hierarchy-thread/flat-network", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyFlatNetwork <CoupledModelThread> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     std::string result = model.observation();
     REQUIRE(result == "36 36 36 36");
@@ -1088,8 +1092,8 @@ TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyNetworkOfNetwork <CoupledModelThread> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 2);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 2);
     REQUIRE(final_date == 2);
     std::string result = model.observation();
     REQUIRE(result == "4 1 1 4 1 1 4 1 1 4 1 1");
@@ -1100,8 +1104,8 @@ TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network2", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyNetworkOfNetwork <CoupledModelThread> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 5);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 5);
     REQUIRE(final_date == 5);
     std::string result = model.observation();
     REQUIRE(result == "16 4 4 16 4 4 16 4 4 16 4 4");
@@ -1112,8 +1116,8 @@ TEST_CASE("main/synchronizer/hierarchy-thread/network-of-network-mono", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyNetworkOfNetworkMono <CoupledModelThread> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     std::cout << model << "\n";
     std::string result = model.observation();
@@ -1125,8 +1129,8 @@ TEST_CASE("main/synchronizer/hierarchy-thread/network-1", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyNetwork <CoupledModelThread> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     std::string result = model.observation();
     REQUIRE(result == "36 9 9");
@@ -1138,8 +1142,8 @@ TEST_CASE("main/synchronizer/hierarchy-thread/bignetwork-1-thread", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyBigNetwork <CoupledModelThread> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     auto mend = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = mend - mstart;
@@ -1153,8 +1157,8 @@ TEST_CASE("main/synchronizer/hierarchy-thread/bignetwork-1-mono", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyBigNetworkMono <CoupledModelThread> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     auto mend = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = mend - mstart;
@@ -1167,8 +1171,8 @@ TEST_CASE("main/synchronizer/hierarchy-thread/network-2", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyNetwork <CoupledModelThread> model(ctx, 1, 2);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     std::string result = model.observation();
     REQUIRE(result == "26 9 4");
@@ -1180,8 +1184,8 @@ TEST_CASE("main/synchronizer/hierarchy-thread/recursivenetwork-1", "run")
     std::cerr << std::boolalpha;
     MyDSDE dsde_engine;
     MyGlobalNetwork <CoupledModelThread> model(ctx, 1, 1);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     std::string result = model.observation();
     REQUIRE(result == "36 9 9");
@@ -1192,8 +1196,8 @@ TEST_CASE("main/synchronizer/hierarchy-thread/recursivenetwork-2", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyGlobalNetwork <CoupledModelThread> model(ctx, 1, 2);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     std::string result = model.observation();
     REQUIRE(result == "26 9 4");
@@ -1206,8 +1210,8 @@ SCENARIO("User API can use copy constructor with thread", "run")
         MyDSDE dsde_engine;
         MyGlobalNetwork <CoupledModelThread> model(ctx, 1, 1);
         WHEN("I run a simulation") {
-            vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-            double final_date = sim.run(0.0, 10);
+            vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+            double final_date = sim.run(model, 0.0, 10);
             std::string result = model.observation();
             THEN("The simulation results are correct") {
                 REQUIRE(final_date == 10.0);
@@ -1217,8 +1221,8 @@ SCENARIO("User API can use copy constructor with thread", "run")
         WHEN("I copy the NetworkDynamics") {
             MyGlobalNetwork <CoupledModelThread> copy(model);
             WHEN("I run a simulation") {
-                vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, copy);
-                double final_date = sim.run(0.0, 10);
+                vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+                double final_date = sim.run(copy, 0.0, 10);
                 std::string result = copy.observation();
                 THEN("The simulation results are the same") {
                     REQUIRE(final_date == 10.0);
@@ -1227,8 +1231,8 @@ SCENARIO("User API can use copy constructor with thread", "run")
             }
         }
         WHEN("I run a simulation with same object") {
-            vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-            double final_date = sim.run(0.0, 10);
+            vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+            double final_date = sim.run(model, 0.0, 10);
             std::string result = model.observation();
             THEN("The simulation results are correct") {
                 REQUIRE(final_date == 10.0);
@@ -1243,8 +1247,8 @@ TEST_CASE("main/synchronizer/hierarchy-thread/executive-network-1", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     MyExecutive <CoupledModelThread> model(ctx);
-    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, model);
-    double final_date = sim.run(0.0, 10);
+    vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
+    double final_date = sim.run(model, 0.0, 10);
     REQUIRE(final_date == 10.0);
     /*
      56 messages must be observed:

@@ -27,9 +27,10 @@
 #ifndef ORG_VLEPROJECT_KERNEL_DEVS_DETAIL_DEVS_IMPLEMENTATION_HPP
 #define ORG_VLEPROJECT_KERNEL_DEVS_DETAIL_DEVS_IMPLEMENTATION_HPP
 
-namespace vle { namespace devs {
+namespace vle {
+namespace devs {
 
-devs_internal_error::devs_internal_error(const std::string& msg)
+devs_internal_error::devs_internal_error(const std::string &msg)
     : std::logic_error(msg)
 {
 }
@@ -38,8 +39,8 @@ devs_internal_error::~devs_internal_error() noexcept
 {
 }
 
-template <typename Time, typename Value>
-Model <Time, Value>::Model(const Context &ctx_)
+template <typename Time, typename InputPort, typename OutputPort>
+Model <Time, InputPort, OutputPort>::Model(const Context &ctx_)
     : ctx(ctx_)
     , tl(Time::negative_infinity())
     , tn(Time::infinity())
@@ -48,13 +49,14 @@ Model <Time, Value>::Model(const Context &ctx_)
 {
 }
 
-template <typename Time, typename Value>
-Model <Time, Value>::Model(const Context &ctx_,
-                           std::size_t input_port_number,
-                           std::size_t output_port_number)
+template <typename Time, typename InputPort, typename OutputPort>
+template <typename InputPortInit, typename OutputPortInit>
+Model <Time, InputPort, OutputPort>::Model(const Context &ctx_,
+        const InputPortInit &inputport_init,
+        const OutputPortInit &outputport_init)
     : ctx(ctx_)
-    , x(input_port_number)
-    , y(output_port_number)
+    , x(inputport_init)
+    , y(outputport_init)
     , tl(Time::negative_infinity())
     , tn(Time::infinity())
     , e(Time::null())
@@ -62,169 +64,153 @@ Model <Time, Value>::Model(const Context &ctx_,
 {
 }
 
-template <typename Time, typename Value>
-Model <Time, Value>::Model(const Context &ctx_,
-                           std::initializer_list <std::string> lst_x,
-                           std::initializer_list <std::string> lst_y)
-    : ctx(ctx_)
-    , x(lst_x)
-    , y(lst_y)
-    , tl(Time::negative_infinity())
-    , tn(Time::infinity())
-    , e(Time::null())
-    , parent(nullptr)
+template <typename Time, typename InputPort, typename OutputPort>
+Model <Time, InputPort, OutputPort>::~Model()
 {
 }
 
-template <typename Time, typename Value>
-Model <Time, Value>::~Model()
-{
-}
-
-template <typename Time, typename Value>
-constexpr const Context& Model <Time, Value>::context() const
+template <typename Time, typename InputPort, typename OutputPort>
+constexpr const Context &Model <Time, InputPort, OutputPort>::context() const
 {
     return ctx;
 }
 
-template <typename Time, typename Value>
-AtomicModel <Time, Value>::AtomicModel(const Context &ctx)
-    : Model <Time, Value>(ctx)
+template <typename Time, typename InputPort, typename OutputPort>
+AtomicModel <Time, InputPort, OutputPort>::AtomicModel(const Context &ctx)
+    : Model <Time, InputPort, OutputPort>(ctx)
 {
 }
 
-template <typename Time, typename Value>
-AtomicModel <Time, Value>::AtomicModel(const Context &ctx,
-                                       std::size_t input_port_number,
-                                       std::size_t output_port_number)
-    : Model <Time, Value>(ctx, input_port_number, output_port_number)
+template <typename Time, typename InputPort, typename OutputPort>
+template <typename InputPortInit, typename OutputPortInit>
+AtomicModel <Time, InputPort, OutputPort>::AtomicModel(const Context &ctx,
+        const InputPortInit &inputport_init,
+        const OutputPortInit &outputport_init)
+    : Model <Time, InputPort, OutputPort>(ctx, inputport_init, outputport_init)
 {
 }
 
-template <typename Time, typename Value>
-AtomicModel <Time, Value>::AtomicModel(const Context &ctx,
-                                       std::initializer_list <std::string> lst_x,
-                                       std::initializer_list <std::string> lst_y)
-    : Model <Time, Value>(ctx, lst_x, lst_y)
+template <typename Time, typename InputPort, typename OutputPort>
+AtomicModel <Time, InputPort, OutputPort>::~AtomicModel()
 {
 }
 
-template <typename Time, typename Value>
-AtomicModel <Time, Value>::~AtomicModel()
+template <typename Time, typename InputPort, typename OutputPort>
+void AtomicModel <Time, InputPort, OutputPort>::i_msg(const time_type &time)
 {
+    Model <Time, InputPort, OutputPort>::tl = time;
+    Model <Time, InputPort, OutputPort>::tn = Model
+            <Time, InputPort, OutputPort>::tl + ta();
 }
 
-template <typename Time, typename Value>
-void AtomicModel <Time, Value>::i_msg(const time_type& time)
-{
-    Model <Time, Value>::tl = time;
-    Model <Time, Value>::tn = Model <Time, Value>::tl + ta();
-}
-
-template <typename Time, typename Value>
-void AtomicModel <Time, Value>::s_msg(const time_type& time)
+template <typename Time, typename InputPort, typename OutputPort>
+void AtomicModel <Time, InputPort, OutputPort>::s_msg(const time_type &time)
 {
 #ifndef VLE_OPTIMIZE
-    if (time != Model <Time, Value>::tn)
-        throw devs_internal_error("Synchronization error");
-#endif
 
+    if (time != Model <Time, InputPort, OutputPort>::tn)
+        throw devs_internal_error("Synchronization error");
+
+#endif
     lambda();
-    Model <Time, Value>::parent->y_msg(*this, time);
+    Model <Time, InputPort, OutputPort>::parent->y_msg(*this, time);
     internal();
-    Model <Time, Value>::tl = time;
-    Model <Time, Value>::tn = time + ta();
+    Model <Time, InputPort, OutputPort>::tl = time;
+    Model <Time, InputPort, OutputPort>::tn = time + ta();
 }
 
-template <typename Time, typename Value>
-void AtomicModel <Time, Value>::x_msg(const time_type& time)
+template <typename Time, typename InputPort, typename OutputPort>
+void AtomicModel <Time, InputPort, OutputPort>::x_msg(const time_type &time)
 {
 #ifndef VLE_OPTIMIZE
-    if (!((Model <Time, Value>::tl <= time) &&
-          (time <= Model <Time, Value>::tn)))
-        throw devs_internal_error("Synchronization error");
-#endif
 
-    Model <Time, Value>::e = time - Model <Time, Value>::tl;
-    external(Model <Time, Value>::e);
-    Model <Time, Value>::tl = time;
-    Model <Time, Value>::tn = time + ta();
+    if (!((Model <Time, InputPort, OutputPort>::tl <= time) &&
+          (time <= Model <Time, InputPort, OutputPort>::tn)))
+        throw devs_internal_error("Synchronization error");
+
+#endif
+    Model <Time, InputPort, OutputPort>::e = time - Model
+            <Time, InputPort, OutputPort>::tl;
+    external(Model <Time, InputPort, OutputPort>::e);
+    Model <Time, InputPort, OutputPort>::tl = time;
+    Model <Time, InputPort, OutputPort>::tn = time + ta();
 }
 
-template <typename Time, typename Value>
-void AtomicModel <Time, Value>::y_msg(Model <Time, Value>& model,
-                                      const time_type& time)
+template <typename Time, typename InputPort, typename OutputPort>
+void AtomicModel <Time, InputPort, OutputPort>::y_msg(Model
+        <Time, InputPort, OutputPort> &model,
+        const time_type &time)
 {
     (void)model;
     (void)time;
 }
 
-template <typename Time, typename Value>
-CoupledModel <Time, Value>::CoupledModel(const Context &ctx)
-    : Model <Time, Value>(ctx)
+template <typename Time, typename InputPort, typename OutputPort,
+          typename ChildInputPort, typename ChildOutputPort>
+CoupledModel <Time, InputPort, OutputPort, ChildInputPort,
+              ChildOutputPort>::CoupledModel(const Context &ctx)
+    : Model <Time, InputPort, OutputPort>(ctx)
 {
 }
 
-template <typename Time, typename Value>
-CoupledModel <Time, Value>::CoupledModel(const Context &ctx,
-                                         std::size_t input_port_number,
-                                         std::size_t output_port_number)
-    : Model <Time, Value>(ctx, input_port_number, output_port_number)
+template <typename Time, typename InputPort, typename OutputPort,
+          typename ChildInputPort, typename ChildOutputPort>
+template <typename InputPortInit, typename OutputPortInit>
+CoupledModel <Time, InputPort, OutputPort, ChildInputPort,
+             ChildOutputPort>::CoupledModel(const Context &ctx,
+        const InputPortInit &inputport_init,
+        const OutputPortInit &outputport_init)
+    : Model <Time, InputPort, OutputPort>(ctx, inputport_init, outputport_init)
 {
 }
 
-template <typename Time, typename Value>
-CoupledModel <Time, Value>::CoupledModel(const Context &ctx,
-                                         std::initializer_list <std::string> lst_x,
-                                         std::initializer_list <std::string> lst_y)
-    : Model <Time, Value>(ctx, lst_x, lst_y)
+template <typename Time, typename InputPort, typename OutputPort,
+          typename ChildInputPort, typename ChildOutputPort>
+CoupledModel <Time, InputPort, OutputPort, ChildInputPort,
+             ChildOutputPort>::~CoupledModel()
 {
 }
 
-template <typename Time, typename Value>
-CoupledModel <Time, Value>::~CoupledModel()
-{
-}
-
-template <typename Time, typename Value>
-void CoupledModel <Time, Value>::i_msg(const time_type& time)
+template <typename Time, typename InputPort, typename OutputPort,
+          typename ChildInputPort, typename ChildOutputPort>
+void CoupledModel <Time, InputPort, OutputPort, ChildInputPort,
+                   ChildOutputPort>::i_msg(const time_type &time)
 {
     auto cs = children();
     std::for_each(cs.begin(), cs.end(),
-                  [=](Model <Time, Value> *child)
-                  {
-                      child->parent = this;
-                      child->i_msg(time);
-
-                      auto id = heap.emplace(child, child->tn);
-                      child->heapid = id;
-                      (*id).heapid = id;
-                  });
-
-    Model <Time, Value>::tl = time;
-    Model <Time, Value>::tn = heap.top().tn;
+    [ = ](Model <Time, InputPort, OutputPort> *child) {
+        child->parent = this;
+        child->i_msg(time);
+        auto id = heap.emplace(child, child->tn);
+        child->heapid = id;
+        (*id).heapid = id;
+    });
+    Model <Time, InputPort, OutputPort>::tl = time;
+    Model <Time, InputPort, OutputPort>::tn = heap.top().tn;
 }
 
-template <typename Time, typename Value>
-void CoupledModel <Time, Value>::s_msg(const time_type& time)
+template <typename Time, typename InputPort, typename OutputPort,
+          typename ChildInputPort, typename ChildOutputPort>
+void CoupledModel <Time, InputPort, OutputPort, ChildInputPort,
+                   ChildOutputPort>::s_msg(const time_type &time)
 {
 #ifndef VLE_OPTIMIZE
-    if (time != Model <Time, Value>::tn)
+
+    if (time != Model <Time, InputPort, OutputPort>::tn)
         throw devs_internal_error("Synchronization error");
+
 #endif
-
-    typename HeapElement <Time, Value>::handle_t imm;
-
+    typename HeapElement <Time>::handle_t imm;
     {
-        std::vector <typename HeapElement <Time, Value>::handle_t> heap_element_imm;
-        std::vector <Model <Time, Value>*> model_element_imm;
-
+        std::vector <typename HeapElement <Time>::handle_t> heap_element_imm;
+        std::vector <Model <Time, InputPort, OutputPort>*> model_element_imm;
         auto it = heap.ordered_begin();
         auto et = heap.ordered_end();
 
         for (; it != et and (*it).tn == time; ++it) {
             heap_element_imm.push_back((*it).heapid);
-            model_element_imm.push_back(reinterpret_cast <Model <Time, Value>*>((*it).element));
+            model_element_imm.push_back(reinterpret_cast
+                                        <Model <Time, InputPort, OutputPort>*>((*it).element));
         }
 
         if (model_element_imm.empty())
@@ -234,106 +220,109 @@ void CoupledModel <Time, Value>::s_msg(const time_type& time)
             imm = heap_element_imm.front();
         else {
             std::size_t i = select(model_element_imm);
+
             if (i > model_element_imm.size())
                 throw devs_internal_error("select error");
 
             imm = heap_element_imm[i];
         }
     }
-
-    reinterpret_cast <Model <Time, Value>*>((*imm).element)->s_msg(time);
-    (*imm).tn = reinterpret_cast <Model <Time, Value>*>((*imm).element)->tn;
+    reinterpret_cast <Model <Time, InputPort, OutputPort>*>((*imm).element)->s_msg(
+        time);
+    (*imm).tn = reinterpret_cast <Model <Time, InputPort, OutputPort>*>((
+                    *imm).element)->tn;
     heap.update((*imm).heapid);
-
-    Model <Time, Value>::tl = time;
-    Model <Time, Value>::tn = heap.top().tn;
+    Model <Time, InputPort, OutputPort>::tl = time;
+    Model <Time, InputPort, OutputPort>::tn = heap.top().tn;
 }
 
-template <typename Time, typename Value>
-void CoupledModel <Time, Value>::x_msg(const time_type& time)
+template <typename Time, typename InputPort, typename OutputPort,
+          typename ChildInputPort, typename ChildOutputPort>
+void CoupledModel <Time, InputPort, OutputPort, ChildInputPort,
+                   ChildOutputPort>::x_msg(const time_type &time)
 {
 #ifndef VLE_OPTIMIZE
-    if (!((Model <Time, Value>::tl <= time) &&
-          (time <= Model <Time, Value>::tn)))
+
+    if (!((Model <Time, InputPort, OutputPort>::tl <= time) &&
+          (time <= Model <Time, InputPort, OutputPort>::tn)))
         throw devs_internal_error("Synchronization error");
+
 #endif
-
-    UpdatedPort <Time, Value> receivers;
+    UpdatedPort receivers;
     post(*this, receivers);
-
     std::for_each(receivers.begin(), receivers.end(),
-                  [=](const Model <Time, Value> *model)
-                  {
-                      Model <Time, Value>* mdl = const_cast <Model <Time, Value>*>(model);
-                      mdl->x_msg(time);
-
-                      (*mdl->heapid).tn = mdl->tn;
-                      heap.update(mdl->heapid);
-
-                      mdl->x.clear();
-                  });
-
-    Model <Time, Value>::x.clear();
-
-    Model <Time, Value>::tl = time;
-    Model <Time, Value>::tn = heap.top().tn;
+    [ = ](const Model <Time, InputPort, OutputPort> *model) {
+        Model <Time, InputPort, OutputPort> *mdl = const_cast
+                <Model <Time, InputPort, OutputPort>*>(model);
+        mdl->x_msg(time);
+        (*mdl->heapid).tn = mdl->tn;
+        heap.update(mdl->heapid);
+        mdl->x.clear();
+    });
+    Model <Time, InputPort, OutputPort>::x.clear();
+    Model <Time, InputPort, OutputPort>::tl = time;
+    Model <Time, InputPort, OutputPort>::tn = heap.top().tn;
 }
 
-template <typename Time, typename Value>
-void CoupledModel <Time, Value>::y_msg(Model <Time, Value>& model,
-                                       const time_type& time)
+template <typename Time, typename InputPort, typename OutputPort,
+          typename ChildInputPort, typename ChildOutputPort>
+          void CoupledModel <Time, InputPort, OutputPort, ChildInputPort,
+          ChildOutputPort>::y_msg(Model
+        <Time, InputPort, OutputPort> &model,
+        const time_type &time)
 {
     // Check external coupling to see if there is an external output event
     // or internal coupling.
-
-    UpdatedPort <Time, Value> receivers;
+    UpdatedPort receivers;
     post(model, receivers);
-
     std::for_each(receivers.begin(), receivers.end(),
-                  [=](const Model <Time, Value> *r)
-                  {
-                      Model <Time, Value>* mdl = const_cast <Model <Time, Value>*>(r);
+    [ = ](const Model <Time, InputPort, OutputPort> *r) {
+        Model <Time, InputPort, OutputPort> *mdl = const_cast
+                <Model <Time, InputPort, OutputPort>*>(r);
 
-                      if (mdl == this) {
-                          Model <Time, Value>::parent->y_msg(*this, time);
-                      } else {
-                          mdl->x_msg(time);
-
-                          (*mdl->heapid).tn = mdl->tn;
-                          heap.update(mdl->heapid);
-
-                          mdl->x.clear();
-                      }
-                  });
-
+        if (mdl == this) {
+            Model <Time, InputPort, OutputPort>::parent->y_msg(*this, time);
+        } else {
+            mdl->x_msg(time);
+            (*mdl->heapid).tn = mdl->tn;
+            heap.update(mdl->heapid);
+            mdl->x.clear();
+        }
+    });
     model.y.clear();
 }
 
-template <typename Time, typename Value>
+template <typename Time>
+template <typename InputPort, typename OutputPort>
 typename Time::time_type
-Engine <Time, Value>::pre(model_type& model, const time_type& time)
+Engine <Time>::pre(Model <Time, InputPort, OutputPort> &model,
+                   const time_type &time)
 {
     model.i_msg(time);
-
     return model.tn;
 }
 
-template <typename Time, typename Value>
+template <typename Time>
+template <typename InputPort, typename OutputPort>
 typename Time::time_type
-Engine <Time, Value>::run(model_type& model, const time_type& time)
+Engine <Time>::run(Model <Time, InputPort, OutputPort> &model,
+                   const time_type &time)
 {
     model.s_msg(time);
-
     return model.tn;
 }
 
-template <typename Time, typename Value>
-void Engine <Time, Value>::post(model_type& model, const time_type& time)
+template <typename Time>
+template <typename InputPort, typename OutputPort>
+void
+Engine <Time>::post(Model <Time, InputPort, OutputPort> &model,
+                    const time_type &time)
 {
     (void)model;
     (void)time;
 }
 
-}}
+}
+}
 
 #endif

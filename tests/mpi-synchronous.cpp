@@ -30,16 +30,24 @@
 #include <cstdlib>
 
 typedef vle::DoubleTime MyTime;
-typedef int MyValue;
-typedef vle::dsde::Engine <MyTime, MyValue> MyDSDE;
+typedef vle::PortList <int> MyPort;
+typedef vle::dsde::Engine <MyTime> MyDSDE;
 
-using UpdatedPort = vle::dsde::UpdatedPort <MyTime, MyValue>;
-using AtomicModel = vle::dsde::AtomicModel <MyTime, MyValue>;
-using CoupledModel = vle::dsde::CoupledModel <MyTime, MyValue>;
-using CoupledModelMono = vle::dsde::CoupledModel <MyTime, MyValue, vle::dsde::TransitionPolicyDefault <MyTime, MyValue>>;
-using SynchronousProxyModel = vle::dsde::SynchronousProxyModel <MyTime, MyValue>;
-using Executive = vle::dsde::Executive <MyTime, MyValue>;
-using SynchronousLogicalProcessor = vle::dsde::SynchronousLogicalProcessor <MyTime, MyValue>;
+using AtomicModel = vle::dsde::AtomicModel <MyTime, MyPort, MyPort>;
+using CoupledModelThread = vle::dsde::CoupledModel <MyTime, MyPort, MyPort,
+      MyPort, MyPort,
+      vle::dsde::TransitionPolicyThread <MyTime>>;
+using CoupledModelMono = vle::dsde::CoupledModel <MyTime, MyPort, MyPort,
+      MyPort, MyPort,
+      vle::dsde::TransitionPolicyDefault <MyTime>>;
+using ExecutiveThread = vle::dsde::Executive <MyTime, MyPort, MyPort,
+      MyPort, MyPort,
+      vle::dsde::TransitionPolicyThread <MyTime>>;
+using ExecutiveMono = vle::dsde::Executive <MyTime, MyPort, MyPort,
+      MyPort, MyPort,
+      vle::dsde::TransitionPolicyDefault <MyTime>>;
+using SynchronousLogicalProcessor = vle::dsde::SynchronousLogicalProcessor <MyTime, MyPort, MyPort>;
+using SynchronousProxyModel = vle::dsde::SynchronousProxyModel <MyTime, MyPort, MyPort>;
 
 struct Counter : AtomicModel
 {
@@ -48,7 +56,7 @@ struct Counter : AtomicModel
     double current_time;
 
     Counter(const vle::Context& ctx)
-        : AtomicModel(ctx, {"in"}, {"out"})
+        : AtomicModel(ctx, 1u, 1u)
         , is_rank_0(false)
         , i(0)
     {}
@@ -93,7 +101,7 @@ struct Generator : AtomicModel
 
     Generator(const vle::Context& ctx,
               unsigned int timestep = 1)
-        : AtomicModel(ctx, {}, {"out"})
+        : AtomicModel(ctx, 0u, 1u)
         , timestep(timestep)
     {}
 
@@ -114,13 +122,13 @@ struct Generator : AtomicModel
     }
 };
 
-struct Network : CoupledModel
+struct Network : CoupledModelMono
 {
     std::vector <Generator> gens;
     Counter cpt;
 
-    Network(const vle::Context& ctx) :
-        CoupledModel(ctx, {}, {"out"})
+    Network(const vle::Context& ctx)
+        : CoupledModelMono(ctx, 0u, 1u)
         , cpt(ctx)
     {
         gens.emplace_back(ctx);
@@ -220,9 +228,9 @@ int main(int argc, char *argv[])
         RootNetwork rn(ctx);
 
         std::cerr << "RootCoordinator " << comm.rank() << "\n";
-        vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine, rn);
+        vle::SimulationDbg <MyDSDE> sim(ctx, dsde_engine);
         rn.c.cpt.is_rank_0 = true;
-        double final_date = sim.run(0.0, 1000.0);
+        double final_date = sim.run(rn, 0.0, 1000.0);
 
         if (final_date != 1000.0) {
             std::cerr << "sim.run(0.0, 1000.0) != 1000.0\n";

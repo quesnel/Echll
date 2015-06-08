@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014 INRA
+ * Copyright (C) 2015 INRA
  *
  * All rights reserved.
  *
@@ -24,49 +24,35 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ORG_VLEPROJECT_KERNEL_HEAP_HPP
-#define ORG_VLEPROJECT_KERNEL_HEAP_HPP
+#ifndef ORG_VLEPROJECT_KERNEL_DEBUG_HPP
+#define ORG_VLEPROJECT_KERNEL_DEBUG_HPP
 
-#include <boost/heap/fibonacci_heap.hpp>
+#include <vle/port.hpp>
+#include <ostream>
 
 namespace vle {
 
-template <typename T>
-struct HeapElementCompare : std::binary_function <T, T, bool>
+template <typename Value>
+std::ostream &operator<<(std::ostream &os, const PortList<Value> &port)
 {
-    bool operator()(const T &lhs, const T &rhs) const
-    {
-        return lhs.tn >= rhs.tn;
+    os << port.size();
+
+    if (not port.empty()) {
+        os << " (";
+
+        for (auto i = 0ul, e = port.size(); i != e; ++i) {
+            const auto &values = port[i];
+
+            for (const auto &v : values)
+                os << '[' << v << ']';
+        }
+
+        os << ")";
     }
-};
 
-template <typename Time>
-struct HeapElement
-{
-public:
-    typedef Time time_format;
-    typedef typename Time::time_type time_type;
-    typedef typename boost::heap::fibonacci_heap <
-        HeapElement <Time>,
-        boost::heap::compare <
-            HeapElementCompare <
-                HeapElement <Time>>>>::handle_type handle_t;
-
-    HeapElement(void *elt, time_type tn_)
-        : element(elt)
-        , tn(tn_)
-    {}
-
-    void     *element;
-    handle_t  heapid;
-    time_type tn;
-};
-
-template <typename Time>
-using HeapType = boost::heap::fibonacci_heap <
-    HeapElement <Time>,
-    boost::heap::compare <HeapElementCompare <HeapElement <Time>>>>;
-
+    return os;
 }
+
+} // namespace vle
 
 #endif

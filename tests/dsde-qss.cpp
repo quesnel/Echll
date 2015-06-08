@@ -32,15 +32,23 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
-using MyTime = vle::DoubleTime;
-using MyValue = double;
-using MyDSDE = vle::dsde::Engine <MyTime, MyValue>;
-using UpdatedPort = vle::dsde::UpdatedPort <MyTime, MyValue>;
-using AtomicModel = vle::dsde::AtomicModel <MyTime, MyValue>;
-using CoupledModelThread = vle::dsde::CoupledModel <MyTime, MyValue,
-      vle::dsde::TransitionPolicyThread <MyTime, MyValue>>;
-using CoupledModelMono = vle::dsde::CoupledModel <MyTime, MyValue,
-      vle::dsde::TransitionPolicyDefault <MyTime, MyValue>>;
+typedef vle::DoubleTime MyTime;
+typedef vle::PortList <double > MyPort;
+typedef vle::dsde::Engine <MyTime> MyDSDE;
+
+using AtomicModel = vle::dsde::AtomicModel <MyTime, MyPort, MyPort>;
+using CoupledModelThread = vle::dsde::CoupledModel
+                           <MyTime, MyPort, MyPort, MyPort, MyPort,
+                           vle::dsde::TransitionPolicyThread <MyTime>>;
+using CoupledModelMono = vle::dsde::CoupledModel
+                         <MyTime, MyPort, MyPort, MyPort, MyPort,
+                         vle::dsde::TransitionPolicyDefault <MyTime>>;
+using ExecutiveThread = vle::dsde::Executive
+                        <MyTime, MyPort, MyPort, MyPort, MyPort,
+                        vle::dsde::TransitionPolicyThread <MyTime>>;
+using ExecutiveMono = vle::dsde::Executive
+                      <MyTime, MyPort, MyPort, MyPort, MyPort,
+                      vle::dsde::TransitionPolicyDefault <MyTime>>;
 
 using state_type = std::vector <double>;
 constexpr double X_init = 1.0;
@@ -145,11 +153,17 @@ struct harm_osc {
     }
 };
 
-class SingleEvent : public AtomicModel
+class SingleEvent : public vle::dsde::AtomicModel <MyTime,
+    vle::dsde::qss::QssInputPort,
+    vle::dsde::qss::QssOutputPort>
 {
 public:
+    using parent_type = vle::dsde::AtomicModel <MyTime,
+    vle::dsde::qss::QssInputPort,
+    vle::dsde::qss::QssOutputPort>;
+
     SingleEvent(const vle::Context &ctx)
-        : AtomicModel(ctx, 0, 1)
+        : parent_type(ctx, 0u, 0.0)
     {}
 
     virtual double init(const vle::Common &, const double &) override final
@@ -165,22 +179,33 @@ public:
 
     virtual void lambda() const override final
     {
-        y[0] = { .37 };
+        y[0] = .37;
     }
 };
 
-struct MySystem1 : CoupledModelMono {
+class MySystem1 : public vle::dsde::CoupledModel <
+    MyTime, MyPort, MyPort,
+    vle::dsde::qss::QssInputPort,
+    vle::dsde::qss::QssOutputPort,
+    vle::dsde::TransitionPolicyDefault <MyTime>>
+{
+public:
+    using parent_type = vle::dsde::CoupledModel <
+                        MyTime, MyPort, MyPort, vle::dsde::qss::QssInputPort,
+                        vle::dsde::qss::QssOutputPort,
+                        vle::dsde::TransitionPolicyDefault <MyTime >>;
+    using children_t = parent_type::children_t;
+
     vle::dsde::qss::EquationBlock <MyTime, state_type> prey;
     vle::dsde::qss::EquationBlock <MyTime, state_type> predator;
 
     MySystem1(const vle::Context &ctx, double dq, double epsilon)
-        : CoupledModelMono(ctx)
+        : parent_type(ctx)
         , prey(ctx, dq, epsilon, X_init, 2u, 0u, prey_fct())
         , predator(ctx, dq, epsilon, Y_init, 2u, 1u, predator_fct())
     {}
 
-    virtual typename CoupledModelMono::children_t children(
-        const vle::Common &) override final
+    virtual children_t children(const vle::Common &) override final
     {
         return { &prey, &predator };
     }
@@ -191,31 +216,40 @@ struct MySystem1 : CoupledModelMono {
         (void)out;
 
         if (not prey.y.empty()) {
-            vle::copy_values(prey.y[0], predator.x[0]);
+            predator.x[0] = prey.y[0];
             in.emplace(&predator);
         }
 
         if (not predator.y.empty()) {
-            vle::copy_values(predator.y[0], prey.x[1]);
+            prey.x[1] = predator.y[0];
             in.emplace(&prey);
         }
     }
 };
 
-class GenericSystem : public CoupledModelMono
+class GenericSystem : public vle::dsde::CoupledModel <
+    MyTime, MyPort, MyPort,
+    vle::dsde::qss::QssInputPort,
+    vle::dsde::qss::QssOutputPort,
+    vle::dsde::TransitionPolicyDefault <MyTime >>
 {
 public:
+    using parent_type = vle::dsde::CoupledModel <
+                        MyTime, MyPort, MyPort, vle::dsde::qss::QssInputPort,
+                        vle::dsde::qss::QssOutputPort,
+                        vle::dsde::TransitionPolicyDefault <MyTime >>;
+    using children_t = parent_type::children_t;
+
     GenericSystem(const vle::Context &ctx,
                   std::initializer_list<vle::dsde::qss::Equation<MyTime,
                   state_type>> models)
-        : CoupledModelMono(ctx)
+        : parent_type(ctx)
         , m_models(models)
     {}
 
-    virtual typename CoupledModelMono::children_t children(
-        const vle::Common &) override final
+    virtual children_t children(const vle::Common &) override final
     {
-        CoupledModelMono::children_t ret(m_models.size(), nullptr);
+        children_t ret(m_models.size(), nullptr);
         std::transform(m_models.begin(), m_models.end(),
                        ret.begin(),
         [](vle::dsde::qss::Equation<MyTime, state_type> &mdl) {
@@ -231,7 +265,7 @@ public:
             if (not m_models[i].y.empty()) {
                 for (auto j = 0ul, f = m_models.size(); j != f; ++j) {
                     if (i != j) {
-                        vle::copy_values(m_models[i].y[0], m_models[j].x[i]);
+                        m_models[j].x[i] = m_models[i].y[0];
                         in.emplace(&m_models[j]);
                     }
                 }
@@ -243,20 +277,29 @@ public:
     std::vector <vle::dsde::qss::Equation<MyTime, state_type>> m_models;
 };
 
-class MySystem11 : public CoupledModelMono
+class MySystem11 : public vle::dsde::CoupledModel <
+    MyTime, MyPort, MyPort,
+    vle::dsde::qss::QssInputPort,
+    vle::dsde::qss::QssOutputPort,
+    vle::dsde::TransitionPolicyDefault <MyTime >>
 {
 public:
+    using parent_type = vle::dsde::CoupledModel <
+                        MyTime, MyPort, MyPort, vle::dsde::qss::QssInputPort,
+                        vle::dsde::qss::QssOutputPort,
+                        vle::dsde::TransitionPolicyDefault <MyTime >>;
+    using children_t = parent_type::children_t;
+
     vle::dsde::qss::Equation <MyTime, state_type> prey;
     vle::dsde::qss::Equation <MyTime, state_type> predator;
 
     MySystem11(const vle::Context &ctx, double dq, double epsilon)
-        : CoupledModelMono(ctx)
+        : parent_type(ctx)
         , prey(ctx, dq, epsilon, X_init, 2u, 0u, prey_fct())
         , predator(ctx, dq, epsilon, Y_init, 2u, 1u, predator_fct())
     {}
 
-    virtual typename CoupledModelMono::children_t children(
-        const vle::Common &) override final
+    virtual children_t children(const vle::Common &) override final
     {
         return { &prey, &predator };
     }
@@ -267,12 +310,12 @@ public:
         (void)out;
 
         if (not prey.y.empty()) {
-            vle::copy_values(prey.y[0], predator.x[0]);
+            predator.x[0] = prey.y[0];
             in.emplace(&predator);
         }
 
         if (not predator.y.empty()) {
-            vle::copy_values(predator.y[0], prey.x[1]);
+            prey.x[1] = predator.y[0];
             in.emplace(&prey);
         }
     }
@@ -298,7 +341,6 @@ struct push_back_state_and_time {
 TEST_CASE("main/simple")
 {
     ShowDuration d("main/simple");
-
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDSDE dsde_engine;
     const double dq = 1;
@@ -310,15 +352,13 @@ TEST_CASE("main/simple")
     });
     std::ofstream ofs("simple.dat");
     REQUIRE(ofs);
-    vle::SimulationStep <MyDSDE> sim(ctx, dsde_engine, model);
-    double current = sim.init(0.0);
+    vle::SimulationStep <MyDSDE> sim(ctx, dsde_engine);
+    double current = sim.init(model, 0.0);
 
-    while (sim.step(current, 20.0)) {
+    while (sim.step(model, current, 20.0)) {
         ofs << current << '\t'
             << model.value() << '\n';
     }
-
-    sim.finish();
 }
 
 TEST_CASE("main/rk", "run")
@@ -326,7 +366,7 @@ TEST_CASE("main/rk", "run")
     {
         ShowDuration d("prey/predator: rk4");
         using namespace boost::numeric::odeint;
-        state_type x = { X_init, Y_init};
+        state_type x = { X_init, Y_init };
         runge_kutta4 <state_type> stepper;
         std::vector <state_type> x_vec;
         std::vector <double> times;
@@ -344,26 +384,6 @@ TEST_CASE("main/rk", "run")
                 << x_vec[i][1] << '\n';
     }
     {
-        ShowDuration d("prey/predator: qss1 big block");
-        vle::Context ctx = std::make_shared <vle::ContextImpl>();
-        MyDSDE dsde_engine;
-        vle::dsde::qss::Block <MyTime, state_type> system(
-            ctx, {0.001, 0.001}, {0.001, 0.001},
-             {X_init, Y_init}, prey_predator_fct());
-        std::ofstream ofs("EquationBigBlock.dat");
-        REQUIRE(ofs);
-        vle::SimulationStep <MyDSDE> sim(ctx, dsde_engine, system);
-        double current = sim.init(0.0);
-
-        while (sim.step(current, Finish)) {
-            ofs << current << '\t'
-                << system.value(0) << '\t'
-                << system.value(1) << '\n';
-        }
-
-        sim.finish();
-    }
-    {
         ShowDuration d("prey/predator: qss1 merged integrator");
         vle::Context ctx = std::make_shared <vle::ContextImpl>();
         MyDSDE dsde_engine;
@@ -372,16 +392,14 @@ TEST_CASE("main/rk", "run")
         MySystem11 model(ctx, dq, epsilon);
         std::ofstream ofs("Equation.dat");
         REQUIRE(ofs);
-        vle::SimulationStep <MyDSDE> sim(ctx, dsde_engine, model);
-        double current = sim.init(0.0);
+        vle::SimulationStep <MyDSDE> sim(ctx, dsde_engine);
+        double current = sim.init(model, 0.0);
 
-        while (sim.step(current, Finish)) {
+        while (sim.step(model, current, Finish)) {
             ofs << current << '\t'
                 << model.prey.value() << '\t'
                 << model.predator.value() << '\n';
         }
-
-        sim.finish();
     }
     {
         ShowDuration d("prey/predator: qss1");
@@ -392,28 +410,28 @@ TEST_CASE("main/rk", "run")
         MySystem1 model(ctx, dq, epsilon);
         std::ofstream ofs("EquationBlock.dat");
         REQUIRE(ofs);
-        vle::SimulationStep <MyDSDE> sim(ctx, dsde_engine, model);
-        double current = sim.init(0.0);
+        vle::SimulationStep <MyDSDE> sim(ctx, dsde_engine);
+        double current = sim.init(model, 0.0);
 
-        while (sim.step(current, Finish)) {
+        while (sim.step(model, current, Finish)) {
             ofs << current << '\t'
                 << model.prey.value() << '\t'
                 << model.predator.value() << '\n';
         }
-
-        sim.finish();
     }
 
     std::ofstream ofs("plot.gnuplot");
     REQUIRE(ofs);
-    ofs << "set terminal wxt\n"
+    ofs << "set terminal dumb size 160,80 aspect 2,1\n"
+        << "set multiplot layout 3,2 rowsfirst\n"
+        << "\n"
         << "plot 'RK4.dat' using 1:2 w l\n"
-        << "replot 'RK4.dat' using 1:3 w l\n"
-        << "replot 'Equation.dat' using 1:2 w l\n"
-        << "replot 'Equation.dat' using 1:3 w l\n"
-        << "replot 'EquationBlock.dat' using 1:3 w l\n"
-        << "replot 'EquationBlock.dat' using 1:2 w l\n"
-        << "replot 'EquationBigBlock.dat' using 1:2 w l\n"
-        << "replot 'EquationBigBlock.dat' using 1:3 w l\n"
-        ;
+        << "plot 'RK4.dat' using 1:3 w l\n"
+        << "\n"
+        << "plot 'Equation.dat' using 1:2 w l\n"
+        << "plot 'Equation.dat' using 1:3 w l\n"
+        << "\n"
+        << "plot 'EquationBlock.dat' using 1:3 w l\n"
+        << "plot 'EquationBlock.dat' using 1:2 w l\n"
+        << "unset multiplot\n";
 }

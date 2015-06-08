@@ -32,15 +32,20 @@
 
 typedef vle::DoubleTime MyTime;
 typedef std::string MyValue;
-typedef vle::devs::Engine <MyTime, MyValue> MyDEVS;
 
-using Model = vle::devs::Model <MyTime, MyValue>;
-using UpdatedPort = vle::devs::UpdatedPort <MyTime, MyValue>;
-using AtomicModel = vle::devs::AtomicModel <MyTime, MyValue>;
-using CoupledModel = vle::devs::CoupledModel <MyTime, MyValue>;
+using Model = vle::devs::Model
+              <MyTime, vle::PortList<std::string>,
+              vle::PortList<std::string>>;
+using AtomicModel = vle::devs::AtomicModel
+                    <MyTime, vle::PortList<std::string>,
+                    vle::PortList<std::string>>;
+using CoupledModel = vle::devs::CoupledModel
+                     <MyTime, vle::PortList<std::string>,
+                     vle::PortList<std::string>, vle::PortList<std::string>,
+                     vle::PortList<std::string>>;
+using MyDEVS = vle::devs::Engine <MyTime>;
 
-struct Generator : AtomicModel
-{
+struct Generator : AtomicModel {
     Generator(const vle::Context &ctx)
         : AtomicModel(ctx, 0u, 1u)
     {}
@@ -55,21 +60,20 @@ struct Generator : AtomicModel
 
     virtual void lambda() const override final
     {
-        y[0] = { "coucou" };
+        y[0].emplace_back("coucou");
     }
 
     virtual void internal() override final
     {
     }
 
-    virtual void external(const double& time) override final
+    virtual void external(const double &time) override final
     {
         (void)time;
     }
 };
 
-struct Counter : AtomicModel
-{
+struct Counter : AtomicModel {
     unsigned long int msg;
 
     Counter(const vle::Context &ctx)
@@ -93,16 +97,14 @@ struct Counter : AtomicModel
     {
     }
 
-    virtual void external(const double& time) override final
+    virtual void external(const double &time) override final
     {
         (void)time;
-
         msg += x[0].size();
     }
 };
 
-struct Network : CoupledModel
-{
+struct Network : CoupledModel {
     Generator gen1, gen2;
     Counter counter;
 
@@ -121,7 +123,7 @@ struct Network : CoupledModel
         return { &gen1, &gen2, &counter };
     }
 
-    virtual void post(const Model& out, UpdatedPort &in) const
+    virtual void post(const Model &out, UpdatedPort &in) const
     {
         (void)out;
 
@@ -136,7 +138,7 @@ struct Network : CoupledModel
         }
     }
 
-    virtual std::size_t select(const std::vector <Model*>& models) const
+    virtual std::size_t select(const std::vector <Model *> &models) const
     {
         /* Alway generator have the priority */
         for (std::size_t i = 0, e = models.size(); i != e; ++i)
@@ -156,18 +158,14 @@ TEST_CASE("engine/devs/model_a", "run")
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDEVS devs_engine;
     Network model(ctx);
-
-    vle::SimulationStep <MyDEVS> sim(ctx, devs_engine, model);
-
-    double current = sim.init(0.0);
-
+    vle::SimulationStep <MyDEVS> sim(ctx, devs_engine);
+    double current = sim.init(model, 0.0);
     std::cout << "Init:\n" << model << '\n';
 
-    while (sim.step(current, 10.0))
+    while (sim.step(model, current, 10.0))
         std::cout << current << " " << model << "\n";
 
-    sim.finish();
-
+    sim.finish(model);
     /* We need to receive 9 * 2 messages since simulation stops at 10.0. */
     REQUIRE(model.counter.msg == 18u);
 }

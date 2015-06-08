@@ -42,36 +42,39 @@ namespace dsde {
 class dsde_internal_error : std::logic_error
 {
 public:
-    dsde_internal_error(const std::string& msg);
+    dsde_internal_error(const std::string &msg);
 
-    dsde_internal_error(const dsde_internal_error&) = default;
+    dsde_internal_error(const dsde_internal_error &) = default;
 
     virtual ~dsde_internal_error() noexcept;
 };
 
 template <typename Time>
 inline void check_transition_synchronization(typename Time::time_type tl,
-                                             typename Time::time_type time,
-                                             typename Time::time_type tn);
+        typename Time::time_type time,
+        typename Time::time_type tn);
 
 template <typename Time>
 inline void check_output_synchronization(typename Time::time_type tn,
-                                         typename Time::time_type time);
+        typename Time::time_type time);
 
-template <typename Time, typename Value>
-struct ComposedModel;
+template <typename Time, typename InputPort, typename OutputPort,
+          typename ChildInputPort, typename ChildOutputPort>
+class ComposedModel;
 
-template <typename Time, typename Value>
-struct Model
+template <typename Time, typename InputPort, typename OutputPort>
+class Model
 {
+public:
     using time_format = Time;
     using time_type = typename Time::time_type;
-    using value_type = Value;
+    using inputport_type = InputPort;
+    using outputport_type = OutputPort;
 
-    Model(const Model&) = default;
-    Model(Model&&) = default;
-    Model& operator=(const Model&) = default;
-    Model& operator=(Model&&) = default;
+    Model(const Model &) = default;
+    Model(Model &&) = default;
+    Model &operator=(const Model &) = default;
+    Model &operator=(Model &&) = default;
 
     Model(const Context &ctx_)
         : tl(Time::negative_infinity())
@@ -80,154 +83,138 @@ struct Model
         , ctx(ctx_)
     {}
 
-    Model(const Context &ctx_, std::size_t input_size, std::size_t output_size)
-        : x(input_size)
-        , y(output_size)
-        , tl(Time::negative_infinity())
-        , tn(Time::infinity())
-        , parent(nullptr)
-        , ctx(ctx_)
-    {}
-
+    template <typename InputPortInit, typename OutputPortInit>
     Model(const Context &ctx_,
-          std::initializer_list <std::string> lst_x,
-          std::initializer_list <std::string> lst_y)
-        : x(lst_x)
-        , y(lst_y)
+          const InputPortInit &inputport_init,
+          const OutputPortInit &outputport_init)
+        : x(inputport_init)
+        , y(outputport_init)
         , tl(Time::negative_infinity())
         , tn(Time::infinity())
         , parent(nullptr)
         , ctx(ctx_)
     {}
 
-    virtual ~Model()
-    {}
+    virtual ~Model() noexcept {}
 
-    mutable vle::PortList <Value> x, y;
+    mutable inputport_type x;
+    mutable outputport_type y;
     time_type tl, tn;
-    ComposedModel <Time, Value> *parent;
-    typename HeapType <Time, Value>::handle_type heapid;
+    void *parent;
+    typename HeapType <Time>::handle_type heapid;
     Context ctx;
 
-    inline constexpr const Context& context() const { return ctx; }
+    inline constexpr const Context &context() const { return ctx; }
 
-    virtual void start(const Common& common, const time_type& time) = 0;
-    virtual void transition(const time_type& time) = 0;
-    virtual void output(const time_type& time) = 0;
+    virtual void start(const Common &common, const time_type &time) = 0;
+    virtual void transition(const time_type &time) = 0;
+    virtual void output(const time_type &time) = 0;
 };
 
-template <typename Time, typename Value>
-using Bag = std::set <Model <Time, Value>*>;
-
-template <typename Time, typename Value>
-using UpdatedPort = std::set <const Model <Time, Value>*>;
-
-template <typename Time, typename Value>
-struct ComposedModel : Model <Time, Value>
+template <typename Time, typename InputPort, typename OutputPort,
+          typename ChildInputPort, typename ChildOutputPort>
+class ComposedModel : public Model <Time, InputPort, OutputPort>
 {
+public:
+    using parent_type = Model <Time, InputPort, OutputPort>;
+    using child_type = Model <Time, ChildInputPort, ChildOutputPort>;
     using time_format = Time;
     using time_type = typename Time::time_type;
-    using value_type = Value;
+    using inputport_type = InputPort;
+    using outputport_type = OutputPort;
+    using childinputport_type = ChildInputPort;
+    using childoutputport_type = ChildOutputPort;
 
-    ComposedModel(const ComposedModel&) = default;
-    ComposedModel(ComposedModel&&) = default;
-    ComposedModel& operator=(const ComposedModel&) = default;
-    ComposedModel& operator=(ComposedModel&&) = default;
+    using UpdatedPort = std::set <const child_type*>;
+    using Bag = std::set <child_type*>;
+
+    ComposedModel(const ComposedModel &) = default;
+    ComposedModel(ComposedModel &&) = default;
+    ComposedModel &operator=(const ComposedModel &) = default;
+    ComposedModel &operator=(ComposedModel &&) = default;
 
     ComposedModel(const Context &ctx_)
-        : Model <Time, Value>(ctx_)
+        : Model <Time, InputPort, OutputPort>(ctx_)
     {}
 
-    ComposedModel(const Context& ctx_, std::size_t input_size, std::size_t output_size)
-        : Model <Time, Value>(ctx_, input_size, output_size)
-    {}
-
+    template <typename InputPortInit, typename OutputPortInit>
     ComposedModel(const Context &ctx_,
-                  std::initializer_list <std::string> lst_x,
-                  std::initializer_list <std::string> lst_y)
-        : Model <Time, Value>(ctx_, lst_x, lst_y)
+                  const InputPortInit &inputport_init,
+                  const OutputPortInit &outputport_init)
+        : Model <Time, InputPort, OutputPort>(
+            ctx_, inputport_init, outputport_init)
     {}
 
-    virtual ~ComposedModel()
-    {}
-
-    virtual void post(const UpdatedPort <Time, Value> &out,
-                      UpdatedPort <Time, Value> &in) const = 0;
-
-    UpdatedPort <Time, Value> last_output_list;
+    UpdatedPort last_output_list;
 };
 
-template <typename Time, typename Value>
-struct AtomicModel : Model <Time, Value>
+template <typename Time, typename InputPort, typename OutputPort>
+class AtomicModel : public Model <Time, InputPort, OutputPort>
 {
+public:
+    using parent_type = Model <Time, InputPort, OutputPort>;
     using time_format = Time;
     using time_type = typename Time::time_type;
-    using value_type = Value;
+    using inputport_type = InputPort;
+    using outputport_type = OutputPort;
 
-    AtomicModel(const AtomicModel&) = default;
-    AtomicModel(AtomicModel&&) = default;
-    AtomicModel& operator=(const AtomicModel&) = default;
-    AtomicModel& operator=(AtomicModel&&) = default;
+    AtomicModel(const AtomicModel &) = default;
+    AtomicModel(AtomicModel &&) = default;
+    AtomicModel &operator=(const AtomicModel &) = default;
+    AtomicModel &operator=(AtomicModel &&) = default;
 
-    virtual time_type init(const vle::Common& common,
-                           const time_type& time) = 0;
+    virtual time_type init(const vle::Common &common,
+                           const time_type &time) = 0;
     virtual time_type delta(const time_type &elapsed,
                             const time_type &remaining,
                             const time_type &time) = 0;
     virtual void lambda() const = 0;
 
-    AtomicModel(const Context& ctx_)
-        : Model <Time, Value>(ctx_)
+    AtomicModel(const Context &ctx_)
+        : Model <Time, InputPort, OutputPort>(ctx_)
     {}
 
-    AtomicModel(const Context& ctx_, std::size_t input_size, std::size_t output_size)
-        : Model <Time, Value>(ctx_, input_size, output_size)
+    template <typename InputPortInit, typename OutputPortInit>
+    AtomicModel(const Context &ctx_,
+                const InputPortInit &inputport_init,
+                const OutputPortInit &outputport_init)
+        : Model <Time, InputPort, OutputPort>(
+            ctx_, inputport_init, outputport_init)
     {}
 
-    AtomicModel(const Context& ctx_,
-                std::initializer_list <std::string> lst_x,
-                std::initializer_list <std::string> lst_y)
-        : Model <Time, Value>(ctx_, lst_x, lst_y)
-    {}
-
-    virtual ~AtomicModel()
-    {}
-
-    virtual void start(const vle::Common& common, const time_type& time) override
+    virtual void start(const vle::Common &common, const time_type &time) override
     {
-        Model <Time, Value>::tl = time;
-        Model <Time, Value>::tn = time + init(common, time);
+        parent_type::tl = time;
+        parent_type::tn = time + init(common, time);
     }
 
-    virtual void transition(const time_type& time) override
+    virtual void transition(const time_type &time) override
     {
-        check_transition_synchronization <Time>(Model <Time, Value>::tl,
+        check_transition_synchronization <Time>(parent_type::tl,
                                                 time,
-                                                Model <Time, Value>::tn);
+                                                parent_type::tn);
 
-        if (time < Model <Time, Value>::tn and Model <Time, Value>::x.empty())
+        if (time < parent_type::tn and parent_type::x.empty())
             return;
 
-        Model <Time, Value>::tn = time + delta(time - Model <Time, Value>::tl,
-                                               Model <Time, Value>::tn - time,
-                                               time);
-        Model <Time, Value>::tl = time;
-        Model <Time, Value>::x.clear();
+        parent_type::tn = time + delta(time - parent_type::tl,
+                                       parent_type::tn - time,
+                                       time);
+        parent_type::tl = time;
+        parent_type::x.clear();
     }
 
-    virtual void output(const time_type& time) override
+    virtual void output(const time_type &time) override
     {
-        if (time == Model <Time, Value>::tn)
+        if (time == parent_type::tn)
             lambda();
     }
 };
 
-template <typename Time, typename Value>
-struct TransitionPolicyDefault
-{
+template <typename Time>
+struct TransitionPolicyDefault {
     using time_format = Time;
     using time_type = typename Time::time_type;
-    using value_type = Value;
 
     TransitionPolicyDefault()
     {}
@@ -238,25 +225,23 @@ struct TransitionPolicyDefault
     void resize(unsigned)
     {}
 
-    void operator()(Bag <Time, Value>& bag, const time_type& time,
-                    HeapType <Time, Value> &heap)
+    template <typename Bag>
+    void operator()(Bag &bag, const time_type &time,
+        HeapType <time_format> &heap)
     {
-        for (auto *child: bag) {
+        for (auto *child : bag) {
             child->transition(time);
             child->x.clear();
-
             (*child->heapid).tn = child->tn;
             heap.update(child->heapid);
         }
     }
 };
 
-template <typename Time, typename Value>
-struct TransitionPolicyThread
-{
+template <typename Time>
+struct TransitionPolicyThread {
     using time_format = Time;
     using time_type = typename Time::time_type;
-    using value_type = Value;
 
     TransitionPolicyThread()
         : pool(std::max(1u, std::thread::hardware_concurrency()))
@@ -269,7 +254,7 @@ struct TransitionPolicyThread
             pool.resize(1);
     }
 
-    TransitionPolicyThread(const TransitionPolicyThread& other)
+    TransitionPolicyThread(const TransitionPolicyThread &other)
         : pool(other.pool.size())
     {
         if (pool.size() == 0)
@@ -282,8 +267,8 @@ struct TransitionPolicyThread
             pool.resize(i);
     }
 
-    void work(Bag <Time, Value>& bag, const time_type& time,
-              const std::size_t idx)
+    template <typename Bag>
+    void work(Bag &bag, const time_type &time, const std::size_t idx)
     {
         if (idx >= bag.size())
             return;
@@ -291,8 +276,8 @@ struct TransitionPolicyThread
         std::size_t current_job_id = idx;
         auto it = bag.begin();
         std::advance(it,
-            boost::numeric_cast<typename Bag<Time, Value>::difference_type>(
-                idx));
+                     boost::numeric_cast<std::ptrdiff_t>(
+                         idx));
 
         for (;;) {
             (*it)->transition(time);
@@ -302,32 +287,32 @@ struct TransitionPolicyThread
                 break;
 
             std::advance(it,
-                boost::numeric_cast<typename Bag<Time, Value>::difference_type>(
-                    pool.size()));
+                         boost::numeric_cast<std::ptrdiff_t>(
+                             pool.size()));
         }
     }
 
-    void operator()(Bag <Time,Value>& bag, const time_type& time,
-                    HeapType <Time, Value> &heap)
+    template <typename Bag>
+    void operator()(Bag &bag, const time_type &time,
+                    HeapType <time_format> &heap)
     {
         if (bag.size() == 1) {
-            Model <Time, Value>* child = (*bag.begin());
-
+            auto *child = (*bag.begin());
             child->transition(time);
             child->x.clear();
             (*child->heapid).tn = child->tn;
             heap.update(child->heapid);
         } else {
-            for (size_t i = 0; i < pool.size(); ++i) {
-                pool[i] = std::thread(&TransitionPolicyThread::work, this,
-                                      std::ref(bag), time, i);
+            for (auto i = 0ul; i < pool.size(); ++i) {
+                pool[i] = std::thread(&TransitionPolicyThread<Time>::work<Bag>,
+                                      this, std::ref(bag), time, i);
             }
 
-            for (auto& worker : pool)
+            for (auto &worker : pool)
                 if (worker.get_id() != std::thread::id())
                     worker.join();
 
-            for (auto* child : bag) {
+            for (auto *child : bag) {
                 (*child->heapid).tn = child->tn;
                 heap.update(child->heapid);
                 child->x.clear();
@@ -339,133 +324,127 @@ private:
     std::vector <std::thread> pool;
 };
 
-template <typename Time, typename Value,
-          typename Policy = TransitionPolicyThread <Time, Value>>
-struct CoupledModel : ComposedModel <Time, Value>
+template <typename Time, typename InputPort, typename OutputPort,
+          typename ChildInputPort, typename ChildOutputPort,
+          typename Policy = TransitionPolicyThread <Time>>
+class CoupledModel : public ComposedModel <Time, InputPort, OutputPort,
+                                           ChildInputPort, ChildOutputPort>
 {
+public:
+    using parent_type = ComposedModel <Time, InputPort, OutputPort,
+                                       ChildInputPort, ChildOutputPort>;
+    using child_type = typename parent_type::child_type;
     using time_format = Time;
     using time_type = typename Time::time_type;
-    using value_type = Value;
-    using transition_policy_type = Policy;
+    using inputport_type = InputPort;
+    using outputport_type = OutputPort;
+    using childinputport_type = ChildInputPort;
+    using childoutputport_type = ChildOutputPort;
+    using transition_policy = Policy;
 
-    CoupledModel(const CoupledModel&) = default;
-    CoupledModel(CoupledModel&&) = default;
-    CoupledModel& operator=(const CoupledModel&) = default;
-    CoupledModel& operator=(CoupledModel&&) = default;
+    using UpdatedPort = typename parent_type::UpdatedPort;
+    using Bag = typename parent_type::Bag;
+    using children_t = std::vector <child_type*>;
 
-    HeapType <Time, Value> heap;
-    transition_policy_type policy;
+    CoupledModel(const CoupledModel &) = default;
+    CoupledModel(CoupledModel &&) = default;
+    CoupledModel &operator=(const CoupledModel &) = default;
+    CoupledModel &operator=(CoupledModel &&) = default;
 
-    typedef std::vector <Model <Time, Value>*> children_t;
+    HeapType <Time> heap;
+    transition_policy policy;
 
     /**
      * @brief Get the children of the @e CoupledModel.
+     * @details The @e children function is called only once by the simulation
+     * layer after the constructor.
      *
-     * The @e children function is called only once by the simulation layer
-     * after the constructor.
-     *
-     * @return A set of Model <Time, Value>.
+     * @return A list of pointer of child models.
      */
-    virtual children_t children(const vle::Common& common) = 0;
+    virtual children_t children(const vle::Common &common) = 0;
 
-    virtual void post(const UpdatedPort <Time, Value> &out,
-                      UpdatedPort <Time, Value> &in) const override = 0;
+    /**
+     * @brief Move or copy event from output port to input port.
+     * @details The post function take into account the move message between
+     * models. The post function must take into account the input ports of
+     * the coupled model that is not in @e UpdatedPort @e out. Be sure to
+     * not push this into the @e UpdatedPort @e in.
+     *
+     * @param out The children list which emits a output message.
+     * @param in The children list which receives the message.
+     */
+    virtual void post(const UpdatedPort &out, UpdatedPort &in) const = 0;
 
-    CoupledModel(const Context& ctx)
-        : ComposedModel <Time, Value>(ctx)
+    CoupledModel(const Context &ctx)
+        : parent_type(ctx)
         , policy(ctx->get_thread_number())
     {}
 
-    CoupledModel(const Context& ctx, std::size_t input_size, std::size_t output_size)
-        : ComposedModel <Time, Value>(ctx, input_size, output_size)
-        , policy(ctx->get_thread_number())
+    template <typename InputPortInit, typename OutputPortInit>
+    CoupledModel(const Context &ctx_,
+                 const InputPortInit &inputport_init,
+                 const OutputPortInit &outputport_init)
+        : parent_type(ctx_, inputport_init, outputport_init)
+        , policy(ctx_->get_thread_number())
     {}
 
-    CoupledModel(const Context& ctx, unsigned thread_number)
-        : ComposedModel <Time, Value>(ctx)
-        , policy(thread_number)
-    {}
-
-    CoupledModel(const Context& ctx,
-                 std::initializer_list <std::string> lst_x,
-                 std::initializer_list <std::string> lst_y)
-        : ComposedModel <Time, Value>(ctx, lst_x, lst_y)
-        , policy(ctx->get_thread_number())
-    {}
-
-    CoupledModel(const Context& ctx,
-                 unsigned thread_number,
-                 std::initializer_list <std::string> lst_x,
-                 std::initializer_list <std::string> lst_y)
-        : ComposedModel <Time, Value>(ctx, lst_x, lst_y)
-        , policy(thread_number)
-    {}
-
-    virtual ~CoupledModel()
-    {}
-
-    virtual void start(const vle::Common& common, const time_type& time) override
+    virtual void start(const vle::Common &common,
+        const time_type &time) override
     {
         auto cs = children(common);
 
         for (auto child : cs) {
             child->parent = this;
             child->start(common, time);
-
             auto id = heap.emplace(child, child->tn);
             child->heapid = id;
             (*id).heapid = id;
         };
 
-        Model <Time, Value>::tl = time;
-        Model <Time, Value>::tn = heap.top().tn;
+        parent_type::tl = time;
+        parent_type::tn = heap.top().tn;
     }
 
-    virtual void transition(const time_type& time) override
+    virtual void transition(const time_type &time) override
     {
-        check_transition_synchronization <Time>(Model <Time, Value>::tl,
+        check_transition_synchronization <Time>(parent_type::tl,
                                                 time,
-                                                Model <Time, Value>::tn);
+                                                parent_type::tn);
 
-        if (time < Model <Time, Value>::tn && Model <Time, Value>::x.empty())
+        if (time  < parent_type::tn && parent_type::x.empty())
             return;
 
-        Bag <Time, Value> bag; /* The bag stores models in internal (where
-                                * time equal child.tn), external (where
-                                * child.input port is not empty. */
-
+        // The bag stores models in internal (where time equal child.tn),
+        // external  (where child.input port is not empty.
+        Bag bag;
         {
             auto it = heap.ordered_begin();
             auto et = heap.ordered_end();
 
             for (; it != et && (*it).tn == time; ++it)
-                bag.insert(
-                    reinterpret_cast <Model <Time, Value>*>(
-                        (*it).element));
+                bag.insert(reinterpret_cast <child_type*>((*it).element));
         }
 
-        if (not Model <Time, Value>::x.empty()) {
-            post({this}, ComposedModel <Time, Value>::last_output_list);
-            Model <Time, Value>::x.clear();
+        if (not parent_type::x.empty()) {
+            post(UpdatedPort(), parent_type::last_output_list);
+            parent_type::x.clear();
         }
 
-        for (auto &child : ComposedModel <Time, Value>::last_output_list)
-            bag.insert(const_cast <Model <Time, Value>*>(child));
+        for (auto &child : parent_type::last_output_list)
+            bag.insert(const_cast <child_type*>(child));
 
-        ComposedModel <Time, Value>::last_output_list.clear();
-
+        parent_type::last_output_list.clear();
         policy(bag, time, heap);
-
-        Model <Time, Value>::tl = time;
-        Model <Time, Value>::tn = heap.top().tn;
+        parent_type::tl = time;
+        parent_type::tn = heap.top().tn;
     }
 
-    virtual void output(const time_type& time) override
+    virtual void output(const time_type &time) override
     {
         check_output_synchronization <Time>(heap.top().tn, time);
 
-        if (time == Model <Time, Value>::tn && not heap.empty()) {
-            UpdatedPort <Time, Value> lst;
+        if (time == parent_type::tn && not heap.empty()) {
+            UpdatedPort lst;
             auto it = heap.ordered_begin();
             auto et = heap.ordered_end();
 
@@ -475,21 +454,20 @@ struct CoupledModel : ComposedModel <Time, Value>
 
             do {
                 auto id = (*it).heapid;
-                Model <Time, Value> *mdl =
-                    reinterpret_cast <Model <Time, Value>*>(
-                        (*id).element);
-
+                child_type *mdl = reinterpret_cast<child_type*>((*id).element);
                 mdl->output(time);
+
                 if (!(mdl->y.empty()))
                     lst.emplace(mdl);
+
                 ++it;
-            } while (it != et && it->tn == Model <Time, Value>::tn);
+            } while (it != et && it->tn == parent_type::tn);
 
-            post(lst, ComposedModel <Time, Value>::last_output_list);
+            post(lst, parent_type::last_output_list);
 
-            /* If user adds this into the last_output_list, we need to remove
-             * it from before clearing output ports. */
-            ComposedModel <Time, Value>::last_output_list.erase(this);
+            // TODO How to make test? If user adds this into the
+            // last_output_list, we need to remove it from before clearing
+            // output ports. parent_type::last_output_list.erase(this);
 
             for (auto *child : lst)
                 child->y.clear();
@@ -497,85 +475,90 @@ struct CoupledModel : ComposedModel <Time, Value>
     }
 };
 
-template <typename Time, typename Value,
-          typename Policy = TransitionPolicyThread <Time, Value>>
-struct Executive : ComposedModel <Time, Value>
+template <typename Time, typename InputPort, typename OutputPort,
+          typename ChildInputPort, typename ChildOutputPort,
+          typename Policy = TransitionPolicyThread <Time>>
+class Executive : public ComposedModel <Time, InputPort, OutputPort,
+                                        ChildInputPort, ChildOutputPort>
 {
-    typedef Time time_format;
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
-    typedef Policy transition_policy_type;
+public:
+    using parent_type = ComposedModel <Time, InputPort, OutputPort,
+                                       ChildInputPort, ChildOutputPort>;
+    using child_type = typename parent_type::child_type;
+    using time_format = Time;
+    using time_type = typename Time::time_type;
+    using inputport_type = InputPort;
+    using outputport_type = OutputPort;
+    using childinputport_type = ChildInputPort;
+    using childoutputport_type = ChildOutputPort;
+    using transition_policy = Policy;
 
-    Executive(const Executive&) = default;
-    Executive(Executive&&) = default;
-    Executive& operator=(const Executive&) = default;
-    Executive& operator=(Executive&&) = default;
+    using UpdatedPort = typename parent_type::UpdatedPort;
+    using Bag = typename parent_type::Bag;
+    using children_t = std::vector <child_type*>;
 
-    HeapType <Time, Value> heap;
+    Executive(const Executive &) = default;
+    Executive(Executive &&) = default;
+    Executive &operator=(const Executive &) = default;
+    Executive &operator=(Executive &&) = default;
 
-    typedef std::vector <Model <Time, Value>*> children_t;
-    time_type chi_tl, chi_tn;
-    typename HeapType <Time, Value>::handle_type chi_heapid;
-    mutable vle::PortList <Value> chi_x, chi_y;
-    transition_policy_type policy;
+    HeapType <Time> heap;
+
+    time_type chi_tl;
+    time_type chi_tn;
+    typename HeapType <Time>::handle_type chi_heapid;
+    mutable childinputport_type chi_x;
+    mutable childoutputport_type chi_y;
+    transition_policy policy;
     vle::Common localcommon;
 
-    virtual children_t children(const vle::Common& common) = 0;
-    virtual time_type init(const time_type& time) = 0;
+    virtual children_t children(const vle::Common &common) = 0;
+    virtual time_type init(const time_type &time) = 0;
     virtual time_type delta(const time_type &elapsed,
                             const time_type &remaining,
                             const time_type &time) = 0;
     virtual void lambda() const = 0;
-    virtual void post(const UpdatedPort <Time, Value> &out,
-                  UpdatedPort <Time, Value> &in) const override = 0;
+    virtual void post(const UpdatedPort &out,
+                      UpdatedPort &in) const = 0;
 
-    Executive(const vle::Context& ctx)
-        : ComposedModel <Time, Value>(ctx)
+    Executive(const vle::Context &ctx)
+        : parent_type(ctx)
         , chi_tl(Time::negative_infinity())
         , chi_tn(Time::infinity())
     {}
 
-    Executive(const vle::Context& ctx,
-              std::initializer_list <std::string> lst_x,
-              std::initializer_list <std::string> lst_y)
-        : ComposedModel <Time, Value>(ctx, lst_x, lst_y)
+    template <typename InputPortInit, typename OutputPortInit,
+              typename ChiInputPortInit, typename ChiOutputPortInit>
+    Executive(const Context &ctx_,
+              const InputPortInit &inputport_init,
+              const OutputPortInit &outputport_init,
+              const ChiInputPortInit &chiinputport_init,
+              const ChiOutputPortInit &chioutputport_init)
+        : parent_type(ctx_, inputport_init, outputport_init)
         , chi_tl(Time::negative_infinity())
         , chi_tn(Time::infinity())
+        , chi_x(chiinputport_init)
+        , chi_y(chioutputport_init)
     {}
 
-    Executive(const vle::Context& ctx,
-              std::initializer_list <std::string> lst_x,
-              std::initializer_list <std::string> lst_y,
-              std::initializer_list <std::string> chi_lst_x,
-              std::initializer_list <std::string> chi_lst_y)
-        : ComposedModel <Time, Value>(ctx, lst_x, lst_y)
-        , chi_tl(Time::negative_infinity())
-        , chi_tn(Time::infinity())
-        , chi_x(chi_lst_x)
-        , chi_y(chi_lst_y)
-    {}
-
-    virtual ~Executive()
-    {}
-
-    void insert(Model <Time, Value> *mdl)
+    void insert(child_type *mdl)
     {
         mdl->parent = this;
         mdl->start(localcommon, Executive::chi_tl);
-
         auto id = heap.emplace(mdl, mdl->tn);
         mdl->heapid = id;
         (*id).heapid = id;
     }
 
-    void erase(Model <Time, Value >*mdl)
+    void erase(child_type *mdl)
     {
-        ComposedModel <Time, Value>::last_output_list.erase(mdl);
+        parent_type::last_output_list.erase(mdl);
         heap.erase(mdl->heapid);
         mdl->parent = nullptr;
     }
 
-    virtual void start(const vle::Common& common, const time_type& time) override
+    virtual void start(const vle::Common &common,
+        const time_type &time) override
     {
         localcommon = common;
         chi_tl = time;
@@ -583,34 +566,31 @@ struct Executive : ComposedModel <Time, Value>
         auto id = heap.emplace(this, chi_tn);
         chi_heapid = id;
         (*id).heapid = id;
-
         auto cs = children(localcommon);
 
         for (auto child : cs) {
             child->parent = this;
             child->start(localcommon, time);
-
             auto child_id = heap.emplace(child, child->tn);
             child->heapid = child_id;
             (*child_id).heapid = child_id;
         }
 
-        Model <Time, Value>::tl = time;
-        Model <Time, Value>::tn = heap.top().tn;
+        parent_type::tl = time;
+        parent_type::tn = heap.top().tn;
     }
 
     virtual void transition(const time_type &time) override
     {
-        check_transition_synchronization <Time>(Model <Time, Value>::tl,
+        check_transition_synchronization <Time>(parent_type::tl,
                                                 time,
-                                                Model <Time, Value>::tn);
+                                                parent_type::tn);
 
-        if (time < Model <Time, Value>::tn && Model <Time, Value>::x.empty())
+        if (time < parent_type::tn && parent_type::x.empty())
             return;
 
-        Bag <Time, Value> bag;
+        Bag bag;
         bool have_chi = false;
-
         {
             auto it = heap.ordered_begin();
             auto et = heap.ordered_end();
@@ -619,26 +599,23 @@ struct Executive : ComposedModel <Time, Value>
                 if ((*it).element == this)
                     have_chi = true;
                 else
-                    bag.insert(
-                        reinterpret_cast <Model <Time, Value>*>(
-                            (*it).element));
+                    bag.insert(reinterpret_cast<child_type*>((*it).element));
             }
         }
 
-        if (not Model <Time, Value>::x.empty()) {
-            post({this}, ComposedModel <Time, Value>::last_output_list);
-            Model <Time, Value>::x.clear();
+        if (not parent_type::x.empty()) {
+            post({this}, parent_type::last_output_list);
+            parent_type::x.clear();
         }
 
-        for (auto &child : ComposedModel <Time, Value>::last_output_list) {
+        for (auto &child : parent_type::last_output_list) {
             if (child == this)
                 have_chi = true;
             else
-                bag.insert(const_cast <Model <Time, Value>*>(child));
+                bag.insert(const_cast <child_type*>(child));
         }
 
-        ComposedModel <Time, Value>::last_output_list.clear();
-
+        parent_type::last_output_list.clear();
         policy(bag, time, heap);
 
         if (have_chi) {
@@ -646,44 +623,45 @@ struct Executive : ComposedModel <Time, Value>
             time_type r = chi_tn - time;
             chi_tl = time;
             chi_tn = time + delta(e, r, time);
-            Model <Time, Value>::x.clear();
+            parent_type::x.clear();
             (*chi_heapid).tn = chi_tn;
             heap.update(chi_heapid);
         }
 
-        Model <Time, Value>::tl = time;
-        Model <Time, Value>::tn = heap.top().tn;
+        parent_type::tl = time;
+        parent_type::tn = heap.top().tn;
     }
 
     virtual void output(const time_type &time) override
     {
         check_output_synchronization <Time>(heap.top().tn, time);
 
-        if (time == Model <Time, Value>::tn && not heap.empty()) {
-            UpdatedPort <Time, Value> lst;
+        if (time == parent_type::tn && not heap.empty()) {
+            UpdatedPort lst;
             auto it = heap.ordered_begin();
             auto et = heap.ordered_end();
 
             do {
                 auto id = (*it).heapid;
-                Model <Time, Value> *mdl =
-                    reinterpret_cast <Model <Time, Value>*>((*id).element);
+                child_type *mdl = reinterpret_cast<child_type*>((*id).element);
 
                 if (mdl == this) {
                     lambda();
                 } else {
                     mdl->output(time);
                 }
+
                 if (!(mdl->y.empty()))
                     lst.emplace(mdl);
+
                 ++it;
-            } while (it != et && it->tn == Model <Time, Value>::tn);
+            } while (it != et && it->tn == parent_type::tn);
 
-            post(lst, ComposedModel <Time, Value>::last_output_list);
+            post(lst, parent_type::last_output_list);
 
-            /* If user adds this into the last_output_list, we need to remove it
-             * from before clearing output ports. */
-            ComposedModel <Time, Value>::last_output_list.erase(this);
+            // If user adds this into the last_output_list, we need to remove
+            // it from before clearing output ports.
+            parent_type::last_output_list.erase(this);
 
             for (auto *child : lst)
                 child->y.clear();
@@ -691,13 +669,12 @@ struct Executive : ComposedModel <Time, Value>
     }
 };
 
-template <typename Time, typename Value>
-struct Engine
+template <typename Time>
+class Engine
 {
-    typedef Time time_format;
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
-    typedef Model <Time, Value> model_type;
+public:
+    using time_format = Time;
+    using time_type = typename Time::time_type;
     vle::CommonPtr common;
 
     Engine()
@@ -708,30 +685,35 @@ struct Engine
         : common(common_)
     {}
 
-    time_type pre(model_type& model, const time_type& time)
+    template <typename InputPort, typename OutputPort>
+    time_type pre(Model <Time, InputPort, OutputPort> &model,
+                  const time_type &time)
     {
         model.start(*common, time);
-
         return model.tn;
     }
 
-    time_type run(model_type& model, const time_type& time)
+    template <typename InputPort, typename OutputPort>
+    time_type run(Model <Time, InputPort, OutputPort> &model,
+                  const time_type &time)
     {
         model.output(time);
         model.transition(time);
         model.x.clear();
-
         return model.tn;
     }
 
-    void post(model_type& model, const time_type& time)
+    template <typename InputPort, typename OutputPort>
+    void post(Model <Time, InputPort, OutputPort> &model,
+              const time_type &time)
     {
         (void)model;
         (void)time;
     }
 };
 
-}}
+}
+}
 
 #include <vle/dsde/detail/dsde-implementation.hpp>
 

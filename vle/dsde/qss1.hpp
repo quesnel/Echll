@@ -35,23 +35,110 @@ namespace vle {
 namespace dsde {
 namespace qss {
 
-using port = double;
+inline static constexpr double nan() noexcept
+{
+    return std::numeric_limits <double>::quiet_NaN();
+}
+
+struct QssInputPort
+{
+    QssInputPort(std::size_t size) noexcept
+        : m_value(size, nan())
+        , m_dirac(false)
+    {}
+
+    constexpr const double& operator[](std::size_t i) const noexcept
+    {
+        return m_value[i];
+    }
+
+    constexpr double& operator[](std::size_t i) noexcept
+    {
+        return m_value[i];
+    }
+
+    constexpr void dirac() noexcept
+    {
+        m_dirac = true;
+    }
+
+    constexpr void clear() noexcept
+    {
+        std::fill(m_value.begin(), m_value.end(), nan());
+        m_dirac = false;
+    }
+
+    constexpr std::size_t size() const noexcept
+    {
+        return m_value.size();
+    }
+
+    bool empty() const noexcept
+    {
+        if (m_dirac)
+            return false;
+
+        for (auto val : m_value)
+            if (not std::isnan(val))
+                return false;
+
+        return true;
+    }
+
+    std::vector <double> m_value;
+    bool m_dirac;
+};
+
+struct QssOutputPort
+{
+    constexpr QssOutputPort(double) noexcept
+        : m_value(nan())
+    {}
+
+    constexpr const double& operator[](std::size_t) const noexcept
+    {
+        return m_value;
+    }
+
+    constexpr double& operator[](std::size_t) noexcept
+    {
+        return m_value;
+    }
+
+    constexpr std::size_t size() const noexcept
+    {
+        return 1u;
+    }
+
+    constexpr void clear() noexcept
+    {
+        m_value = nan();
+    }
+
+    bool empty() const noexcept
+    {
+        return std::isnan(m_value);
+    }
+
+    double m_value;
+};
 
 template <typename Time, typename Container>
-class StaticFunction : public AtomicModel <Time, port>
+class StaticFunction : public AtomicModel <Time, QssInputPort, QssOutputPort>
 {
 public:
-    typedef AtomicModel <Time, port> parent_type;
-    typedef typename parent_type::time_format time_format;
-    typedef typename parent_type::time_type time_type;
-    typedef typename parent_type::value_type value_type;
+    using parent_type = AtomicModel <Time, QssInputPort, QssOutputPort>;
+    using time_format = typename parent_type::time_format;
+    using time_type = typename parent_type::time_type;
+    using inputport_type = typename parent_type::inputport_type;
+    using outputport_type = typename parent_type::inputport_type;
 
     StaticFunction(const Context &ctx, std::size_t system_size,
                    Function <Time, Container> function_)
-        : AtomicModel <Time, port>(ctx, system_size, 1u)
-        , m_integrate_function(function_)
-        , m_variable(system_size)
-        , m_sigma(Time::infinity())
+        : parent_type(ctx, system_size, nan())
+          , m_integrate_function(function_)
+          , m_variable(system_size)
+          , m_sigma(Time::infinity())
     {
         if (system_size == 0ul)
             throw std::invalid_argument(
@@ -66,8 +153,8 @@ public:
 
     virtual void lambda() const override final
     {
-        AtomicModel <Time, port>::y[0].emplace_back(
-            m_integrate_function(m_variable, 0.0));
+        // TODO missing paramter t
+        parent_type::y[0] = m_integrate_function(m_variable, 0.0);
     }
 
     virtual time_type delta(const time_type &/*e*/, const time_type &/*r*/,
@@ -75,10 +162,9 @@ public:
     {
         m_sigma = Time::infinity();
 
-        for (auto i = 0ul, end = AtomicModel <Time, port>::x.size();
-             i != end; ++i) {
-            if (not AtomicModel <Time, port>::x[i].empty()) {
-                m_variable[i] = AtomicModel <Time, port>::x[i].front();
+        for (auto i = 0ul, end = parent_type::x.size(); i != end; ++i) {
+            if (not std::isnan(parent_type::x[i])) {
+                m_variable[i] = parent_type::x[i];
                 m_sigma = Time::null();
             }
         }
@@ -93,22 +179,21 @@ private:
 };
 
 template <typename Time>
-class Integrator : public AtomicModel <Time, port>
+class Integrator : public AtomicModel <Time, QssInputPort, QssOutputPort>
 {
 public:
-    typedef AtomicModel <Time, port> parent_type;
-    typedef typename parent_type::time_format time_format;
-    typedef typename parent_type::time_type time_type;
-    typedef typename parent_type::value_type value_type;
+    using parent_type = AtomicModel <Time, QssInputPort, QssOutputPort>;
+    using time_format = typename parent_type::time_format;
+    using time_type = typename parent_type::time_type;
 
     Integrator(const Context &ctx, double dq, double epsilon, double x)
-        : AtomicModel <Time, port>(ctx, 1u, 1u)
-        , m_sigma(Time::null())
-        , m_dq(dq)
-        , m_epsilon(epsilon)
-        , m_X(x)
-        , m_dX(0.0)
-        , m_q(std::floor(x / dq) * dq)
+        : parent_type(ctx, 1u, nan())
+          , m_sigma(Time::null())
+          , m_dq(dq)
+          , m_epsilon(epsilon)
+          , m_X(x)
+          , m_dX(0.0)
+          , m_q(std::floor(x / dq) * dq)
     {}
 
     virtual time_type init(const vle::Common &/*common*/,
@@ -119,7 +204,7 @@ public:
 
     virtual void lambda() const override final
     {
-        parent_type::y[0].emplace_back(m_q + m_dq * boost::math::sign(m_dX));
+        parent_type::y[0] = m_q + m_dq * boost::math::sign(m_dX);
     }
 
     virtual time_type delta(const time_type &e, const time_type &/*r*/,
@@ -138,7 +223,7 @@ public:
                 m_sigma = Time::infinity();
             }
         } else {
-            auto xv = parent_type::x[0].front();
+            auto xv = parent_type::x[0];
             m_X += (e * m_dX);
 
             if (xv > 0.0) {
@@ -170,13 +255,17 @@ private:
 };
 
 template <typename Time, typename Container>
-class EquationBlock : public CoupledModel <Time, port>
+class EquationBlock : public CoupledModel <
+                      Time, QssInputPort, QssOutputPort,
+                      QssInputPort, QssOutputPort>
 {
 public:
-    typedef CoupledModel <Time, port> parent_type;
-    typedef typename parent_type::time_format time_format;
-    typedef typename parent_type::time_type time_type;
-    typedef typename parent_type::value_type value_type;
+    using parent_type = CoupledModel <Time, QssInputPort, QssOutputPort,
+          QssInputPort, QssOutputPort>;
+    using time_format = typename parent_type::time_format;
+    using time_type = typename parent_type::time_type;
+
+    using UpdatedPort = typename parent_type::UpdatedPort;
 
     EquationBlock(const vle::Context &ctx,
                   double dq,
@@ -185,10 +274,10 @@ public:
                   std::size_t system_size,
                   std::size_t id,
                   Function <Time, Container> function_)
-        : CoupledModel <Time, port>(ctx, system_size, 1u)
-        , m_integrator(ctx, dq, epsilon, x)
-        , m_variable(ctx, system_size, function_)
-        , m_id(id)
+        : parent_type(ctx, system_size, nan())
+          , m_integrator(ctx, dq, epsilon, x)
+          , m_staticfunction(ctx, system_size, function_)
+          , m_id(id)
     {
         if (id >= system_size)
             throw std::invalid_argument(
@@ -196,28 +285,30 @@ public:
     }
 
     virtual typename parent_type::children_t
-    children(const vle::Common &) override final
-    {
-        return { &m_integrator, &m_variable };
-    }
+        children(const vle::Common &) override final
+        {
+            return { &m_integrator, &m_staticfunction };
+        }
 
-    virtual void post(const UpdatedPort <Time, port> &/*out*/,
-                      UpdatedPort <Time, port> &in) const override final
+    virtual void post(const UpdatedPort &/*out*/,
+                      UpdatedPort &in) const override final
     {
-        if (not m_variable.y.empty()) {
-            copy_values(m_variable.y[0], m_integrator.x[0]);
+        if (not m_staticfunction.y.empty()) {
+            m_integrator.x[0] = m_staticfunction.y[0];
             in.emplace(&m_integrator);
         }
 
         if (not m_integrator.y.empty()) {
-            copy_values(m_integrator.y[0], m_variable.x[m_id]);
-            copy_values(m_integrator.y[0], CoupledModel <Time, port>::y[0]);
-            in.emplace(&m_variable);
+            m_staticfunction.x[m_id] = m_integrator.y[0];
+            parent_type::y[0] = m_integrator.y[0];
+            in.emplace(&m_staticfunction);
         }
 
-        if (not CoupledModel <Time, port>::x.empty()) {
-            copy_port_values(CoupledModel <Time, port>::x, m_variable.x);
-            in.emplace(&m_variable);
+        for (auto i = 0ul, end = parent_type::x.size(); i != end; ++i) {
+            if (!std::isnan(parent_type::x[i])) {
+                m_staticfunction.x[i] = parent_type::x[i];
+                in.emplace(&m_staticfunction);
+            }
         }
     }
 
@@ -228,18 +319,17 @@ public:
 
 private:
     Integrator <Time> m_integrator;
-    StaticFunction <Time, Container> m_variable;
+    StaticFunction <Time, Container> m_staticfunction;
     std::size_t m_id;
 };
 
 template <typename Time, typename Container>
-class Equation : public AtomicModel <Time, port>
+class Equation : public AtomicModel <Time, QssInputPort, QssOutputPort>
 {
 public:
-    typedef AtomicModel <Time, port> parent_type;
-    typedef typename parent_type::time_format time_format;
-    typedef typename parent_type::time_type time_type;
-    typedef typename parent_type::value_type value_type;
+    using parent_type = AtomicModel <Time, QssInputPort, QssOutputPort>;
+    using time_format = typename parent_type::time_format;
+    using time_type = typename parent_type::time_type;
 
     Equation(const Context &ctx,
              double dq,
@@ -248,16 +338,16 @@ public:
              std::size_t system_size,
              std::size_t id,
              Function <Time, Container> function)
-        : AtomicModel <Time, port>(ctx, system_size, 1u)
-        , m_integrate_function(function)
-        , m_variables(system_size)
-        , m_sigma(Time::null())
-        , m_dq(dq)
-        , m_epsilon(epsilon)
-        , m_X(x)
-        , m_dX(0.0)
-        , m_q(std::floor(x / dq) * dq)
-        , m_id(id)
+        : parent_type(ctx, system_size, nan())
+          , m_integrate_function(function)
+          , m_variables(system_size)
+          , m_sigma(Time::null())
+          , m_dq(dq)
+          , m_epsilon(epsilon)
+          , m_X(x)
+          , m_dX(0.0)
+          , m_q(std::floor(x / dq) * dq)
+          , m_id(id)
     {
         if (system_size == 0ul)
             throw std::invalid_argument(
@@ -277,7 +367,7 @@ public:
 
     virtual void lambda() const override final
     {
-        parent_type::y[0].emplace_back(m_q + m_dq * boost::math::sign(m_dX));
+        parent_type::y[0] = m_q + m_dq * boost::math::sign(m_dX);
     }
 
     virtual time_type delta(const time_type &e, const time_type &r,
@@ -286,8 +376,8 @@ public:
         bool perturb = false;
 
         for (std::size_t i = 0, end = parent_type::x.size(); i != end; ++i) {
-            if (!parent_type::x[i].empty()) {
-                m_variables[i] = parent_type::x[i].front();
+            if (not std::isnan(parent_type::x[i])) {
+                m_variables[i] = parent_type::x[i];
                 perturb = true;
             }
         }
@@ -340,154 +430,6 @@ private:
     std::size_t m_id;
 };
 
-template <typename Time, typename Container>
-class Block : public AtomicModel <Time, port>
-{
-public:
-    typedef AtomicModel <Time, port> parent_type;
-    typedef typename parent_type::time_format time_format;
-    typedef typename parent_type::time_type time_type;
-    typedef typename parent_type::value_type value_type;
-
-    Block(const Context &ctx, const Container &dq, const Container &epsilon,
-          const Container &x, Functions <Time, Container> function)
-        : AtomicModel <Time, port>(ctx, x.size(), x.size())
-        , m_integrate_function(function)
-        , m_variables(x.size(), 0.0)
-        , m_X(x)
-        , m_dX(x.size(), 0.0)
-        , m_q(x.size(), 0.0)
-        , m_dq(dq)
-        , m_epsilon(epsilon)
-        , m_sigma(Time::null())
-    {
-        if (m_X.size() != m_dq.size() or m_X.size() != m_epsilon.size())
-            throw std::invalid_argument("vle::dsde::qss::Block: bad size");
-    }
-
-    virtual time_type
-    init(const vle::Common &common, const time_type &t) override final
-    {
-        (void)common;
-
-        for (auto i = 0ul, e = m_X.size(); i != e; ++i) {
-            m_q[i] = (std::floor(m_X[i] / m_dq[i]) * m_dq[i]);
-            m_variables[i] = m_q[i] + m_dq[i] * boost::math::sign(m_dX[i]);
-        }
-
-        m_sigma = update(0.0, t);
-
-        return m_sigma;
-    }
-
-    time_type update(const time_type elapsed_time, const time_type t)
-    {
-        Container xv(m_variables.size(), 0.0);
-        m_integrate_function(m_variables, xv, t);
-        auto newsigma = Time::infinity();
-        auto minsigma = Time::infinity();
-
-        for (auto i = 0ul, end = m_variables.size(); i != end; ++i) {
-            m_X[i] += (elapsed_time * m_dX[i]);
-
-            if (xv[i] > 0.0) {
-                newsigma = (m_q[i] + m_dq[i] - m_X[i]) / xv[i];
-            } else if (xv[i] < 0.0) {
-                newsigma = (m_q[i] - m_epsilon[i] - m_X[i]) / xv[i];
-            } else {
-                newsigma = 0.0;
-            }
-
-            minsigma = std::min(minsigma, newsigma);
-            m_dX[i] = xv[i];
-        }
-
-        return minsigma;
-    }
-
-    virtual void
-    lambda() const override final
-    {
-        for (auto i = 0ul, e = m_X.size(); i != e; ++i)
-            parent_type::y[i].emplace_back(
-                m_q[i] + m_dq[i] * boost::math::sign(m_dX[i]));
-    }
-
-    virtual time_type
-    delta(const time_type &e, const time_type &r,
-          const time_type &t) override final
-    {
-        // bool perturb = false;
-
-        // for (auto i = 0ul, end = parent_type::x.size(); i != end; ++i) {
-        //     if (!parent_type::x[i].empty()) {
-        //         m_variables[i] = parent_type::x[i].front();
-        //         perturb = true;
-        //     }
-        // }
-
-        std::cout << "e=" << e << " r=" << r << " t=" << t << "\n";
-
-        auto newsigma = Time::infinity();
-        m_sigma = Time::infinity();
-
-        m_sigma = update(e, t);
-
-
-        for (auto i = 0ul, end = m_variables.size(); i != end; ++i) {
-            m_X[i] += (m_sigma * m_dX[i]);
-
-            if (m_dX[i] > 0.0) {
-                newsigma = m_dq[i] / m_dX[i];
-                m_q[i] = m_q[i] + m_dq[i];
-            } else if (m_dX[i] < 0.0) {
-                newsigma = - m_dq[i] / m_dX[i];
-                m_q[i] = m_q[i] - m_dq[i];
-            } else {
-                newsigma = Time::infinity();
-            }
-
-            m_sigma = std::min(m_sigma, newsigma);
-        }
-
-        show();
-        std::cout << m_sigma << "\n";
-        return m_sigma;
-    }
-
-    inline typename Container::value_type value(std::size_t i) const noexcept
-    {
-        return m_X[i];
-    }
-
-private:
-    Functions <Time, Container> m_integrate_function;
-    Container m_variables;
-    Container m_X;
-    Container m_dX;
-    Container m_q;
-    Container m_dq;
-    Container m_epsilon;
-    time_type m_sigma;
-
-    void show()
-    {
-        std::cout << "[ variables:";
-
-        for (auto x : m_variables)
-            std::cout << x << " ";
-
-        std::cout << "] [ m_X:";
-
-        for (auto x : m_X)
-            std::cout << x << " ";
-
-        std::cout << "]\n";
-    }
-};
-
-}
-}
-}
+}}}
 
 #endif

@@ -29,42 +29,42 @@
 #include <iostream>
 #include <cstdlib>
 
-template <typename T>
-struct Infinity
+// template <typename T>
+// struct Infinity
+// {
+//     static constexpr T negative = -std::numeric_limits<T>::infinity();
+//     static constexpr T positive = std::numeric_limits<T>::infinity();
+// };
+
+// typedef vle::DoubleTime MyTime;
+// typedef int MyValue;
+// typedef vle::dsde::Engine <MyTime, MyValue> MyDSDE;
+
+// using UpdatedPort = vle::dsde::UpdatedPort <MyTime, MyValue>;
+// using AtomicModel = vle::dsde::AtomicModel <MyTime, MyValue>;
+// using CoupledModel = vle::dsde::CoupledModel <MyTime, MyValue>;
+// using CoupledModelMono = vle::dsde::CoupledModel
+//     <MyTime, MyValue, vle::dsde::TransitionPolicyDefault <MyTime, MyValue>>;
+
+int main(int , char *[])
 {
-    static constexpr T negative = -std::numeric_limits<T>::infinity();
-    static constexpr T positive = std::numeric_limits<T>::infinity();
-};
+//     boost::mpi::environment env(argc, argv);
+//     boost::mpi::communicator comm;
+//     int ret = EXIT_FAILURE;
 
-typedef vle::DoubleTime MyTime;
-typedef int MyValue;
-typedef vle::dsde::Engine <MyTime, MyValue> MyDSDE;
+//     if (comm.size() == 1) {
+//         std::cerr << "comm.size() == 1\n";
+//         goto quit;
+//     }
 
-using UpdatedPort = vle::dsde::UpdatedPort <MyTime, MyValue>;
-using AtomicModel = vle::dsde::AtomicModel <MyTime, MyValue>;
-using CoupledModel = vle::dsde::CoupledModel <MyTime, MyValue>;
-using CoupledModelMono = vle::dsde::CoupledModel
-    <MyTime, MyValue, vle::dsde::TransitionPolicyDefault <MyTime, MyValue>>;
+//     if (comm.rank() == 0) {
 
-int main(int argc, char *argv[])
-{
-    boost::mpi::environment env(argc, argv);
-    boost::mpi::communicator comm;
-    int ret = EXIT_FAILURE;
+//         ret = EXIT_SUCCESS;
+//     } else {
 
-    if (comm.size() == 1) {
-        std::cerr << "comm.size() == 1\n";
-        goto quit;
-    }
+//         ret = EXIT_SUCCESS;
+//     }
 
-    if (comm.rank() == 0) {
-
-        ret = EXIT_SUCCESS;
-    } else {
-
-        ret = EXIT_SUCCESS;
-    }
-
-quit:
-    return ret;
+// quit:
+//     return ret;
 }

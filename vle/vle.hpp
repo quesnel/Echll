@@ -37,20 +37,17 @@ struct Simulation {
     typedef Engine engine_type;
     typedef typename Engine::time_format time_format;
     typedef typename Engine::time_type time_type;
-    typedef typename Engine::value_type value_type;
-    typedef typename Engine::model_type model_type;
 
     engine_type &engine;
-    model_type &model;
     Context ctx;
 
-    Simulation(const Context &ctx_, engine_type &engine_, model_type &model_)
+    Simulation(const Context &ctx_, engine_type &engine_)
         : engine(engine_)
-        , model(model_)
         , ctx(ctx_)
     {}
 
-    time_type run(const time_type &begin, const time_type &end)
+    template <typename Model>
+    time_type run(Model& model, const time_type &begin, const time_type &end)
     {
         time_type i;
 
@@ -68,21 +65,19 @@ struct SimulationDbg {
     typedef Engine engine_type;
     typedef typename Engine::time_format time_format;
     typedef typename Engine::time_type time_type;
-    typedef typename Engine::value_type value_type;
-    typedef typename Engine::model_type model_type;
 
     engine_type &engine;
-    model_type &model;
     Context ctx;
     std::uintmax_t nbloop;
 
-    SimulationDbg(const Context &ctx_, engine_type &engine_, model_type &model_)
+    SimulationDbg(const Context &ctx_, engine_type &engine_)
         : engine(engine_)
-        , model(model_)
         , ctx(ctx_)
+
     {}
 
-    time_type run(const time_type &begin, const time_type &end)
+    template <typename Model>
+    time_type run(Model& model, const time_type &begin, const time_type &end)
     {
         time_type i = engine.pre(model, begin);
         time_type prev = i;
@@ -116,34 +111,32 @@ struct SimulationStep {
     typedef Engine engine_type;
     typedef typename Engine::time_format time_format;
     typedef typename Engine::time_type time_type;
-    typedef typename Engine::value_type value_type;
-    typedef typename Engine::model_type model_type;
 
     engine_type &engine;
-    model_type &model;
     Context ctx;
     time_type end;
 
-    SimulationStep(const Context &ctx_, engine_type &engine_,
-                   model_type &model_)
+    SimulationStep(const Context &ctx_, engine_type &engine_)
         : engine(engine_)
-        , model(model_)
         , ctx(ctx_)
     {}
 
-    time_type init(const time_type &begin)
+    template <typename Model>
+    time_type init(Model& model, const time_type &begin)
     {
         return engine.pre(model, begin);
     }
 
-    bool step(time_type &current, const time_type &end_)
+    template <typename Model>
+    bool step(Model& model, time_type &current, const time_type &end_)
     {
         end = end_;
         current = engine.run(model, current);
         return current < end;
     }
 
-    void finish()
+    template <typename Model>
+    void finish(Model& model)
     {
         engine.post(model, end);
     }

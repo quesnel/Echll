@@ -34,140 +34,165 @@
 #include <memory>
 #include <set>
 
-namespace vle { namespace devs {
+namespace vle {
+namespace devs {
 
 class devs_internal_error : public std::logic_error
 {
 public:
-    devs_internal_error(const std::string& msg);
-    devs_internal_error(const devs_internal_error&) = default;
+    devs_internal_error(const std::string &msg);
+
+    devs_internal_error(const devs_internal_error &) = default;
 
     virtual ~devs_internal_error() noexcept;
 };
 
-template <typename Time, typename Value>
-struct Model
+template <typename Time, typename InputPort, typename OutputPort>
+class Model
 {
-    typedef Time time_format;
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
+public:
+    using time_format = Time;
+    using time_type = typename Time::time_type;
+    using inputport_type = InputPort;
+    using outputport_type = OutputPort;
+
+    Model(const Model &) = default;
+    Model(Model &&) = default;
+    Model &operator=(const Model &) = default;
+    Model &operator=(Model &&) = default;
 
     Model(const Context &ctx);
 
+    template <typename InputPortInit, typename OutputPortInit>
     Model(const Context &ctx,
-          std::size_t input_port_number,
-          std::size_t output_port_number);
-
-    Model(const Context &ctx,
-          std::initializer_list <std::string> lst_x,
-          std::initializer_list <std::string> lst_y);
+          const InputPortInit &inputport_init,
+          const OutputPortInit &outputport_init);
 
     virtual ~Model();
 
     Context ctx;
-    mutable vle::PortList <Value> x, y;
-    time_type tl, tn, e;
+    mutable inputport_type x;
+    mutable outputport_type y;
+    time_type tl;
+    time_type tn;
+    time_type e;
     Model *parent;
-    typename HeapType <Time, Value>::handle_type heapid;
+    typename HeapType <Time>::handle_type heapid;
 
-    inline constexpr const Context& context() const;
+    inline constexpr const Context &context() const;
 
-    virtual void i_msg(const time_type& time) = 0;
-    virtual void s_msg(const time_type& time) = 0;
-    virtual void x_msg(const time_type& time) = 0;
-    virtual void y_msg(Model <Time, Value>& model,
-                       const time_type& time) = 0;
+    virtual void i_msg(const time_type &time) = 0;
+    virtual void s_msg(const time_type &time) = 0;
+    virtual void x_msg(const time_type &time) = 0;
+    virtual void y_msg(Model <Time, InputPort, OutputPort> &model,
+                       const time_type &time) = 0;
 };
 
-template <typename Time, typename Value>
-struct AtomicModel : Model <Time, Value>
+template <typename Time, typename InputPort, typename OutputPort>
+class AtomicModel : public Model <Time, InputPort, OutputPort>
 {
-    typedef Time time_format;
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
+public:
+    using parent_type = Model <Time, InputPort, OutputPort>;
+    using time_format = Time;
+    using time_type = typename Time::time_type;
+    using inputport_type = InputPort;
+    using outputport_type = OutputPort;
+
+    AtomicModel(const AtomicModel &) = default;
+    AtomicModel(AtomicModel &&) = default;
+    AtomicModel &operator=(const AtomicModel &) = default;
+    AtomicModel &operator=(AtomicModel &&) = default;
 
     virtual time_type ta() const = 0;
     virtual void lambda() const = 0;
     virtual void internal() = 0;
-    virtual void external(const time_type& time) = 0;
+    virtual void external(const time_type &time) = 0;
 
     AtomicModel(const Context &ctx);
 
+    template <typename InputPortInit, typename OutputPortInit>
     AtomicModel(const Context &ctx,
-                std::size_t input_port_number,
-                std::size_t output_port_number);
-
-    AtomicModel(const Context &ctx,
-                std::initializer_list <std::string> lst_x,
-                std::initializer_list <std::string> lst_y);
+                const InputPortInit &inputport_init,
+                const OutputPortInit &outputport_init);
 
     virtual ~AtomicModel();
 
-    virtual void i_msg(const time_type& time) override final;
+    virtual void i_msg(const time_type &time) override final;
 
-    virtual void s_msg(const time_type& time) override final;
+    virtual void s_msg(const time_type &time) override final;
 
-    virtual void x_msg(const time_type& time) override final;
+    virtual void x_msg(const time_type &time) override final;
 
-    virtual void y_msg(Model <Time, Value>& model,
-                       const time_type& time) override final;
+    virtual void y_msg(Model <Time, InputPort, OutputPort> &model,
+                       const time_type &time) override final;
 };
 
-template <typename Time, typename Value>
-using UpdatedPort = std::set <const Model <Time, Value>*>;
-
-template <typename Time, typename Value>
-struct CoupledModel : Model <Time, Value>
+template <typename Time, typename InputPort, typename OutputPort,
+          typename ChildInputPort, typename ChildOutputPort>
+class CoupledModel : public Model <Time, InputPort, OutputPort>
 {
-    typedef Time time_format;
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
+public:
+    using parent_type = Model <Time, InputPort, OutputPort>;
+    using child_type = Model <Time, ChildInputPort, ChildOutputPort>;
+    using time_format = Time;
+    using time_type = typename Time::time_type;
+    using inputport_type = InputPort;
+    using outputport_type = OutputPort;
+    using childinputport_type = ChildInputPort;
+    using childoutputport_type = ChildOutputPort;
+    using children_t = std::vector <child_type*>;
 
-    HeapType <Time, Value> heap;
-    typedef std::vector <Model <Time, Value>*> children_t;
+    using UpdatedPort = std::set <const child_type*>;
+
+    HeapType <Time> heap;
 
     virtual children_t children() = 0;
-    virtual void post(const Model <Time, Value> &out, UpdatedPort <Time, Value> &in) const = 0;
-    virtual std::size_t select(const std::vector <Model <Time, Value>*>& models) const = 0;
+    virtual void post(const Model <Time, InputPort, OutputPort> &out,
+                      UpdatedPort &in) const = 0;
+    virtual std::size_t select(const std::vector
+                               <Model <Time, InputPort, OutputPort>*> &models) const = 0;
 
     CoupledModel(const Context &ctx);
 
+    template <typename InputPortInit, typename OutputPortInit>
     CoupledModel(const Context &ctx,
-                 std::size_t input_port_number,
-                 std::size_t output_port_number);
-
-    CoupledModel(const Context &ctx,
-                 std::initializer_list <std::string> lst_x,
-                 std::initializer_list <std::string> lst_y);
+                 const InputPortInit &inputport_init,
+                 const OutputPortInit &outputport_init);
 
     virtual ~CoupledModel();
 
-    virtual void i_msg(const time_type& time) override final;
+    virtual void i_msg(const time_type &time) override final;
 
-    virtual void s_msg(const time_type& time) override final;
+    virtual void s_msg(const time_type &time) override final;
 
-    virtual void x_msg(const time_type& time) override final;
+    virtual void x_msg(const time_type &time) override final;
 
-    virtual void y_msg(Model <Time, Value>& model,
-                       const time_type& time) override final;
+    virtual void y_msg(Model <Time, InputPort, OutputPort> &model,
+                       const time_type &time) override final;
 };
 
-template <typename Time, typename Value>
-struct Engine
+template <typename Time>
+class Engine
 {
-    typedef Time time_format;
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
-    typedef Model <Time, Value> model_type;
+public:
+    using time_format = Time;
+    using time_type = typename Time::time_type;
 
-    time_type pre(model_type& model, const time_type& time);
+    template <typename InputPort, typename OutputPort>
+        time_type pre(Model <Time, InputPort, OutputPort> &model,
+                      const time_type &time);
 
-    time_type run(model_type& model, const time_type& time);
+    template <typename InputPort, typename OutputPort>
+        time_type run(Model <Time, InputPort, OutputPort> &model,
+                      const time_type &time);
 
-    void post(model_type& model, const time_type& time);
+    template <typename InputPort, typename OutputPort>
+        void post(Model <Time, InputPort, OutputPort> &model,
+                  const time_type &time);
 };
 
-}}
+}
+}
 
 #include <vle/devs/detail/devs-implementation.hpp>
 

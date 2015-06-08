@@ -49,27 +49,32 @@ enum SynchronousTags
     proxy_recv_output_tag
 };
 
-template <typename Time, typename Value>
-struct SynchronousProxyModel : Model <Time, Value>
+template <typename Time, typename InputPort, typename OutputPort>
+class SynchronousProxyModel : public Model <Time, InputPort, OutputPort>
 {
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
+public:
+    using parent_type = Model <Time, InputPort, OutputPort>;
+    using time_format = Time;
+    using time_type = typename Time::time_type;
+    using inputport_type = InputPort;
+    using outputport_type = OutputPort;
 
     boost::mpi::communicator communicator;
     int rank;
 
     SynchronousProxyModel(const vle::Context& ctx)
-        : Model <Time, Value>(ctx)
+        : parent_type(ctx)
         , communicator()
         , rank(-1)
     {}
 
     SynchronousProxyModel(const SynchronousProxyModel&) = default;
 
-    SynchronousProxyModel(const vle::Context& ctx,
-                          std::initializer_list <std::string> lst_x,
-                          std::initializer_list <std::string> lst_y)
-        : Model <Time, Value>(ctx, lst_x, lst_y)
+    template <typename InputPortInit, typename OutputPortInit>
+    SynchronousProxyModel(const Context &ctx_,
+                 const InputPortInit &inputport_init,
+                 const OutputPortInit &outputport_init)
+        : parent_type(ctx_, inputport_init, outputport_init)
         , communicator()
         , rank(-1)
     {}
@@ -89,37 +94,39 @@ struct SynchronousProxyModel : Model <Time, Value>
         time_type tn;
         communicator.recv(rank, proxy_recv_tn_tag, tn);
 
-        Model <Time, Value>::tl = time;
-        Model <Time, Value>::tn = tn;
-        Model <Time, Value>::x.clear();
+        parent_type::tl = time;
+        parent_type::tn = tn;
+        parent_type::x.clear();
     }
 
     virtual void transition(const time_type& time) override
     {
         communicator.send(rank, proxy_send_transition_tag, time);
-        communicator.send(rank, proxy_send_transition_tag, Model <Time, Value>::x);
+        communicator.send(rank, proxy_send_transition_tag, parent_type::x);
 
         time_type tn;
         communicator.recv(rank, proxy_recv_tn_tag, tn);
 
-        Model <Time, Value>::tl = time;
-        Model <Time, Value>::tn = tn;
-        Model <Time, Value>::x.clear();
+        parent_type::tl = time;
+        parent_type::tn = tn;
+        parent_type::x.clear();
     }
 
     virtual void output(const time_type& time) override
     {
         communicator.send(rank, proxy_send_output_tag, time);
-        communicator.recv(rank, proxy_recv_output_tag, Model <Time, Value>::y);
+        communicator.recv(rank, proxy_recv_output_tag, parent_type::y);
     }
 };
 
-template <typename Time, typename Value>
+template <typename Time, typename InputPort, typename OutputPort>
 struct SynchronousLogicalProcessor
 {
-    typedef typename Time::time_type time_type;
-    typedef Value value_type;
-    typedef Model <Time, Value> model_type;
+    using model_type = Model <Time, InputPort, OutputPort>;
+    using time_format = Time;
+    using time_type = typename Time::time_type;
+    using inputport_type = InputPort;
+    using outputport_type = OutputPort;
 
     vle::CommonPtr common;
 

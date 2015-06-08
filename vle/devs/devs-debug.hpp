@@ -32,12 +32,20 @@
 
 namespace vle { namespace devs {
 
-template <typename Time, typename Value>
-std::ostream& operator<<(std::ostream& out, const AtomicModel <Time, Value>& model)
+template <typename Value>
+std::ostream& operator<<(std::ostream& out,
+    const PortList <Value>& port)
+{
+    return out << port.size();
+}
+
+template <typename Time, typename InputPort, typename OutputPort>
+std::ostream& operator<<(std::ostream& out,
+    const AtomicModel <Time, InputPort, OutputPort>& model)
 {
     out << "AtomicModel" << &model
-        << ": X=" << model.x.size()
-        << ", Y=" << model.y.size()
+        << ": X=" << model.x
+        << ", Y=" << model.y
         << ", tl=" << model.tl
         << ", tn=" << model.tn
         << ", e=" << model.e
@@ -46,12 +54,15 @@ std::ostream& operator<<(std::ostream& out, const AtomicModel <Time, Value>& mod
     return out;
 }
 
-template <typename Time, typename Value>
-std::ostream& operator<<(std::ostream& out, const CoupledModel <Time, Value>& model)
+template <typename Time, typename InputPort, typename OutputPort,
+          typename ChildInputPort, typename ChildOutputPort>
+std::ostream& operator<<(std::ostream& out,
+    const CoupledModel <Time, InputPort, OutputPort, ChildInputPort,
+    ChildOutputPort>& model)
 {
     out << "CoupledModel" << &model
-        << ": X=" << model.x.size()
-        << ", Y=" << model.y.size()
+        << ": X=" << model.x
+        << ", Y=" << model.y
         << ", tl=" << model.tl
         << ", tn=" << model.tn
         << ", e=" << model.e
@@ -63,17 +74,21 @@ std::ostream& operator<<(std::ostream& out, const CoupledModel <Time, Value>& mo
     auto et = copyheap.ordered_end();
 
     for (; it != et; ++it) {
-        const auto *mdl = reinterpret_cast <const Model <Time, Value>*>((*it).element);
+        const auto *mdl = reinterpret_cast <
+            const Model <Time, InputPort, OutputPort>*>((*it).element);
 
         out << "- node " << it->element
             << " heapid " << &it->heapid
             << " tn " << it->tn;
 
-        const auto *atom = dynamic_cast <const AtomicModel <Time, Value>*>(mdl);
+        const auto *atom = dynamic_cast <
+            const AtomicModel <Time, InputPort, OutputPort>*>(mdl);
         if (atom) {
             out << '\t' << *atom;
         } else {
-            out << '\t' << *(dynamic_cast <const CoupledModel <Time, Value>*>(mdl));
+            out << '\t' << *(dynamic_cast <
+                const CoupledModel <Time, InputPort, OutputPort, ChildInputPort,
+                ChildOutputPort>*>(mdl));
         }
 
         out << '\n';
