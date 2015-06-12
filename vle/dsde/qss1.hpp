@@ -28,7 +28,7 @@
 #define ORG_VLEPROJECT_KERNEL_DSDE_QSS1_HPP
 
 #include <vle/dsde/dsde.hpp>
-#include <vle/dsde/qss-common.hpp>
+#include <vle/qss-common.hpp>
 #include <boost/math/special_functions/sign.hpp>
 
 namespace vle {
