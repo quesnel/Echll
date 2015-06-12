@@ -24,12 +24,12 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ORG_VLEPROJECT_KERNEL_DSDE_QSS_COMMON_HPP
-#define ORG_VLEPROJECT_KERNEL_DSDE_QSS_COMMON_HPP
+#ifndef ORG_VLEPROJECT_KERNEL_QSS_COMMON_HPP
+#define ORG_VLEPROJECT_KERNEL_QSS_COMMON_HPP
 
 #include <functional>
 
-namespace vle { namespace dsde { namespace qss {
+namespace vle {
 
 /* @brief Define a function for a single equation.
  *
@@ -91,6 +91,6 @@ using Functions = std::function <void(
     Container&,
     const typename Time::time_type &)>;
 
-}}}
+}
 
 #endif

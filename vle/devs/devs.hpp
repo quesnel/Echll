@@ -147,10 +147,8 @@ public:
     HeapType <Time> heap;
 
     virtual children_t children() = 0;
-    virtual void post(const Model <Time, InputPort, OutputPort> &out,
-                      UpdatedPort &in) const = 0;
-    virtual std::size_t select(const std::vector
-                               <Model <Time, InputPort, OutputPort>*> &models) const = 0;
+    virtual void post(const child_type *out, UpdatedPort &in) const = 0;
+    virtual std::size_t select(const std::vector <child_type*>& models) const = 0;
 
     CoupledModel(const Context &ctx);
 

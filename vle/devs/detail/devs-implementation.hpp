@@ -249,7 +249,7 @@ void CoupledModel <Time, InputPort, OutputPort, ChildInputPort,
 
 #endif
     UpdatedPort receivers;
-    post(*this, receivers);
+    post(nullptr, receivers);
     std::for_each(receivers.begin(), receivers.end(),
     [ = ](const Model <Time, InputPort, OutputPort> *model) {
         Model <Time, InputPort, OutputPort> *mdl = const_cast
@@ -266,15 +266,15 @@ void CoupledModel <Time, InputPort, OutputPort, ChildInputPort,
 
 template <typename Time, typename InputPort, typename OutputPort,
           typename ChildInputPort, typename ChildOutputPort>
-          void CoupledModel <Time, InputPort, OutputPort, ChildInputPort,
-          ChildOutputPort>::y_msg(Model
-        <Time, InputPort, OutputPort> &model,
+void CoupledModel <Time, InputPort, OutputPort, ChildInputPort,
+                   ChildOutputPort>::y_msg(Model
+                                           <Time, InputPort, OutputPort> &model,
         const time_type &time)
 {
     // Check external coupling to see if there is an external output event
     // or internal coupling.
     UpdatedPort receivers;
-    post(model, receivers);
+    post(&model, receivers);
     std::for_each(receivers.begin(), receivers.end(),
     [ = ](const Model <Time, InputPort, OutputPort> *r) {
         Model <Time, InputPort, OutputPort> *mdl = const_cast

@@ -28,6 +28,7 @@
 #include <vle/vle.hpp>
 #include <vle/devs/devs.hpp>
 #include <vle/devs/devs-debug.hpp>
+#include <vle/devs/qss1.hpp>
 #include <boost/format.hpp>
 
 typedef vle::DoubleTime MyTime;
@@ -123,18 +124,18 @@ struct Network : CoupledModel {
         return { &gen1, &gen2, &counter };
     }
 
-    virtual void post(const Model &out, UpdatedPort &in) const
+    virtual void post(const Model *out, UpdatedPort &in) const
     {
-        (void)out;
-
-        if (not gen1.y.empty()) {
-            vle::copy_values(gen1.y[0], counter.x[0]);
-            in.emplace(&counter);
-        }
-
-        if (not gen2.y.empty()) {
-            vle::copy_values(gen2.y[0], counter.x[0]);
-            in.emplace(&counter);
+        if (out == &gen1) {
+            if (not gen1.y.empty()) {
+                vle::copy_values(gen1.y[0], counter.x[0]);
+                in.emplace(&counter);
+            }
+        } else if (out == &gen2) {
+            if (not gen2.y.empty()) {
+                vle::copy_values(gen2.y[0], counter.x[0]);
+                in.emplace(&counter);
+            }
         }
     }
 
@@ -168,4 +169,29 @@ TEST_CASE("engine/devs/model_a", "run")
     sim.finish(model);
     /* We need to receive 9 * 2 messages since simulation stops at 10.0. */
     REQUIRE(model.counter.msg == 18u);
+}
+
+TEST_CASE("engine/devs/qss", "run")
+{
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
+    MyDEVS devs_engine;
+
+    using state_type = std::vector <double>;
+    const double dq = 0.1;
+    const double epsilon = 0.1;
+
+    vle::devs::qss::EquationBlock<MyTime, state_type> model(
+        ctx, dq, epsilon, 0, 1u, 0u,
+    [](const state_type & x, const double) {
+        return -x[0] + 9.5;
+    });
+    std::ofstream ofs("simple.dat");
+    REQUIRE(ofs);
+    vle::SimulationStep <MyDEVS> sim(ctx, devs_engine);
+    double current = sim.init(model, 0.0);
+
+    while (sim.step(model, current, 20.0)) {
+        ofs << current << '\t'
+            << model.value() << '\n';
+    }
 }
