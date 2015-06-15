@@ -221,7 +221,7 @@ void CoupledModel <Time, InputPort, OutputPort, ChildInputPort,
         else {
             std::size_t i = select(model_element_imm);
 
-            if (i > model_element_imm.size())
+            if (i >= model_element_imm.size())
                 throw devs_internal_error("select error");
 
             imm = heap_element_imm[i];
