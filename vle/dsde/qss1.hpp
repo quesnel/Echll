@@ -40,19 +40,18 @@ inline static constexpr double nan() noexcept
     return std::numeric_limits <double>::quiet_NaN();
 }
 
-struct QssInputPort
-{
+struct QssInputPort {
     QssInputPort(std::size_t size) noexcept
         : m_value(size, nan())
         , m_dirac(false)
     {}
 
-    constexpr const double& operator[](std::size_t i) const noexcept
+    constexpr const double &operator[](std::size_t i) const noexcept
     {
         return m_value[i];
     }
 
-    constexpr double& operator[](std::size_t i) noexcept
+    constexpr double &operator[](std::size_t i) noexcept
     {
         return m_value[i];
     }
@@ -89,18 +88,17 @@ struct QssInputPort
     bool m_dirac;
 };
 
-struct QssOutputPort
-{
+struct QssOutputPort {
     constexpr QssOutputPort(double) noexcept
         : m_value(nan())
     {}
 
-    constexpr const double& operator[](std::size_t) const noexcept
+    constexpr const double &operator[](std::size_t) const noexcept
     {
         return m_value;
     }
 
-    constexpr double& operator[](std::size_t) noexcept
+    constexpr double &operator[](std::size_t) noexcept
     {
         return m_value;
     }
@@ -136,9 +134,9 @@ public:
     StaticFunction(const Context &ctx, std::size_t system_size,
                    Function <Time, Container> function_)
         : parent_type(ctx, system_size, nan())
-          , m_integrate_function(function_)
-          , m_variable(system_size)
-          , m_sigma(Time::infinity())
+        , m_integrate_function(function_)
+        , m_variable(system_size)
+        , m_sigma(Time::infinity())
     {
         if (system_size == 0ul)
             throw std::invalid_argument(
@@ -146,20 +144,21 @@ public:
     }
 
     virtual time_type init(const vle::Common &/*common*/,
-                           const time_type &/*t*/) override final
+                           const time_type &t) override final
     {
+        m_time = t;
         return Time::infinity();
     }
 
     virtual void lambda() const override final
     {
-        // TODO missing paramter t
-        parent_type::y[0] = m_integrate_function(m_variable, 0.0);
+        parent_type::y[0] = m_integrate_function(m_variable, m_time);
     }
 
     virtual time_type delta(const time_type &/*e*/, const time_type &/*r*/,
-                            const time_type &/*t*/) override final
+                            const time_type &t) override final
     {
+        m_time = t;
         m_sigma = Time::infinity();
 
         for (auto i = 0ul, end = parent_type::x.size(); i != end; ++i) {
@@ -176,6 +175,7 @@ private:
     Function <Time, Container> m_integrate_function;
     Container m_variable;
     time_type m_sigma;
+    time_type m_time;
 };
 
 template <typename Time>
@@ -188,12 +188,12 @@ public:
 
     Integrator(const Context &ctx, double dq, double epsilon, double x)
         : parent_type(ctx, 1u, nan())
-          , m_sigma(Time::null())
-          , m_dq(dq)
-          , m_epsilon(epsilon)
-          , m_X(x)
-          , m_dX(0.0)
-          , m_q(std::floor(x / dq) * dq)
+        , m_sigma(Time::null())
+        , m_dq(dq)
+        , m_epsilon(epsilon)
+        , m_X(x)
+        , m_dX(0.0)
+        , m_q(std::floor(x / dq) * dq)
     {}
 
     virtual time_type init(const vle::Common &/*common*/,
@@ -256,8 +256,8 @@ private:
 
 template <typename Time, typename Container>
 class EquationBlock : public CoupledModel <
-                      Time, QssInputPort, QssOutputPort,
-                      QssInputPort, QssOutputPort>
+    Time, QssInputPort, QssOutputPort,
+    QssInputPort, QssOutputPort >
 {
 public:
     using parent_type = CoupledModel <Time, QssInputPort, QssOutputPort,
@@ -275,9 +275,9 @@ public:
                   std::size_t id,
                   Function <Time, Container> function_)
         : parent_type(ctx, system_size, nan())
-          , m_integrator(ctx, dq, epsilon, x)
-          , m_staticfunction(ctx, system_size, function_)
-          , m_id(id)
+        , m_integrator(ctx, dq, epsilon, x)
+        , m_staticfunction(ctx, system_size, function_)
+        , m_id(id)
     {
         if (id >= system_size)
             throw std::invalid_argument(
@@ -285,10 +285,10 @@ public:
     }
 
     virtual typename parent_type::children_t
-        children(const vle::Common &) override final
-        {
-            return { &m_integrator, &m_staticfunction };
-        }
+    children(const vle::Common &) override final
+    {
+        return { &m_integrator, &m_staticfunction };
+    }
 
     virtual void post(const UpdatedPort &/*out*/,
                       UpdatedPort &in) const override final
@@ -339,15 +339,15 @@ public:
              std::size_t id,
              Function <Time, Container> function)
         : parent_type(ctx, system_size, nan())
-          , m_integrate_function(function)
-          , m_variables(system_size)
-          , m_sigma(Time::null())
-          , m_dq(dq)
-          , m_epsilon(epsilon)
-          , m_X(x)
-          , m_dX(0.0)
-          , m_q(std::floor(x / dq) * dq)
-          , m_id(id)
+        , m_integrate_function(function)
+        , m_variables(system_size)
+        , m_sigma(Time::null())
+        , m_dq(dq)
+        , m_epsilon(epsilon)
+        , m_X(x)
+        , m_dX(0.0)
+        , m_q(std::floor(x / dq) * dq)
+        , m_id(id)
     {
         if (system_size == 0ul)
             throw std::invalid_argument(
@@ -430,6 +430,8 @@ private:
     std::size_t m_id;
 };
 
-}}}
+}
+}
+}
 
 #endif

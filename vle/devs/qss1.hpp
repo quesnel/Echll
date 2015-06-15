@@ -40,19 +40,18 @@ inline static constexpr double nan() noexcept
     return std::numeric_limits <double>::quiet_NaN();
 }
 
-struct QssInputPort
-{
+struct QssInputPort {
     QssInputPort(std::size_t size) noexcept
         : m_value(size, nan())
         , m_dirac(false)
     {}
 
-    constexpr const double& operator[](std::size_t i) const noexcept
+    constexpr const double &operator[](std::size_t i) const noexcept
     {
         return m_value[i];
     }
 
-    constexpr double& operator[](std::size_t i) noexcept
+    constexpr double &operator[](std::size_t i) noexcept
     {
         return m_value[i];
     }
@@ -89,18 +88,17 @@ struct QssInputPort
     bool m_dirac;
 };
 
-struct QssOutputPort
-{
+struct QssOutputPort {
     constexpr QssOutputPort(double) noexcept
         : m_value(nan())
     {}
 
-    constexpr const double& operator[](std::size_t) const noexcept
+    constexpr const double &operator[](std::size_t) const noexcept
     {
         return m_value;
     }
 
-    constexpr double& operator[](std::size_t) noexcept
+    constexpr double &operator[](std::size_t) noexcept
     {
         return m_value;
     }
@@ -136,9 +134,10 @@ public:
     StaticFunction(const Context &ctx, std::size_t system_size,
                    Function <Time, Container> function_)
         : parent_type(ctx, system_size, nan())
-          , m_integrate_function(function_)
-          , m_variable(system_size)
-          , m_sigma(Time::infinity())
+        , m_integrate_function(function_)
+        , m_variable(system_size)
+        , m_sigma(Time::infinity())
+        , m_time(Time::null())
     {
         if (system_size == 0ul)
             throw std::invalid_argument(
@@ -152,7 +151,7 @@ public:
 
     virtual void lambda() const
     {
-        parent_type::y[0] = m_integrate_function(m_variable, 0.0);
+        parent_type::y[0] = m_integrate_function(m_variable, m_time);
     }
 
     virtual void internal()
@@ -160,8 +159,9 @@ public:
         m_sigma = Time::infinity();
     }
 
-    virtual void external(const time_type &)
+    virtual void external(const time_type &e)
     {
+        m_time += e;
         m_sigma = Time::infinity();
 
         for (auto i = 0ul, end = parent_type::x.size(); i != end; ++i) {
@@ -176,6 +176,7 @@ private:
     Function <Time, Container> m_integrate_function;
     Container m_variable;
     time_type m_sigma;
+    time_type m_time;
 };
 
 template <typename Time>
@@ -188,12 +189,12 @@ public:
 
     Integrator(const Context &ctx, double dq, double epsilon, double x)
         : parent_type(ctx, 1u, nan())
-          , m_sigma(Time::null())
-          , m_dq(dq)
-          , m_epsilon(epsilon)
-          , m_X(x)
-          , m_dX(0.0)
-          , m_q(std::floor(x / dq) * dq)
+        , m_sigma(Time::null())
+        , m_dq(dq)
+        , m_epsilon(epsilon)
+        , m_X(x)
+        , m_dX(0.0)
+        , m_q(std::floor(x / dq) * dq)
     {}
 
     virtual time_type ta() const
@@ -253,8 +254,8 @@ private:
 
 template <typename Time, typename Container>
 class EquationBlock : public CoupledModel <
-                      Time, QssInputPort, QssOutputPort,
-                      QssInputPort, QssOutputPort>
+    Time, QssInputPort, QssOutputPort,
+    QssInputPort, QssOutputPort >
 {
 public:
     using parent_type = CoupledModel <Time, QssInputPort, QssOutputPort,
@@ -273,9 +274,9 @@ public:
                   std::size_t id,
                   Function <Time, Container> function_)
         : parent_type(ctx, system_size, nan())
-          , m_integrator(ctx, dq, epsilon, x)
-          , m_staticfunction(ctx, system_size, function_)
-          , m_id(id)
+        , m_integrator(ctx, dq, epsilon, x)
+        , m_staticfunction(ctx, system_size, function_)
+        , m_id(id)
     {
         if (id >= system_size)
             throw std::invalid_argument(
@@ -283,10 +284,10 @@ public:
     }
 
     virtual typename parent_type::children_t
-        children() override final
-        {
-            return { &m_integrator, &m_staticfunction };
-        }
+    children() override final
+    {
+        return { &m_integrator, &m_staticfunction };
+    }
 
     virtual void post(const child_type *out, UpdatedPort &in) const override
     {
@@ -303,7 +304,6 @@ public:
                 parent_type::y[0] = m_integrator.y[0];
                 in.emplace(&m_staticfunction);
             }
-
         } else if (out == &m_staticfunction) {
             if (not m_staticfunction.y.empty()) {
                 m_integrator.x[0] = m_staticfunction.y[0];
@@ -312,7 +312,7 @@ public:
         }
     }
 
-    virtual std::size_t select(const std::vector <child_type*> &) const override
+    virtual std::size_t select(const std::vector <child_type *> &) const override
     {
         return 0u;
     }
@@ -344,15 +344,16 @@ public:
              std::size_t id,
              Function <Time, Container> function)
         : parent_type(ctx, system_size, nan())
-          , m_integrate_function(function)
-          , m_variables(system_size)
-          , m_sigma(Time::null())
-          , m_dq(dq)
-          , m_epsilon(epsilon)
-          , m_X(x)
-          , m_dX(0.0)
-          , m_q(std::floor(x / dq) * dq)
-          , m_id(id)
+        , m_integrate_function(function)
+        , m_variables(system_size)
+        , m_sigma(Time::null())
+        , m_time(Time::null())
+        , m_dq(dq)
+        , m_epsilon(epsilon)
+        , m_X(x)
+        , m_dX(0.0)
+        , m_q(std::floor(x / dq) * dq)
+        , m_id(id)
     {
         if (system_size == 0ul)
             throw std::invalid_argument(
@@ -377,6 +378,7 @@ public:
 
     virtual void internal()
     {
+        m_time += m_sigma;
         m_X += (m_sigma * m_dX);
 
         if (m_dX > 0.0) {
@@ -392,12 +394,14 @@ public:
 
     virtual void external(const time_type &e)
     {
+        m_time += e;
+
         for (std::size_t i = 0, end = parent_type::x.size(); i != end; ++i)
             if (not std::isnan(parent_type::x[i]))
                 m_variables[i] = parent_type::x[i];
 
         m_variables[m_id] = m_q + m_dq * boost::math::sign(m_dX);
-        auto xv = m_integrate_function(m_variables, 0.0);
+        auto xv = m_integrate_function(m_variables, m_time);
         m_X += (e * m_dX);
 
         if (xv > 0.0) {
@@ -420,6 +424,7 @@ private:
     Function <Time, Container> m_integrate_function;
     Container m_variables;
     time_type m_sigma;
+    time_type m_time;
     double m_dq;
     double m_epsilon;
     double m_X;
@@ -428,6 +433,8 @@ private:
     std::size_t m_id;
 };
 
-}}}
+}
+}
+}
 
 #endif
