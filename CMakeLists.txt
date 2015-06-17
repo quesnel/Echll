@@ -90,6 +90,7 @@ install(DIRECTORY vle
 
 option(WITH_LOGGING "Logging system in echll [default=ON]" ON)
 option(WITH_DEBUG "Debugging system in echll [default=ON]" ON)
+option(WITH_EXAMPLES "Compile example [default=ON]" ON)
 
 if (WITH_LOGGING)
     set(echll_compile_flags "-DENABLE_LOGGING")
@@ -98,6 +99,14 @@ endif ()
 if (WITH_DEBUG)
     set(echll_compile_flags "-DENABLE_DEBUG ${echll_compile_flags}")
 endif ()
+
+if (WITH_EXAMPLES)
+  add_executable(dsde-qss1-fireforrest examples/dsde-qss1-fireforrest.cpp)
+  target_link_libraries(dsde-qss1-fireforrest ${Echll_LINK_LIBRARIES})
+  set_target_properties(dsde-qss1-fireforrest PROPERTIES
+    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests"
+    COMPILE_FLAGS "${echll_compile_flags}")
+endif()
 
 enable_testing()
 message(STATUS "checking for 'catch.hpp'")
