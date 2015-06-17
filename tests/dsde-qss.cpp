@@ -33,7 +33,7 @@
 #include "catch.hpp"
 
 typedef vle::DoubleTime MyTime;
-typedef vle::PortList <double > MyPort;
+typedef vle::PortList <double> MyPort;
 typedef vle::dsde::Engine <MyTime> MyDSDE;
 
 using AtomicModel = vle::dsde::AtomicModel <MyTime, MyPort, MyPort>;
@@ -159,8 +159,8 @@ class SingleEvent : public vle::dsde::AtomicModel <MyTime,
 {
 public:
     using parent_type = vle::dsde::AtomicModel <MyTime,
-    vle::dsde::qss::QssInputPort,
-    vle::dsde::qss::QssOutputPort>;
+          vle::dsde::qss::QssInputPort,
+          vle::dsde::qss::QssOutputPort>;
 
     SingleEvent(const vle::Context &ctx)
         : parent_type(ctx, 0u, 0.0)
@@ -193,7 +193,7 @@ public:
     using parent_type = vle::dsde::CoupledModel <
                         MyTime, MyPort, MyPort, vle::dsde::qss::QssInputPort,
                         vle::dsde::qss::QssOutputPort,
-                        vle::dsde::TransitionPolicyDefault <MyTime >>;
+                        vle::dsde::TransitionPolicyDefault <MyTime>>;
     using children_t = parent_type::children_t;
 
     vle::dsde::qss::EquationBlock <MyTime, state_type> prey;
@@ -231,13 +231,13 @@ class GenericSystem : public vle::dsde::CoupledModel <
     MyTime, MyPort, MyPort,
     vle::dsde::qss::QssInputPort,
     vle::dsde::qss::QssOutputPort,
-    vle::dsde::TransitionPolicyDefault <MyTime >>
+    vle::dsde::TransitionPolicyDefault <MyTime>>
 {
 public:
     using parent_type = vle::dsde::CoupledModel <
                         MyTime, MyPort, MyPort, vle::dsde::qss::QssInputPort,
                         vle::dsde::qss::QssOutputPort,
-                        vle::dsde::TransitionPolicyDefault <MyTime >>;
+                        vle::dsde::TransitionPolicyDefault <MyTime>>;
     using children_t = parent_type::children_t;
 
     GenericSystem(const vle::Context &ctx,
@@ -281,13 +281,13 @@ class MySystem11 : public vle::dsde::CoupledModel <
     MyTime, MyPort, MyPort,
     vle::dsde::qss::QssInputPort,
     vle::dsde::qss::QssOutputPort,
-    vle::dsde::TransitionPolicyDefault <MyTime >>
+    vle::dsde::TransitionPolicyDefault <MyTime>>
 {
 public:
     using parent_type = vle::dsde::CoupledModel <
                         MyTime, MyPort, MyPort, vle::dsde::qss::QssInputPort,
                         vle::dsde::qss::QssOutputPort,
-                        vle::dsde::TransitionPolicyDefault <MyTime >>;
+                        vle::dsde::TransitionPolicyDefault <MyTime>>;
     using children_t = parent_type::children_t;
 
     vle::dsde::qss::Equation <MyTime, state_type> prey;
@@ -419,7 +419,6 @@ TEST_CASE("main/rk", "run")
                 << model.predator.value() << '\n';
         }
     }
-
     std::ofstream ofs("plot.gnuplot");
     REQUIRE(ofs);
     ofs << "set terminal dumb size 160,80 aspect 2,1\n"
