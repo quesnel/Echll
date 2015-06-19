@@ -46,28 +46,28 @@ struct QssInputPort {
         , m_dirac(false)
     {}
 
-    constexpr const double &operator[](std::size_t i) const noexcept
+    const double &operator[](std::size_t i) const noexcept
     {
         return m_value[i];
     }
 
-    constexpr double &operator[](std::size_t i) noexcept
+    double &operator[](std::size_t i) noexcept
     {
         return m_value[i];
     }
 
-    constexpr void dirac() noexcept
+    void dirac() noexcept
     {
         m_dirac = true;
     }
 
-    constexpr void clear() noexcept
+    void clear() noexcept
     {
         std::fill(m_value.begin(), m_value.end(), nan());
         m_dirac = false;
     }
 
-    constexpr std::size_t size() const noexcept
+    std::size_t size() const noexcept
     {
         return m_value.size();
     }

@@ -145,8 +145,6 @@ public:
             std::size_t position = boost::numeric_cast<std::size_t>(tmp);
             auto x = position % m_width;
             auto y = position / m_width;
-            assert(x >= 0 && x < m_width);
-            assert(y >= 0 && y < m_height);
 
             if (x > 0) {
                 m_models[y * m_width + (x - 1)].x[EAST] = mdl->y[0];
