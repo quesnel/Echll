@@ -96,13 +96,13 @@ class FireForrest : public vle::dsde::CoupledModel <
     vle::DoubleTime, vle::PortList <double>, vle::PortList <double>,
     vle::dsde::qss::QssInputPort,
     vle::dsde::qss::QssOutputPort,
-    vle::dsde::TransitionPolicyThread <vle::DoubleTime >>
+    vle::dsde::TransitionPolicyThread <vle::DoubleTime>>
 {
 public:
     using parent_type = vle::dsde::CoupledModel <
                         vle::DoubleTime, vle::PortList <double>, vle::PortList <double>, vle::dsde::qss::QssInputPort,
                         vle::dsde::qss::QssOutputPort,
-                        vle::dsde::TransitionPolicyThread <vle::DoubleTime >>;
+                        vle::dsde::TransitionPolicyThread <vle::DoubleTime>>;
     using children_t = parent_type::children_t;
     using child_type = parent_type::child_type;
 
@@ -184,26 +184,28 @@ public:
         os << "\n";
     }
 
-    std::vector <vle::dsde::qss::EquationBlock<vle::DoubleTime, state_type>> m_models;
+    std::vector <vle::dsde::qss::Equation<vle::DoubleTime, state_type>> m_models;
     std::size_t m_width;
     std::size_t m_height;
 };
 
 int main()
 {
-    const std::size_t width = 40u;
-    const std::size_t height = 40u;
-    const double dq = 0.5;
-    const double epsilon = 0.5;
-    const double alpha = 0.19;
-    const double K = 0.000031;
-    const double k = 0.071;
-    const double enthalpy = 3605;
-    const double mass = 2;
-    const double surrounding = 300;
-    const double dx = 1. / 20.;
-    const double dy = 1. / 20.;
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
+    constexpr const std::size_t width = 40u;
+    constexpr const std::size_t height = 40u;
+    constexpr const double dq = 0.5;
+    constexpr const double epsilon = 0.5;
+    constexpr const double alpha = 0.19;
+    constexpr const double K = 0.000031;
+    constexpr const double k = 0.071;
+    constexpr const double enthalpy = 3605;
+    constexpr const double mass = 2;
+    constexpr const double surrounding = 300;
+    constexpr const double dx = 1. / 20.;
+    constexpr const double dy = 1. / 20.;
+    constexpr const double finish = 50.0;
+    constexpr const unsigned int tostore = 20u;
     vle::dsde::Engine <vle::DoubleTime> dsde_engine;
 
     FireForrest model(ctx, width, height, alpha, K, k, enthalpy,
@@ -213,8 +215,6 @@ int main()
     double current = sim.init(model, 0.0);
     double before = current;
     auto step = 0u;
-    const double finish = 50.0;
-    const unsigned int tostore = 20u;
 
     {
         std::cout << "main/qss1/fire\n";
