@@ -39,6 +39,13 @@ std::ostream& operator<<(std::ostream& out,
     return out << port.size();
 }
 
+template <typename Value>
+std::ostream& operator<<(std::ostream& out,
+    const SparsePortList <Value>& port)
+{
+    return out << port.size();
+}
+
 template <typename Time, typename InputPort, typename OutputPort>
 std::ostream& operator<<(std::ostream& out,
     const AtomicModel <Time, InputPort, OutputPort>& model)

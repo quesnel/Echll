@@ -44,14 +44,21 @@ using CoupledModel = vle::devs::CoupledModel
                      <MyTime, vle::PortList<std::string>,
                      vle::PortList<std::string>, vle::PortList<std::string>,
                      vle::PortList<std::string>>;
+
+using AtomicModelS = vle::devs::AtomicModel <MyTime,
+      vle::SparsePortList<std::string>,
+      vle::SparsePortList<std::string>>;
+using CoupledModelS = vle::devs::CoupledModel <MyTime,
+      vle::SparsePortList<std::string>,
+      vle::SparsePortList<std::string>,
+      vle::SparsePortList<std::string>,
+      vle::SparsePortList<std::string>>;
+
 using MyDEVS = vle::devs::Engine <MyTime>;
 
 struct Generator : AtomicModel {
     Generator(const vle::Context &ctx)
         : AtomicModel(ctx, 0u, 1u)
-    {}
-
-    virtual ~Generator()
     {}
 
     virtual double ta() const override final
@@ -74,15 +81,37 @@ struct Generator : AtomicModel {
     }
 };
 
+struct GeneratorS : AtomicModelS {
+    GeneratorS(const vle::Context &ctx)
+        : AtomicModelS(ctx, 0u, 1u)
+    {}
+
+    virtual double ta() const override final
+    {
+        return 1.0;
+    }
+
+    virtual void lambda() const override final
+    {
+        y.emplace_back(0, "coucou");
+    }
+
+    virtual void internal() override final
+    {
+    }
+
+    virtual void external(const double &time) override final
+    {
+        (void)time;
+    }
+};
+
 struct Counter : AtomicModel {
     unsigned long int msg;
 
     Counter(const vle::Context &ctx)
         : AtomicModel(ctx, 1u, 0u)
         , msg(0u)
-    {}
-
-    virtual ~Counter()
     {}
 
     virtual double ta() const override final
@@ -105,6 +134,34 @@ struct Counter : AtomicModel {
     }
 };
 
+struct CounterS : AtomicModelS {
+    unsigned long int msg;
+
+    CounterS(const vle::Context &ctx)
+        : AtomicModelS(ctx, 1u, 0u)
+        , msg(0u)
+    {}
+
+    virtual double ta() const override final
+    {
+        return MyTime::infinity();
+    }
+
+    virtual void lambda() const override final
+    {
+    }
+
+    virtual void internal() override final
+    {
+    }
+
+    virtual void external(const double &time) override final
+    {
+        (void)time;
+        msg += x.size();
+    }
+};
+
 struct Network : CoupledModel {
     Generator gen1, gen2;
     Counter counter;
@@ -114,9 +171,6 @@ struct Network : CoupledModel {
         , gen1(ctx)
         , gen2(ctx)
         , counter(ctx)
-    {}
-
-    virtual ~Network()
     {}
 
     virtual CoupledModel::children_t children()
@@ -148,7 +202,43 @@ struct Network : CoupledModel {
 
         return 0u;
     }
+};
 
+struct NetworkS : CoupledModelS {
+    GeneratorS gen1, gen2;
+    CounterS counter;
+
+    NetworkS(const vle::Context &ctx)
+        : CoupledModelS(ctx, 0u, 0u)
+        , gen1(ctx)
+        , gen2(ctx)
+        , counter(ctx)
+    {}
+
+    virtual CoupledModel::children_t children()
+    {
+        return { &gen1, &gen2, &counter };
+    }
+
+    virtual void post(const Model *out, UpdatedPort &in) const
+    {
+        if (out == &gen1)
+            counter.x.merge(gen1.y, 0, 0);
+        else
+            counter.x.merge(gen2.y, 0, 0);
+
+        in.emplace(&counter);
+    }
+
+    virtual std::size_t select(const std::vector <Model *> &models) const
+    {
+        /* Alway generator have the priority */
+        for (std::size_t i = 0, e = models.size(); i != e; ++i)
+            if (models[i] == &gen1 or models[i] == &gen2)
+                return i;
+
+        return 0u;
+    }
 };
 
 #define CATCH_CONFIG_MAIN
@@ -171,15 +261,30 @@ TEST_CASE("engine/devs/model_a", "run")
     REQUIRE(model.counter.msg == 18u);
 }
 
+TEST_CASE("engine/devs/model_b", "run")
+{
+    vle::Context ctx = std::make_shared <vle::ContextImpl>();
+    MyDEVS devs_engine;
+    NetworkS model(ctx);
+    vle::SimulationStep <MyDEVS> sim(ctx, devs_engine);
+    double current = sim.init(model, 0.0);
+    std::cout << "Init:\n" << model << '\n';
+
+    while (sim.step(model, current, 10.0))
+        std::cout << current << " " << model << "\n";
+
+    sim.finish(model);
+    /* We need to receive 9 * 2 messages since simulation stops at 10.0. */
+    REQUIRE(model.counter.msg == 18u);
+}
+
 TEST_CASE("engine/devs/qss", "run")
 {
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
     MyDEVS devs_engine;
-
     using state_type = std::vector <double>;
     const double dq = 0.1;
     const double epsilon = 0.1;
-
     vle::devs::qss::EquationBlock<MyTime, state_type> model(
         ctx, dq, epsilon, 0, 1u, 0u,
     [](const state_type & x, const double) {

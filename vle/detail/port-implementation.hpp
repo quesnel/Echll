@@ -31,7 +31,7 @@
 
 namespace vle {
 
-invalid_port::invalid_port(int port)
+invalid_port::invalid_port(std::size_t port)
     : std::invalid_argument(
         (boost::format("invalid_port: unknown port id %1%") % port).str())
 {}
