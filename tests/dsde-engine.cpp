@@ -97,8 +97,8 @@ struct ModelA : AtomicModel {
     ModelA(const vle::Context &ctx)
         : AtomicModel(ctx)
     {
-        x.add_port("in");
-        y.add_port("out");
+        x.add_ports(1u);
+        y.add_ports(1u);
     }
 
     virtual ~ModelA() override

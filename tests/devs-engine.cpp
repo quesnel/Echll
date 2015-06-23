@@ -182,12 +182,14 @@ struct Network : CoupledModel {
     {
         if (out == &gen1) {
             if (not gen1.y.empty()) {
-                vle::copy_values(gen1.y[0], counter.x[0]);
+                counter.x.merge(gen1.y, 0, 0);
+//                vle::copy_values(gen1.y[0], counter.x[0]);
                 in.emplace(&counter);
             }
         } else if (out == &gen2) {
             if (not gen2.y.empty()) {
-                vle::copy_values(gen2.y[0], counter.x[0]);
+                counter.x.merge(gen2.y, 0, 0);
+                //vle::copy_values(gen2.y[0], counter.x[0]);
                 in.emplace(&counter);
             }
         }

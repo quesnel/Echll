@@ -156,11 +156,11 @@ struct Network : CoupledModelMono
             if (!gen.y[0].empty())
                 in.emplace(&cpt);
 
-            vle::copy_values(gen.y[0], cpt.x[0]);
+            cpt.x.merge(gen.y, 0, 0);
         }
 
         if (!cpt.y.empty())
-            vle::copy_values(cpt.y[0], y[0]);
+            y.merge(cpt.y, 0, 0);
     }
 };
 
@@ -206,7 +206,7 @@ struct RootNetwork : CoupledModelMono
 
             for (auto& o : out)
                 if (o != &cpt)
-                    vle::copy_values(o->y[0], cpt.x[0]);
+                    cpt.x.merge(o->y, 0, 0);
         }
     }
 };

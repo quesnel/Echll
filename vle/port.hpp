@@ -60,9 +60,19 @@ public:
 };
 
 template <typename Value>
-struct PortList {
-    typedef std::vector <Value> Values;
-    typedef typename std::vector <Value>::size_type size_type;
+class PortList
+{
+public:
+    using value_type = Value;
+    using element_type = std::vector <value_type>;
+    using port_list_type = std::vector <element_type>;
+    using const_iterator = typename port_list_type::const_iterator;
+    using iterator = typename port_list_type::iterator;
+    using reverse_iterator = typename port_list_type::reverse_iterator;
+    using const_reverse_iterator = typename port_list_type::const_reverse_iterator;
+    using const_reference = typename port_list_type::const_reference;
+    using reference = typename port_list_type::reference;
+    using size_type = typename port_list_type::size_type;
 
     PortList()
     {}
@@ -71,22 +81,33 @@ struct PortList {
         : ports(port_number)
     {}
 
-    PortList(std::initializer_list <std::string> lst)
+    /**
+     * @brief Merge all message to the list.
+     * @details Insert all messages from @e lst into the list with the same id.
+     *
+     * @param lst The input list to merge.
+     */
+    void merge(const PortList &lst)
     {
-        ports.reserve(lst.size());
-
-        for (const auto &str : lst)
-            add_port(str);
+        for (auto i = 0ul, e = lst.size(); i != e; ++i)
+            for (const auto &value : lst[i])
+                ports[i].push_back(value);
     }
 
-    size_type index(const std::string &name) const
+    /**
+     * @brief Merge specified message type to the list.
+     * @details Insert specified messages from the port @e port_src from @e lst
+     *     into the list on port @e port_dst.
+     *
+     * @param lst The input list to merge.
+     * @param port_src The identifier of the @e lst output port to copy.
+     * @param port_dst The identifier of the input port.
+     */
+    void merge(const PortList &lst, std::size_t port_src, std::size_t port_dst)
     {
-        return accessor.at(name);
-    }
-
-    bool exists(const std::string &name) const
-    {
-        return accessor.find(name) != accessor.end();
+        std::copy(lst[port_src].begin(),
+                  lst[port_src].end(),
+                  std::back_inserter(ports[port_dst]));
     }
 
     void add_ports(std::size_t number)
@@ -94,14 +115,8 @@ struct PortList {
         ports.resize(ports.size() + number);
     }
 
-    size_type add_port()
-    {
-        ports.emplace_back();
-        return ports.size() - 1;
-    }
-
     template <class... Args>
-    void emplace_back(std::size_t port_id, Args&& ...args)
+    void emplace_back(std::size_t port_id, Args &&...args)
     {
         if (port_id >= ports.size())
             throw invalid_port(port_id);
@@ -109,27 +124,17 @@ struct PortList {
         ports[port_id].emplace_back(std::forward <Args>(args)...);
     }
 
-    size_type add_port(const std::string &name)
-    {
-        auto ret = accessor.emplace(name, ports.size());
-
-        if (ret.second)
-            ports.emplace_back();
-
-        return ret.first->second;
-    }
-
-    const Values &operator[](size_type i) const
+    const element_type &operator[](size_type i) const noexcept
     {
         return ports[i];
     }
 
-    Values &operator[](size_type i)
+    element_type &operator[](size_type i)
     {
         return ports[i];
     }
 
-    const Values &at(size_type i) const
+    const element_type &at(size_type i) const
     {
         if (i >= ports.size())
             throw invalid_port(i);
@@ -137,32 +142,12 @@ struct PortList {
         return ports[i];
     }
 
-    Values &at(size_type i)
+    element_type &at(size_type i)
     {
         if (i >= ports.size())
             throw invalid_port(i);
 
         return ports[i];
-    }
-
-    const Values &operator[](const std::string &name) const
-    {
-        auto it = accessor.find(name);
-
-        if (it == accessor.end())
-            throw invalid_port(name);
-
-        return ports[it->second];
-    }
-
-    Values &operator[](const std::string &name)
-    {
-        auto it = accessor.find(name);
-
-        if (it == accessor.end())
-            throw invalid_port(name);
-
-        return ports[it->second];
     }
 
     void clear()
@@ -191,12 +176,10 @@ struct PortList {
     {
         (void)version;
         ar &ports;
-        ar &accessor;
     }
 
 private:
-    std::vector <Values> ports;
-    std::map <std::string, size_type> accessor;
+    port_list_type ports;
 };
 
 template <typename Value>
@@ -209,7 +192,8 @@ public:
     using const_iterator = typename sparse_port_list::const_iterator;
     using iterator = typename sparse_port_list::iterator;
     using reverse_iterator = typename sparse_port_list::reverse_iterator;
-    using const_reverse_iterator = typename sparse_port_list::const_reverse_iterator;
+    using const_reverse_iterator = typename
+                                   sparse_port_list::const_reverse_iterator;
     using const_reference = typename sparse_port_list::const_reference;
     using reference = typename sparse_port_list::reference;
     using size_type = typename sparse_port_list::size_type;
@@ -219,7 +203,7 @@ public:
     {}
 
     template <class... Args>
-    void emplace_back(std::size_t port_id, Args&& ...args)
+    void emplace_back(std::size_t port_id, Args &&...args)
     {
         if (port_id >= m_size)
             throw invalid_port(port_id);
@@ -236,7 +220,7 @@ public:
      *
      * @param lst The input list to merge.
      */
-    void merge(const SparsePortList& lst)
+    void merge(const SparsePortList &lst)
     {
         m_list.insert(end(), lst.begin(), lst.end());
     }
@@ -253,9 +237,10 @@ public:
      * @param port_src The identifier of the @e lst output port to copy.
      * @param port_dst The identifier of the input port.
      */
-    void merge(const SparsePortList& lst, std::size_t port_src, std::size_t port_dst)
+    void merge(const SparsePortList &lst, std::size_t port_src,
+               std::size_t port_dst)
     {
-        for (const auto& elem : lst)
+        for (const auto &elem : lst)
             if (elem.first == port_src)
                 m_list.emplace_back(port_dst, elem.second);
     }
@@ -292,39 +277,6 @@ private:
     sparse_port_list m_list;
     std::size_t m_size;
 };
-
-template <typename Values>
-void copy_values(const Values &src, Values &dst)
-{
-    dst.reserve(dst.size() + src.size());
-    std::copy(src.begin(), src.end(), std::back_inserter(dst));
-}
-
-template <typename Value>
-void copy_port_values(const PortList <Value> &src, PortList <Value> &dst)
-{
-    if (src.size() != dst.size())
-        throw invalid_port_size();
-
-    for (std::size_t i = 0, e = src.size(); i != e; ++i)
-        copy_values(src[i], dst[i]);
-}
-
-template <typename Values>
-void move_values(Values &src, Values &dst)
-{
-    if (dst.empty())
-        dst = std::move(src);
-    else {
-        typedef typename Values::iterator iterator;
-        dst.reserve(dst.size() + src.size());
-
-        for (iterator it = src.begin(), et = src.end(); it != et; ++it)
-            dst.emplace_back(std::move(*it));
-
-        src.clear();
-    }
-}
 
 }
 
