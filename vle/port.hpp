@@ -74,12 +74,8 @@ public:
     using reference = typename port_list_type::reference;
     using size_type = typename port_list_type::size_type;
 
-    PortList()
-    {}
-
-    PortList(size_type port_number)
-        : ports(port_number)
-    {}
+    PortList();
+    PortList(size_type port_number);
 
     /**
      * @brief Merge all message to the list.
@@ -87,12 +83,7 @@ public:
      *
      * @param lst The input list to merge.
      */
-    void merge(const PortList &lst)
-    {
-        for (auto i = 0ul, e = lst.size(); i != e; ++i)
-            for (const auto &value : lst[i])
-                ports[i].push_back(value);
-    }
+    void merge(const PortList &lst);
 
     /**
      * @brief Merge specified message type to the list.
@@ -103,80 +94,27 @@ public:
      * @param port_src The identifier of the @e lst output port to copy.
      * @param port_dst The identifier of the input port.
      */
-    void merge(const PortList &lst, std::size_t port_src, std::size_t port_dst)
-    {
-        std::copy(lst[port_src].begin(),
-                  lst[port_src].end(),
-                  std::back_inserter(ports[port_dst]));
-    }
+    void merge(const PortList &lst, std::size_t port_src,
+               std::size_t port_dst);
 
-    void add_ports(std::size_t number)
-    {
-        ports.resize(ports.size() + number);
-    }
+
+    void add_ports(std::size_t number);
 
     template <class... Args>
-    void emplace_back(std::size_t port_id, Args &&...args)
-    {
-        if (port_id >= ports.size())
-            throw invalid_port(port_id);
+    void emplace_back(std::size_t port_id, Args &&...args);
 
-        ports[port_id].emplace_back(std::forward <Args>(args)...);
-    }
+    const element_type &operator[](size_type i) const noexcept;
+    element_type &operator[](size_type i);
+    const element_type &at(size_type i) const;
+    element_type &at(size_type i);
 
-    const element_type &operator[](size_type i) const noexcept
-    {
-        return ports[i];
-    }
-
-    element_type &operator[](size_type i)
-    {
-        return ports[i];
-    }
-
-    const element_type &at(size_type i) const
-    {
-        if (i >= ports.size())
-            throw invalid_port(i);
-
-        return ports[i];
-    }
-
-    element_type &at(size_type i)
-    {
-        if (i >= ports.size())
-            throw invalid_port(i);
-
-        return ports[i];
-    }
-
-    void clear()
-    {
-        for (auto &port : ports)
-            port.clear();
-    }
-
-    bool empty() const
-    {
-        for (const auto &port : ports)
-            if (!port.empty())
-                return false;
-
-        return true;
-    }
-
-    constexpr std::size_t size() const
-    {
-        return ports.size();
-    }
+    void clear();
+    bool empty() const;
+    constexpr std::size_t size() const;
 
     friend class boost::serialization::access;
     template<class Archive>
-    void serialize(Archive &ar, const unsigned int version)
-    {
-        (void)version;
-        ar &ports;
-    }
+    void serialize(Archive &ar, const unsigned int version);
 
 private:
     port_list_type ports;
@@ -198,32 +136,21 @@ public:
     using reference = typename sparse_port_list::reference;
     using size_type = typename sparse_port_list::size_type;
 
-    SparsePortList(std::size_t size)
-        : m_size(size)
-    {}
+    SparsePortList(std::size_t size);
 
     template <class... Args>
-    void emplace_back(std::size_t port_id, Args &&...args)
-    {
-        if (port_id >= m_size)
-            throw invalid_port(port_id);
-
-        m_list.emplace_back(port_id, std::forward <Args>(args)...);
-    }
+    void emplace_back(std::size_t port_id, Args &&...args);
 
     /**
      * @brief Merge all message to the list.
      * @details Insert all messages from @e lst into the list with the same id.
-     *     For example, if @e lst is: (0, "foo"), (1, "bar"), two messages "foo"
-     *     on port 0 and "bar" on port 1 then these messages are copied into the
-     *     list with the same port id
+     *     For example, if @e lst is: (0, "foo"), (1, "bar"), two messages
+     *     "foo" on port 0 and "bar" on port 1 then these messages are copied
+     *     into the list with the same port id
      *
      * @param lst The input list to merge.
      */
-    void merge(const SparsePortList &lst)
-    {
-        m_list.insert(end(), lst.begin(), lst.end());
-    }
+    void merge(const SparsePortList &lst);
 
     /**
      * @brief Merge specified message type to the list.
@@ -238,40 +165,32 @@ public:
      * @param port_dst The identifier of the input port.
      */
     void merge(const SparsePortList &lst, std::size_t port_src,
-               std::size_t port_dst)
-    {
-        for (const auto &elem : lst)
-            if (elem.first == port_src)
-                m_list.emplace_back(port_dst, elem.second);
-    }
+               std::size_t port_dst);
 
-    reference front() noexcept { return m_list.front(); }
-    const_reference front() const noexcept { return m_list.front(); }
-    reference back() noexcept { return m_list.back(); }
-    const_reference back() const noexcept { return m_list.back(); }
+    reference front() noexcept;
+    const_reference front() const noexcept;
+    reference back() noexcept;
+    const_reference back() const noexcept;
 
-    iterator begin() noexcept { return m_list.begin(); }
-    const_iterator begin() const noexcept { return m_list.begin(); }
-    iterator end() noexcept { return m_list.end(); }
-    const_iterator end() const noexcept { return m_list.end(); }
+    iterator begin() noexcept;
+    const_iterator begin() const noexcept;
+    iterator end() noexcept;
+    const_iterator end() const noexcept;
 
-    reverse_iterator rbegin() noexcept { return m_list.rbegin(); }
-    const_reverse_iterator rbegin() const noexcept { return m_list.rbegin(); }
-    reverse_iterator rend() noexcept { return m_list.rend(); }
-    const_reverse_iterator rend() const noexcept { return m_list.rend(); }
+    reverse_iterator rbegin() noexcept;
+    const_reverse_iterator rbegin() const noexcept;
+    reverse_iterator rend() noexcept;
+    const_reverse_iterator rend() const noexcept;
 
-    const_iterator cbegin() const noexcept { return m_list.cbegin(); }
-    const_iterator cend() const noexcept { return m_list.cend(); }
-    const_reverse_iterator crbegin() const noexcept { return m_list.crbegin(); }
-    const_reverse_iterator crend() const noexcept { return m_list.crend(); }
+    const_iterator cbegin() const noexcept;
+    const_iterator cend() const noexcept;
+    const_reverse_iterator crbegin() const noexcept;
+    const_reverse_iterator crend() const noexcept;
 
-    bool empty() const noexcept { return m_list.empty(); }
-    size_type size() const noexcept { return m_list.size(); }
+    bool empty() const noexcept;
+    size_type size() const noexcept;
 
-    void clear() noexcept
-    {
-        m_list.clear();
-    }
+    void clear() noexcept;
 
 private:
     sparse_port_list m_list;
