@@ -24,12 +24,11 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <boost/numeric/odeint.hpp>
 #include <boost/progress.hpp>
 #include <vle/dsde/qss1.hpp>
 #include <vle/vle.hpp>
 
-using state_type = std::vector <double>;
+using state_type = std::array <double, 5>;
 
 enum FirePosition
 {
@@ -94,15 +93,16 @@ private:
 
 class FireForrest : public vle::dsde::CoupledModel <
     vle::DoubleTime, vle::PortList <double>, vle::PortList <double>,
-    vle::dsde::qss::QssInputPort,
-    vle::dsde::qss::QssOutputPort,
+    vle::dsde::qss1::inputport <5>,
+    vle::dsde::qss1::doubleport,
     vle::dsde::TransitionPolicyThread <vle::DoubleTime>>
 {
 public:
     using parent_type = vle::dsde::CoupledModel <
-                        vle::DoubleTime, vle::PortList <double>, vle::PortList <double>, vle::dsde::qss::QssInputPort,
-                        vle::dsde::qss::QssOutputPort,
-                        vle::dsde::TransitionPolicyThread <vle::DoubleTime>>;
+        vle::DoubleTime, vle::PortList <double>, vle::PortList <double>,
+        vle::dsde::qss1::inputport <5>,
+        vle::dsde::qss1::doubleport,
+        vle::dsde::TransitionPolicyThread <vle::DoubleTime>>;
     using children_t = parent_type::children_t;
     using child_type = parent_type::child_type;
 
@@ -121,7 +121,7 @@ public:
             for (auto x = 0ul; x != width; ++x) {
                 double init = (x == width / 2 && y == height / 2) ? 600 : 300;
                 m_models.emplace_back(
-                    ctx, dq, epsilon, init, 5u, 0u,
+                    ctx, dq, epsilon, init, 0u,
                     Fire(alpha, K, k, enthalpy, mass, surrounding, dx, dy));
             }
         }
@@ -182,7 +182,7 @@ public:
         os << "\n";
     }
 
-    std::vector <vle::dsde::qss::Equation<vle::DoubleTime, state_type>> m_models;
+    std::vector <vle::dsde::qss1::Equation<vle::DoubleTime, 5>> m_models;
     std::size_t m_width;
     std::size_t m_height;
 };

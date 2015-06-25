@@ -33,46 +33,50 @@
 
 namespace vle {
 namespace dsde {
-namespace qss {
+namespace qss1 {
 
 inline static constexpr double nan() noexcept
 {
     return std::numeric_limits <double>::quiet_NaN();
 }
 
-struct QssInputPort {
-    QssInputPort(std::size_t size) noexcept
-        : m_value(size, nan())
-        , m_dirac(false)
-    {}
+template <std::size_t N>
+class inputport
+{
+public:
+    constexpr inputport() noexcept
+        : m_dirac(false)
+    {
+        m_value.fill(nan());
+    }
 
-    double operator[](std::size_t i) const noexcept
+    constexpr double operator[](std::size_t i) const noexcept
     {
         return m_value[i];
     }
 
-    double &operator[](std::size_t i) noexcept
+    constexpr double &operator[](std::size_t i) noexcept
     {
         return m_value[i];
     }
 
-    void dirac() noexcept
+    constexpr void dirac() noexcept
     {
         m_dirac = true;
     }
 
-    void clear() noexcept
+    constexpr void clear() noexcept
     {
-        std::fill(m_value.begin(), m_value.end(), nan());
+        m_value.fill(nan());
         m_dirac = false;
     }
 
-    std::size_t size() const noexcept
+    constexpr std::size_t size() const noexcept
     {
-        return m_value.size();
+        return N;
     }
 
-    bool empty() const noexcept
+    constexpr bool empty() const noexcept
     {
         if (m_dirac)
             return false;
@@ -84,12 +88,14 @@ struct QssInputPort {
         return true;
     }
 
-    std::vector <double> m_value;
+    std::array <double, N> m_value;
     bool m_dirac;
 };
 
-struct QssOutputPort {
-    constexpr QssOutputPort(double) noexcept
+class doubleport
+{
+public:
+    constexpr doubleport() noexcept
         : m_value(nan())
     {}
 
@@ -121,26 +127,26 @@ struct QssOutputPort {
     double m_value;
 };
 
-template <typename Time, typename Container>
-class StaticFunction : public AtomicModel <Time, QssInputPort, QssOutputPort>
+template <typename Time, std::size_t N>
+class StaticFunction : public AtomicModel <Time, inputport <N>, doubleport>
 {
 public:
-    using parent_type = AtomicModel <Time, QssInputPort, QssOutputPort>;
+    using inputport_type = inputport <N>;
+    using outputport_type = doubleport;
+    using parent_type = AtomicModel <Time, inputport_type, outputport_type>;
     using time_format = typename parent_type::time_format;
     using time_type = typename parent_type::time_type;
-    using inputport_type = typename parent_type::inputport_type;
-    using outputport_type = typename parent_type::inputport_type;
+    using array_type = std::array <double, N>;
+    using function_type = Function <Time, array_type>;
 
-    StaticFunction(const Context &ctx, std::size_t system_size,
-                   Function <Time, Container> function_)
-        : parent_type(ctx, system_size, nan())
+    StaticFunction(const Context &ctx,
+                   Function <Time, array_type> function_)
+        : parent_type(ctx)
         , m_integrate_function(function_)
-        , m_variable(system_size)
         , m_sigma(Time::infinity())
     {
-        if (system_size == 0ul)
-            throw std::invalid_argument(
-                "vle::dsde::qss1::StaticFunction: bad system size");
+        static_assert(N > 0,
+                      "vle::dsde::qss1::StaticFunction: bad system size");
     }
 
     virtual time_type init(const vle::Common &/*common*/,
@@ -161,7 +167,7 @@ public:
         m_time = t;
         m_sigma = Time::infinity();
 
-        for (auto i = 0ul, end = parent_type::x.size(); i != end; ++i) {
+        for (auto i = 0ul; i != N; ++i) {
             if (not std::isnan(parent_type::x[i])) {
                 m_variable[i] = parent_type::x[i];
                 m_sigma = Time::null();
@@ -172,22 +178,24 @@ public:
     }
 
 private:
-    Function <Time, Container> m_integrate_function;
-    Container m_variable;
+    array_type m_variable;
+    Function <Time, array_type> m_integrate_function;
     time_type m_sigma;
     time_type m_time;
 };
 
-template <typename Time>
-class Integrator : public AtomicModel <Time, QssInputPort, QssOutputPort>
+template <typename Time, std::size_t N>
+class Integrator : public AtomicModel <Time, inputport <N>, doubleport>
 {
 public:
-    using parent_type = AtomicModel <Time, QssInputPort, QssOutputPort>;
+    using inputport_type = inputport <N>;
+    using outputport_type = doubleport;
+    using parent_type = AtomicModel <Time, inputport_type, outputport_type>;
     using time_format = typename parent_type::time_format;
     using time_type = typename parent_type::time_type;
 
     Integrator(const Context &ctx, double dq, double epsilon, double x)
-        : parent_type(ctx, 1u, nan())
+        : parent_type(ctx)
         , m_sigma(Time::null())
         , m_dq(dq)
         , m_epsilon(epsilon)
@@ -254,16 +262,20 @@ private:
     double m_q;
 };
 
-template <typename Time, typename Container>
-class EquationBlock : public CoupledModel <
-    Time, QssInputPort, QssOutputPort,
-    QssInputPort, QssOutputPort >
+template <typename Time, std::size_t N>
+class EquationBlock : public CoupledModel <Time,
+    inputport <N>, doubleport,
+    inputport <N>, doubleport>
 {
 public:
-    using parent_type = CoupledModel <Time, QssInputPort, QssOutputPort,
-          QssInputPort, QssOutputPort>;
+    using inputport_type = inputport <N>;
+    using outputport_type = doubleport;
+
+    using parent_type = CoupledModel
+                        <Time, inputport_type, outputport_type, inputport_type, outputport_type>;
     using time_format = typename parent_type::time_format;
     using time_type = typename parent_type::time_type;
+    using array_type = std::array <double, N>;
 
     using UpdatedPort = typename parent_type::UpdatedPort;
 
@@ -271,15 +283,14 @@ public:
                   double dq,
                   double epsilon,
                   double x,
-                  std::size_t system_size,
                   std::size_t id,
-                  Function <Time, Container> function_)
-        : parent_type(ctx, system_size, nan())
+                  Function <Time, array_type> function_)
+        : parent_type(ctx)
         , m_integrator(ctx, dq, epsilon, x)
-        , m_staticfunction(ctx, system_size, function_)
+        , m_staticfunction(ctx, function_)
         , m_id(id)
     {
-        if (id >= system_size)
+        if (id >= N)
             throw std::invalid_argument(
                 "vle::dsde::qss1::EquationBlock: bad id or system size");
     }
@@ -304,7 +315,7 @@ public:
             in.emplace(&m_staticfunction);
         }
 
-        for (auto i = 0ul, end = parent_type::x.size(); i != end; ++i) {
+        for (auto i = 0ul; i != N; ++i) {
             if (!std::isnan(parent_type::x[i])) {
                 m_staticfunction.x[i] = parent_type::x[i];
                 in.emplace(&m_staticfunction);
@@ -318,29 +329,31 @@ public:
     }
 
 private:
-    Integrator <Time> m_integrator;
-    StaticFunction <Time, Container> m_staticfunction;
+    Integrator <Time, N> m_integrator;
+    StaticFunction <Time, N> m_staticfunction;
     std::size_t m_id;
 };
 
-template <typename Time, typename Container>
-class Equation : public AtomicModel <Time, QssInputPort, QssOutputPort>
+template <typename Time, std::size_t N>
+class Equation : public AtomicModel <Time, inputport <N>, doubleport>
 {
 public:
-    using parent_type = AtomicModel <Time, QssInputPort, QssOutputPort>;
+    using inputport_type = inputport <N>;
+    using outputport_type = doubleport;
+    using parent_type = AtomicModel <Time, inputport_type, outputport_type>;
     using time_format = typename parent_type::time_format;
     using time_type = typename parent_type::time_type;
+    using array_type = std::array <double, N>;
+    using function_type = Function <Time, array_type>;
 
     Equation(const Context &ctx,
              double dq,
              double epsilon,
              double x,
-             std::size_t system_size,
              std::size_t id,
-             Function <Time, Container> function)
-        : parent_type(ctx, system_size, nan())
+             Function <Time, array_type> function)
+        : parent_type(ctx)
         , m_integrate_function(function)
-        , m_variables(system_size)
         , m_sigma(Time::null())
         , m_dq(dq)
         , m_epsilon(epsilon)
@@ -349,13 +362,13 @@ public:
         , m_q(std::floor(x / dq) * dq)
         , m_id(id)
     {
-        if (system_size == 0ul)
+        static_assert(N != 0ul,
+                      "vle::dsde::qss1::Equation: bad system size");
+        if (id >= N)
             throw std::invalid_argument(
-                "vle::dsde::qss1::Equation: bad system size");
+                      "vle::dsde::qss1::Equation: bad id or system size");
 
-        if (id >= system_size)
-            throw std::invalid_argument(
-                "vle::dsde::qss1::Equation: bad id or system size");
+        m_variables.fill(0.0);
     }
 
     virtual time_type init(const vle::Common &/*common*/,
@@ -375,7 +388,7 @@ public:
     {
         bool perturb = false;
 
-        for (std::size_t i = 0, end = parent_type::x.size(); i != end; ++i) {
+        for (std::size_t i = 0; i != N; ++i) {
             if (not std::isnan(parent_type::x[i])) {
                 m_variables[i] = parent_type::x[i];
                 perturb = true;
@@ -419,8 +432,8 @@ public:
     }
 
 private:
-    Function <Time, Container> m_integrate_function;
-    Container m_variables;
+    array_type m_variables;
+    Function <Time, array_type> m_integrate_function;
     time_type m_sigma;
     double m_dq;
     double m_epsilon;

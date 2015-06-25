@@ -99,7 +99,7 @@ struct prey_fct {
         , m_b(b)
     {}
 
-    double operator()(const state_type &x, const double) const
+    double operator()(const std::array<double, 2> &x, const double) const
     {
         return m_a * x[0] - m_b * x[0] * x[1];
     }
@@ -113,7 +113,7 @@ struct predator_fct {
         , m_d(d)
     {}
 
-    double operator()(const state_type &x, const double) const
+    double operator()(const std::array <double, 2> &x, const double) const
     {
         return - m_c * x[1] + m_d * x[0] * x[1];
     }
@@ -130,8 +130,8 @@ struct prey_predator_fct {
         , m_d(d)
     {}
 
-    void operator()(const state_type &x,
-                    state_type &dxdt,
+    void operator()(const std::array <double, 2> &x,
+                    std::array <double, 2> &dxdt,
                     const double) const
     {
         dxdt[0] = m_a * x[0] - m_b * x[0] * x[1];
@@ -146,7 +146,8 @@ struct harm_osc {
         : m_gam(gam)
     {}
 
-    void operator()(const state_type &x, state_type &dxdt, const double)
+    void operator()(const std::array<double, 2> &x,
+        std::array <double, 2> &dxdt, const double)
     {
         dxdt[0] = x[1];
         dxdt[1] = -x[0] - m_gam * x[1];
@@ -154,16 +155,16 @@ struct harm_osc {
 };
 
 class SingleEvent : public vle::dsde::AtomicModel <MyTime,
-    vle::dsde::qss::QssInputPort,
-    vle::dsde::qss::QssOutputPort>
+    vle::no_port,
+    vle::dsde::qss1::doubleport>
 {
 public:
     using parent_type = vle::dsde::AtomicModel <MyTime,
-          vle::dsde::qss::QssInputPort,
-          vle::dsde::qss::QssOutputPort>;
+          vle::no_port,
+          vle::dsde::qss1::doubleport>;
 
     SingleEvent(const vle::Context &ctx)
-        : parent_type(ctx, 0u, 0.0)
+        : parent_type(ctx)
     {}
 
     virtual double init(const vle::Common &, const double &) override final
@@ -184,25 +185,26 @@ public:
 };
 
 class MySystem1 : public vle::dsde::CoupledModel <
-    MyTime, MyPort, MyPort,
-    vle::dsde::qss::QssInputPort,
-    vle::dsde::qss::QssOutputPort,
-    vle::dsde::TransitionPolicyDefault <MyTime>>
+    MyTime, vle::no_port, vle::no_port,
+    vle::dsde::qss1::inputport <2>,
+    vle::dsde::qss1::doubleport,
+    vle::dsde::TransitionPolicyDefault <MyTime >>
 {
 public:
     using parent_type = vle::dsde::CoupledModel <
-                        MyTime, MyPort, MyPort, vle::dsde::qss::QssInputPort,
-                        vle::dsde::qss::QssOutputPort,
-                        vle::dsde::TransitionPolicyDefault <MyTime>>;
+                        MyTime, vle::no_port, vle::no_port,
+                        vle::dsde::qss1::inputport <2>,
+                        vle::dsde::qss1::doubleport,
+                        vle::dsde::TransitionPolicyDefault <MyTime >>;
     using children_t = parent_type::children_t;
 
-    vle::dsde::qss::EquationBlock <MyTime, state_type> prey;
-    vle::dsde::qss::EquationBlock <MyTime, state_type> predator;
+    vle::dsde::qss1::EquationBlock <MyTime, 2u> prey;
+    vle::dsde::qss1::EquationBlock <MyTime, 2u> predator;
 
     MySystem1(const vle::Context &ctx, double dq, double epsilon)
         : parent_type(ctx)
-        , prey(ctx, dq, epsilon, X_init, 2u, 0u, prey_fct())
-        , predator(ctx, dq, epsilon, Y_init, 2u, 1u, predator_fct())
+        , prey(ctx, dq, epsilon, X_init, 0u, prey_fct())
+        , predator(ctx, dq, epsilon, Y_init, 1u, predator_fct())
     {}
 
     virtual children_t children(const vle::Common &) override final
@@ -227,76 +229,27 @@ public:
     }
 };
 
-class GenericSystem : public vle::dsde::CoupledModel <
-    MyTime, MyPort, MyPort,
-    vle::dsde::qss::QssInputPort,
-    vle::dsde::qss::QssOutputPort,
-    vle::dsde::TransitionPolicyDefault <MyTime>>
-{
-public:
-    using parent_type = vle::dsde::CoupledModel <
-                        MyTime, MyPort, MyPort, vle::dsde::qss::QssInputPort,
-                        vle::dsde::qss::QssOutputPort,
-                        vle::dsde::TransitionPolicyDefault <MyTime>>;
-    using children_t = parent_type::children_t;
-
-    GenericSystem(const vle::Context &ctx,
-                  std::initializer_list<vle::dsde::qss::Equation<MyTime,
-                  state_type>> models)
-        : parent_type(ctx)
-        , m_models(models)
-    {}
-
-    virtual children_t children(const vle::Common &) override final
-    {
-        children_t ret(m_models.size(), nullptr);
-        std::transform(m_models.begin(), m_models.end(),
-                       ret.begin(),
-        [](vle::dsde::qss::Equation<MyTime, state_type> &mdl) {
-            return &mdl;
-        });
-        return ret;
-    }
-
-    virtual void post(const UpdatedPort &/*out*/,
-                      UpdatedPort &in) const override final
-    {
-        for (auto i = 0ul, e = m_models.size(); i != e; ++i) {
-            if (not m_models[i].y.empty()) {
-                for (auto j = 0ul, f = m_models.size(); j != f; ++j) {
-                    if (i != j) {
-                        m_models[j].x[i] = m_models[i].y[0];
-                        in.emplace(&m_models[j]);
-                    }
-                }
-            }
-        }
-    }
-
-    //private:
-    std::vector <vle::dsde::qss::Equation<MyTime, state_type>> m_models;
-};
-
 class MySystem11 : public vle::dsde::CoupledModel <
-    MyTime, MyPort, MyPort,
-    vle::dsde::qss::QssInputPort,
-    vle::dsde::qss::QssOutputPort,
+    MyTime, vle::no_port, vle::no_port,
+    vle::dsde::qss1::inputport <2>,
+    vle::dsde::qss1::doubleport,
     vle::dsde::TransitionPolicyDefault <MyTime>>
 {
 public:
     using parent_type = vle::dsde::CoupledModel <
-                        MyTime, MyPort, MyPort, vle::dsde::qss::QssInputPort,
-                        vle::dsde::qss::QssOutputPort,
-                        vle::dsde::TransitionPolicyDefault <MyTime>>;
+    MyTime, vle::no_port, vle::no_port,
+    vle::dsde::qss1::inputport <2>,
+    vle::dsde::qss1::doubleport,
+    vle::dsde::TransitionPolicyDefault <MyTime>>;
     using children_t = parent_type::children_t;
 
-    vle::dsde::qss::Equation <MyTime, state_type> prey;
-    vle::dsde::qss::Equation <MyTime, state_type> predator;
+    vle::dsde::qss1::Equation <MyTime, 2> prey;
+    vle::dsde::qss1::Equation <MyTime, 2> predator;
 
     MySystem11(const vle::Context &ctx, double dq, double epsilon)
         : parent_type(ctx)
-        , prey(ctx, dq, epsilon, X_init, 2u, 0u, prey_fct())
-        , predator(ctx, dq, epsilon, Y_init, 2u, 1u, predator_fct())
+        , prey(ctx, dq, epsilon, X_init, 0u, prey_fct())
+        , predator(ctx, dq, epsilon, Y_init, 1u, predator_fct())
     {}
 
     virtual children_t children(const vle::Common &) override final
@@ -322,16 +275,16 @@ public:
 };
 
 struct push_back_state_and_time {
-    std::vector<state_type> &m_states;
+    std::vector<std::array <double, 2>> &m_states;
     std::vector<double> &m_times;
 
-    push_back_state_and_time(std::vector<state_type> &states,
+    push_back_state_and_time(std::vector<std::array <double, 2>> &states,
                              std::vector<double> &times)
         : m_states(states)
         , m_times(times)
     {}
 
-    void operator()(const state_type &x, double t)
+    void operator()(const std::array <double, 2> &x, double t)
     {
         m_states.push_back(x);
         m_times.push_back(t);
@@ -345,9 +298,9 @@ TEST_CASE("main/simple")
     MyDSDE dsde_engine;
     const double dq = 1;
     const double epsilon = 1;
-    vle::dsde::qss::EquationBlock<MyTime, state_type> model(
-        ctx, dq, epsilon, 0, 1u, 0u,
-    [](const state_type & x, const double) {
+    vle::dsde::qss1::EquationBlock<MyTime, 1u> model(
+        ctx, dq, epsilon, 0, 0u,
+    [](const std::array <double, 1>& x, const double) {
         return -x[0] + 9.5;
     });
     std::ofstream ofs("simple.dat");
@@ -366,9 +319,9 @@ TEST_CASE("main/rk", "run")
     {
         ShowDuration d("prey/predator: rk4");
         using namespace boost::numeric::odeint;
-        state_type x = { X_init, Y_init };
-        runge_kutta4 <state_type> stepper;
-        std::vector <state_type> x_vec;
+        std::array <double, 2> x = {{ X_init, Y_init }};
+        runge_kutta4 <std::array <double, 2>> stepper;
+        std::vector <std::array <double, 2>> x_vec;
         std::vector <double> times;
         std::size_t steps = integrate_const(
                                 stepper,
