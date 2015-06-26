@@ -190,8 +190,8 @@ public:
 int main()
 {
     vle::Context ctx = std::make_shared <vle::ContextImpl>();
-    constexpr const std::size_t width = 40u;
-    constexpr const std::size_t height = 40u;
+    constexpr const std::size_t width = 30u;
+    constexpr const std::size_t height = 30u;
     constexpr const double dq = 0.5;
     constexpr const double epsilon = 0.5;
     constexpr const double alpha = 0.19;
@@ -202,8 +202,8 @@ int main()
     constexpr const double surrounding = 300;
     constexpr const double dx = 1. / 20.;
     constexpr const double dy = 1. / 20.;
-    constexpr const double finish = 50.0;
-    constexpr const unsigned int tostore = 20u;
+    constexpr const double finish = 200.0;
+    constexpr const unsigned int tostore = 40u;
     vle::dsde::Engine <vle::DoubleTime> dsde_engine;
 
     FireForrest model(ctx, width, height, alpha, K, k, enthalpy,
