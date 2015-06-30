@@ -59,6 +59,12 @@ public:
     ~invalid_port_size() noexcept;
 };
 
+struct no_port
+{
+    constexpr bool empty() const noexcept { return true; }
+    constexpr void clear() const noexcept {}
+};
+
 template <typename Value>
 class PortList
 {
