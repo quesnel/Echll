@@ -31,7 +31,18 @@
 
 namespace vle {
 
-/* @brief Define a function for a single equation.
+/**
+ * @brief Return the nan value for double.
+ *
+ * @return return the double representation of nan.
+ */
+inline static constexpr double nan() noexcept
+{
+    return std::numeric_limits <double>::quiet_NaN();
+}
+
+/**
+ * @brief Define a function for a single equation.
  *
  * @code{.cpp}
  * void compute_prey(const std::vector<double>& x, const double t)
@@ -58,7 +69,8 @@ using Function = std::function <typename Container::value_type(
     const Container&,
     const typename Time::time_type &)>;
 
-/* @brief Define a function for a single equation.
+/**
+ * @brief Define a function for a single equation.
  *
  * @code{.cpp}
  * void compute_prey(const std::vector<double>& x,

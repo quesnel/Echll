@@ -26,6 +26,7 @@
 
 #include <boost/numeric/odeint.hpp>
 #include <vle/dsde/qss1.hpp>
+#include <vle/dsde/qss2.hpp>
 #include <vle/vle.hpp>
 #include <chrono>
 
@@ -36,21 +37,6 @@ typedef vle::DoubleTime MyTime;
 typedef vle::PortList <double> MyPort;
 typedef vle::dsde::Engine <MyTime> MyDSDE;
 
-using AtomicModel = vle::dsde::AtomicModel <MyTime, MyPort, MyPort>;
-using CoupledModelThread = vle::dsde::CoupledModel
-                           <MyTime, MyPort, MyPort, MyPort, MyPort,
-                           vle::dsde::TransitionPolicyThread <MyTime>>;
-using CoupledModelMono = vle::dsde::CoupledModel
-                         <MyTime, MyPort, MyPort, MyPort, MyPort,
-                         vle::dsde::TransitionPolicyDefault <MyTime>>;
-using ExecutiveThread = vle::dsde::Executive
-                        <MyTime, MyPort, MyPort, MyPort, MyPort,
-                        vle::dsde::TransitionPolicyThread <MyTime>>;
-using ExecutiveMono = vle::dsde::Executive
-                      <MyTime, MyPort, MyPort, MyPort, MyPort,
-                      vle::dsde::TransitionPolicyDefault <MyTime>>;
-
-using state_type = std::vector <double>;
 constexpr double X_init = 1.0;
 constexpr double Y_init = 1.0;
 constexpr double Alpha = 5.2;
@@ -66,21 +52,20 @@ constexpr double Finish = 10.0;
 class ShowDuration
 {
     std::chrono::time_point<std::chrono::steady_clock> m_begin;
-    std::string m_experience;
 
 public:
     ShowDuration(const std::string &str)
         : m_begin(std::chrono::steady_clock::now())
-        , m_experience(str)
-    {}
+    {
+        std::cout << str << ": " << std::flush;
+    }
 
     ~ShowDuration()
     {
         try {
             auto end = std::chrono::steady_clock::now();
             auto diff = end - m_begin;
-            std::cout << m_experience << ": "
-                      << std::chrono::duration <double, std::milli> (diff).count()
+            std::cout << std::chrono::duration <double, std::milli> (diff).count()
                       << " ms\n";
         } catch (...) {
         }
@@ -229,6 +214,51 @@ public:
     }
 };
 
+class MySystem2 : public vle::dsde::CoupledModel <
+    MyTime, vle::no_port, vle::no_port,
+    vle::dsde::qss2::inputport <2>,
+    vle::dsde::qss2::doubleport,
+    vle::dsde::TransitionPolicyDefault <MyTime>>
+{
+public:
+    using parent_type = vle::dsde::CoupledModel <
+    MyTime, vle::no_port, vle::no_port,
+    vle::dsde::qss2::inputport <2>,
+    vle::dsde::qss2::doubleport,
+    vle::dsde::TransitionPolicyDefault <MyTime>>;
+    using children_t = parent_type::children_t;
+
+    vle::dsde::qss2::EquationBlock <MyTime, 2u> prey;
+    vle::dsde::qss2::EquationBlock <MyTime, 2u> predator;
+
+    MySystem2(const vle::Context &ctx, double dq)
+        : parent_type(ctx)
+        , prey(ctx, dq, X_init, 0u, prey_fct())
+        , predator(ctx, dq, Y_init, 1u, predator_fct())
+    {}
+
+    virtual children_t children(const vle::Common &) override final
+    {
+        return { &prey, &predator };
+    }
+
+    virtual void post(const UpdatedPort &out,
+                      UpdatedPort &in) const override final
+    {
+        (void)out;
+
+        if (not prey.y.empty()) {
+            predator.x[0] = prey.y.m_value;
+            in.emplace(&predator);
+        }
+
+        if (not predator.y.empty()) {
+            prey.x[1] = predator.y.m_value;
+            in.emplace(&prey);
+        }
+    }
+};
+
 class MySystem11 : public vle::dsde::CoupledModel <
     MyTime, vle::no_port, vle::no_port,
     vle::dsde::qss1::inputport <2>,
@@ -372,6 +402,24 @@ TEST_CASE("main/rk", "run")
                 << model.predator.value() << '\n';
         }
     }
+    {
+        ShowDuration d("prey/predator: qss2");
+        vle::Context ctx = std::make_shared <vle::ContextImpl>();
+        MyDSDE dsde_engine;
+        const double dq = 0.001;
+        MySystem2 model(ctx, dq);
+        std::ofstream ofs("EquationBlock2.dat");
+        REQUIRE(ofs);
+        vle::SimulationStep <MyDSDE> sim(ctx, dsde_engine);
+        double current = sim.init(model, 0.0);
+
+        while (sim.step(model, current, Finish)) {
+            ofs << current << '\t'
+                << model.prey.value() << '\t'
+                << model.predator.value() << '\n';
+        }
+    }
+
     std::ofstream ofs("plot.gnuplot");
     REQUIRE(ofs);
     ofs << "set terminal dumb size 160,80 aspect 2,1\n"
@@ -385,5 +433,8 @@ TEST_CASE("main/rk", "run")
         << "\n"
         << "plot 'EquationBlock.dat' using 1:3 w l\n"
         << "plot 'EquationBlock.dat' using 1:2 w l\n"
+        << "\n"
+        << "plot 'EquationBlock2.dat' using 1:3 w l\n"
+        << "plot 'EquationBlock2.dat' using 1:2 w l\n"
         << "unset multiplot\n";
 }
