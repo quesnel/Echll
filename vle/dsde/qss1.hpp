@@ -35,11 +35,6 @@ namespace vle {
 namespace dsde {
 namespace qss1 {
 
-inline static constexpr double nan() noexcept
-{
-    return std::numeric_limits <double>::quiet_NaN();
-}
-
 template <std::size_t N>
 class inputport
 {
@@ -265,14 +260,17 @@ private:
 template <typename Time, std::size_t N>
 class EquationBlock : public CoupledModel <Time,
     inputport <N>, doubleport,
-    inputport <N>, doubleport>
+    inputport <N>, doubleport,
+    TransitionPolicyDefault <Time>>
 {
 public:
     using inputport_type = inputport <N>;
     using outputport_type = doubleport;
 
-    using parent_type = CoupledModel
-                        <Time, inputport_type, outputport_type, inputport_type, outputport_type>;
+    using parent_type = CoupledModel <Time,
+          inputport <N>, doubleport,
+          inputport <N>, doubleport,
+          TransitionPolicyDefault <Time>>;
     using time_format = typename parent_type::time_format;
     using time_type = typename parent_type::time_type;
     using array_type = std::array <double, N>;
@@ -364,9 +362,10 @@ public:
     {
         static_assert(N != 0ul,
                       "vle::dsde::qss1::Equation: bad system size");
+
         if (id >= N)
             throw std::invalid_argument(
-                      "vle::dsde::qss1::Equation: bad id or system size");
+                "vle::dsde::qss1::Equation: bad id or system size");
 
         m_variables.fill(0.0);
     }
