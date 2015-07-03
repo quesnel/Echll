@@ -177,12 +177,10 @@ public:
                             const time_type &t) override final
     {
         if (not parent_type::x.empty()) {
-            m_time = t;
-
             for (auto i = 0ul; i < N; ++i)
                 m_variable[i] += m_mv[i] * e;
 
-            double fv = m_integrate_function(m_variable, m_time);
+            double fv = m_integrate_function(m_variable, t);
             array_type vaux;
 
             for (auto i = 0ul; i < N; ++i) {
@@ -195,7 +193,7 @@ public:
                 }
             }
 
-            m_y.v = m_integrate_function(m_variable, m_time);
+            m_y.v = m_integrate_function(m_variable, t);
 
             for (auto i = 0ul; i < N; ++i) {
                 if (not std::isnan(vaux[i]) and vaux[i] != m_variable[i])
@@ -409,6 +407,175 @@ private:
     std::size_t m_id;
 };
 
+
+template <typename Time, std::size_t N>
+class Equation : public AtomicModel <Time, inputport <N>, doubleport>
+{
+public:
+    using inputport_type = inputport <N>;
+    using outputport_type = doubleport;
+    using parent_type = AtomicModel <Time, inputport_type, outputport_type>;
+    using time_format = typename parent_type::time_format;
+    using time_type = typename parent_type::time_type;
+    using array_type = std::array <double, N>;
+    using function_type = Function <Time, array_type>;
+
+    Equation(const Context &ctx, double dq, double x,
+             std::size_t id, Function <Time, array_type> function)
+        : parent_type(ctx)
+        , m_integrate_function(function)
+        , m_dx(0)
+        , m_mdx(0)
+        , m_q(x)
+        , m_mq(0)
+        , m_dq(dq)
+        , m_sigma(0)
+        , m_id(id)
+    {
+        static_assert(N > 0,
+                      "vle::dsde::qss2::Equation: bad system size");
+
+        if (id >= N)
+            throw std::invalid_argument(
+                "vle::dsde::qss2::Equation: bad id or system size");
+    }
+
+    virtual time_type init(const vle::Common &/*common*/,
+                           const time_type &/*t*/) override final
+    {
+        m_variable.fill(0);
+        m_mv.fill(0);
+        m_variable[m_id] = m_q;
+        return m_sigma;
+    }
+
+    virtual void lambda() const override final
+    {
+        parent_type::y[0] = m_variable[m_id] + m_dx * m_sigma +
+                            m_mdx / 2. * m_sigma * m_sigma;
+        parent_type::y[1] = m_dx + m_mdx * m_sigma;
+    }
+
+    virtual time_type delta(const time_type &e, const time_type &r,
+                            const time_type &t) override final
+    {
+        if (parent_type::x.empty() && r == 0.0) {
+            m_variable[m_id] += m_dx * m_sigma + m_mdx / 2. *
+                                m_sigma * m_sigma;
+            m_q = m_variable[m_id];
+            m_dx += m_mdx * m_sigma;
+            m_mq = m_dx;
+
+            if (m_mdx == 0)
+                m_sigma = Time::infinity();
+            else
+                m_sigma = std::sqrt(2. * m_dq / std::abs(m_mdx));
+        } else {
+            double a, b, c, s;
+            m_variable[m_id] += m_dx * e + m_mdx / 2. * e * e;
+            m_dx = m_dx + m_mdx * m_sigma;
+            var y = compute(e, t);
+            m_dx = y.v;
+            m_mdx = y.mv;
+            m_q = m_q + m_mq * e;
+            a = m_mdx / 2.;
+            b = m_dx - m_mq;
+            c = m_variable[m_id] - m_q + m_dq;
+            m_sigma = Time::infinity();
+
+            if (a == 0) {
+                if (b != 0) {
+                    s = -c / b;
+
+                    if (s > 0)
+                        m_sigma = s;
+
+                    c = m_variable[m_id] - m_q - m_dq;
+                    s = -c / b;
+
+                    if (s > 0 and s < m_sigma)
+                        m_sigma = s;
+                }
+            } else {
+                s = (-b + std::sqrt(b * b - 4. * a * c)) / 2. / a;
+
+                if (s > 0)
+                    m_sigma = s;
+
+                s = (-b - std::sqrt(b * b - 4. * a * c)) / 2. / a;
+
+                if (s > 0 and s < m_sigma)
+                    m_sigma = s;
+
+                c = m_variable[m_id] - m_q - m_dq;
+                s = (-b + std::sqrt(b * b - 4. * a * c)) / 2. / a;
+
+                if (s > 0 and s < m_sigma)
+                    m_sigma = s;
+
+                s = (-b - std::sqrt(b * b - 4. * a * c)) / 2. / a;
+
+                if (s > 0 and s < m_sigma)
+                    m_sigma = s;
+            }
+        }
+
+        return m_sigma;
+    }
+
+    constexpr inline double value() const noexcept
+    {
+        return m_variable[m_id];
+    }
+
+private:
+    array_type m_variable;
+    array_type m_mv;
+    array_type m_c;
+    Function <Time, array_type> m_integrate_function;
+    double m_x;
+    double m_dx;
+    double m_mdx;
+    double m_q;
+    double m_mq;
+    double m_dq;
+    time_type m_sigma;
+    std::size_t m_id;
+
+    var compute(time_type e, time_type t)
+    {
+        for (auto i = 0ul; i < N; ++i)
+            m_variable[i] += m_mv[i] * e;
+
+        double fv = m_integrate_function(m_variable, t);
+        array_type vaux;
+
+        for (auto i = 0ul; i < N; ++i) {
+            if (not std::isnan(parent_type::x[i].v)) {
+                vaux[i] = m_variable[i];
+                m_variable[i] = parent_type::x[i].v;
+                m_mv[i] = parent_type::x[i].mv;
+            } else {
+                vaux[i] = nan();
+            }
+        }
+
+        var ret;
+        ret.v = m_integrate_function(m_variable, t);
+
+        for (auto i = 0ul; i < N; ++i) {
+            if (not std::isnan(vaux[i]) and vaux[i] != m_variable[i])
+                m_c[i] = (fv - ret.v) / (vaux[i] - m_variable[i]);
+        }
+
+        ret.mv = 0;
+
+        for (auto i = 0ul; i != N; ++i)
+            ret.mv += m_mv[i] * m_c[i];
+
+        return ret;
+    }
+};
 
 }
 }

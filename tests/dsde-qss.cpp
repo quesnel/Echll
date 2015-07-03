@@ -304,6 +304,51 @@ public:
     }
 };
 
+class MySystem22 : public vle::dsde::CoupledModel <
+    MyTime, vle::no_port, vle::no_port,
+    vle::dsde::qss2::inputport <2>,
+    vle::dsde::qss2::doubleport,
+    vle::dsde::TransitionPolicyDefault <MyTime>>
+{
+public:
+    using parent_type = vle::dsde::CoupledModel <
+    MyTime, vle::no_port, vle::no_port,
+    vle::dsde::qss2::inputport <2>,
+    vle::dsde::qss2::doubleport,
+    vle::dsde::TransitionPolicyDefault <MyTime>>;
+    using children_t = parent_type::children_t;
+
+    vle::dsde::qss2::Equation <MyTime, 2> prey;
+    vle::dsde::qss2::Equation <MyTime, 2> predator;
+
+    MySystem22(const vle::Context &ctx, double dq)
+        : parent_type(ctx)
+        , prey(ctx, dq, X_init, 0u, prey_fct())
+        , predator(ctx, dq, Y_init, 1u, predator_fct())
+    {}
+
+    virtual children_t children(const vle::Common &) override final
+    {
+        return { &prey, &predator };
+    }
+
+    virtual void post(const UpdatedPort &out,
+                      UpdatedPort &in) const override final
+    {
+        (void)out;
+
+        if (not prey.y.empty()) {
+            predator.x[0] = prey.y.m_value;
+            in.emplace(&predator);
+        }
+
+        if (not predator.y.empty()) {
+            prey.x[1] = predator.y.m_value;
+            in.emplace(&prey);
+        }
+    }
+};
+
 struct push_back_state_and_time {
     std::vector<std::array <double, 2>> &m_states;
     std::vector<double> &m_times;
@@ -419,6 +464,23 @@ TEST_CASE("main/rk", "run")
                 << model.predator.value() << '\n';
         }
     }
+    {
+        ShowDuration d("prey/predator: qss2 merged integrator");
+        vle::Context ctx = std::make_shared <vle::ContextImpl>();
+        MyDSDE dsde_engine;
+        const double dq = 0.001;
+        MySystem22 model(ctx, dq);
+        std::ofstream ofs("Equation2.dat");
+        REQUIRE(ofs);
+        vle::SimulationStep <MyDSDE> sim(ctx, dsde_engine);
+        double current = sim.init(model, 0.0);
+
+        while (sim.step(model, current, Finish)) {
+            ofs << current << '\t'
+                << model.prey.value() << '\t'
+                << model.predator.value() << '\n';
+        }
+    }
 
     std::ofstream ofs("plot.gnuplot");
     REQUIRE(ofs);
@@ -436,5 +498,8 @@ TEST_CASE("main/rk", "run")
         << "\n"
         << "plot 'EquationBlock2.dat' using 1:3 w l\n"
         << "plot 'EquationBlock2.dat' using 1:2 w l\n"
+        << "\n"
+        << "plot 'Equation2.dat' using 1:2 w l\n"
+        << "plot 'Equation2.dat' using 1:3 w l\n"
         << "unset multiplot\n";
 }
