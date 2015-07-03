@@ -30,17 +30,22 @@
 #include <vle/dsde/qss1.hpp>
 #include <vle/vle.hpp>
 
-
 using state_type = std::array <double, 5>;
 
-enum FirePosition
-{
+enum FirePosition {
     NORTH = 1, SOUTH, EAST, WEST
 };
 
+struct NoStorage {
+    using input_type = vle::dsde::qss1::inputport <5>;
+    using output_type = vle::dsde::qss1::doubleport;
 
-struct Storage
-{
+    inline void push(std::size_t, double, const input_type&) {}
+    inline void push(std::size_t, double, const output_type&) {}
+    inline void resize(std::size_t) {}
+};
+
+struct Storage {
     using input_type = vle::dsde::qss1::inputport <5>;
     using output_type = vle::dsde::qss1::doubleport;
 
@@ -48,12 +53,12 @@ struct Storage
     using output_data = std::vector <output_type>;
 
     struct Event {
-        Event(const input_type& input)
+        Event(const input_type &input)
         {
             in.emplace_back(input);
         }
 
-        Event(const output_type& output)
+        Event(const output_type &output)
         {
             out.emplace_back(output);
         }
@@ -72,15 +77,16 @@ struct Storage
                 std::ofstream ofs(filename);
                 std::cout << "\rWrite: " << filename << std::flush;
 
-                for (const auto& event : vector[i]) {
+                for (const auto &event : vector[i]) {
                     ofs << event.first << ' ' << event.second.in.size() << ' ';
 
-                    for (const auto& in : event.second.in)
+                    for (const auto &in : event.second.in)
                         ofs << in[0] << ' ' << in[1] << ' ' << in[2] << ' ' << in[3] << ' ' <<
                             in[4] << ' ';
 
                     ofs << event.second.out.size() << " ";
-                    for (const auto& out: event.second.out)
+
+                    for (const auto &out : event.second.out)
                         ofs << out[0] << ' ';
                 }
 
@@ -91,16 +97,18 @@ struct Storage
         }
     }
 
-    void push(std::size_t id, double time, const input_type& data)
+    void push(std::size_t id, double time, const input_type &data)
     {
         auto ret = vector.at(id).emplace(time, data);
+
         if (ret.second == false)
             ret.first->second.in.emplace_back(data);
     }
 
-    void push(std::size_t id, double time, const output_type& data)
+    void push(std::size_t id, double time, const output_type &data)
     {
         auto ret = vector.at(id).emplace(time, data);
+
         if (ret.second == false)
             ret.first->second.out.emplace_back(data);
     }
@@ -169,18 +177,19 @@ private:
     bool fire;
 };
 
+template <typename StoragePolicy>
 class FireForrest : public vle::dsde::CoupledModel <
     vle::DoubleTime, vle::PortList <double>, vle::PortList <double>,
     vle::dsde::qss1::inputport <5>,
     vle::dsde::qss1::doubleport,
-    vle::dsde::TransitionPolicyDefault <vle::DoubleTime>>
+    vle::dsde::TransitionPolicyDefault <vle::DoubleTime >>
 {
 public:
     using parent_type = vle::dsde::CoupledModel <
-        vle::DoubleTime, vle::PortList <double>, vle::PortList <double>,
-        vle::dsde::qss1::inputport <5>,
-        vle::dsde::qss1::doubleport,
-        vle::dsde::TransitionPolicyDefault <vle::DoubleTime>>;
+                        vle::DoubleTime, vle::PortList <double>, vle::PortList <double>,
+                        vle::dsde::qss1::inputport <5>,
+                        vle::dsde::qss1::doubleport,
+                        vle::dsde::TransitionPolicyDefault <vle::DoubleTime >>;
     using children_t = parent_type::children_t;
     using child_type = parent_type::child_type;
 
@@ -199,10 +208,8 @@ public:
         for (auto y = 0ul; y != height; ++y) {
             for (auto x = 0ul; x != width; ++x) {
                 double init = (x == width / 4 && y == height / 4) ? 600 : 300;
-
                 double localmass = (x > width / 2 && y > height / 2) ? mass /
-                    10 : mass;
-
+                                   10 : mass;
                 m_models.emplace_back(
                     ctx, dq, epsilon, init, 0u,
                     Fire(alpha, K, k, enthalpy, localmass, surrounding, dx, dy));
@@ -211,7 +218,7 @@ public:
     }
 
     FireForrest(const vle::Context &ctx,
-                std::ifstream& ifs,
+                std::ifstream &ifs,
                 double alpha, double K, double k, double enthalpy,
                 double mass, double surrounding, double dx, double dy,
                 double dq, double epsilon)
@@ -228,31 +235,27 @@ public:
         m_models.reserve(m_width * m_height);
         std::vector <int> type(m_width * m_height, 0);
         std::vector <double> init(m_width * m_height, 0);
-
         std::copy_n(std::istream_iterator <int>(ifs),
                     m_width * m_height,
                     type.begin());
-
         std::copy_n(std::istream_iterator <double>(ifs),
                     m_width * m_height,
                     init.begin());
-
         std::cout << m_width << "x" << m_height << "→"
-                  << m_height * m_width << '\n';
+                  << m_height *m_width << '\n';
 
         for (auto i = 0ul; i != (m_height * m_width); ++i) {
             switch (type[i]) {
             case 0:
             case 1:
                 std::cout << ((init[i] <= 300) ? ": " : "⚡ ");
-
                 m_models.emplace_back(
                     ctx, dq, epsilon, init[i], 0u,
                     Fire(alpha, K, k, enthalpy, mass, surrounding, dx, dy));
                 break;
+
             case 2:
                 std::cout << ((init[i] <= 300) ? ". " : "⚡ ");
-
                 m_models.emplace_back(
                     ctx, dq, epsilon, init[i], 0u,
                     Fire(alpha, K, k, enthalpy, mass / 4.0, surrounding, dx, dy));
@@ -282,7 +285,6 @@ public:
             std::size_t position = boost::numeric_cast<std::size_t>(tmp);
             auto x = position % m_width;
             auto y = position / m_width;
-
             m_storage.push(position, CoupledModel::tn, mdl->y);
 
             if (x > 0) {
@@ -332,10 +334,11 @@ public:
     std::size_t m_width;
     std::size_t m_height;
     double m_time;
-    mutable Storage m_storage;
+    mutable StoragePolicy m_storage;
 };
 
-void run(FireForrest& model, vle::Context& ctx)
+template <typename StoragePolicy>
+void run(FireForrest <StoragePolicy> &model, vle::Context &ctx)
 {
     constexpr const double finish = 200.0;
     constexpr const unsigned int tostore = 40u;
@@ -344,7 +347,6 @@ void run(FireForrest& model, vle::Context& ctx)
     double current = sim.init(model, 0.0);
     double before = current;
     auto step = 0u;
-
     {
         boost::progress_timer timer;
         boost::progress_display progress(tostore);
@@ -361,7 +363,6 @@ void run(FireForrest& model, vle::Context& ctx)
 
         progress += (progress.expected_count() - progress.count());
     }
-
     std::ofstream ofs("fireforrest.gnuplot");
     ofs << "set terminal png nocrop enhanced size 4000,3000 font \"arial,9\"\n"
         << "set output 'fireforrest.png'\n"
@@ -399,23 +400,41 @@ int main(int argc, char **argv)
     constexpr const double surrounding = 300;
     constexpr const double dx = 1. / 20.;
     constexpr const double dy = 1. / 20.;
+    bool withstorage = false;
+    std::vector <char *> files;
+    files.reserve(4);
 
-    if (argc > 1) {
-        std::ifstream ifs(argv[1]);
-        if (!ifs) {
-            std::cerr << "failed to open " << argv[1] << '\n';
-            return EXIT_FAILURE;
-        }
+    for (int i = 1; i < argc; ++i)
+        if (std::strcmp(argv[i], "-s") == 0)
+            withstorage = true;
+        else
+            files.push_back(argv[i]);
 
-        FireForrest model(ctx, ifs, alpha, K, k, enthalpy, mass, surrounding,
-                          dx,  dy, dq, epsilon);
-
+    if (files.empty()) {
+        std::cout << "Default simulation\n";
+        FireForrest <NoStorage> model(ctx, width, height,
+                                      alpha, K, k, enthalpy, mass,
+                                      surrounding,  dx,  dy, dq, epsilon);
         run(model, ctx);
     } else {
-        FireForrest model(ctx, width, height, alpha, K, k, enthalpy, mass,
-                          surrounding,  dx,  dy, dq, epsilon);
+        for (auto *str : files) {
+            std::cout << str << " simulation\n";
+            std::ifstream ifs(str);
 
-        run(model, ctx);
+            if (ifs.is_open()) {
+                if (withstorage) {
+                    FireForrest <Storage> model(ctx, ifs, alpha, K, k,
+                                                enthalpy, mass, surrounding,
+                                                dx,  dy, dq, epsilon);
+                    run(model, ctx);
+                } else {
+                    FireForrest <NoStorage> model(ctx, ifs, alpha, K, k,
+                                                  enthalpy, mass, surrounding,
+                                                  dx,  dy, dq, epsilon);
+                    run(model, ctx);
+                }
+            }
+        }
     }
 
     return 0;
