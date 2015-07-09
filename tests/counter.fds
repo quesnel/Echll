@@ -1,0 +1,37 @@
+atomic Generator {
+	vars { int send }
+	interfaceIO { output beep }
+	state-time-machine { wait 1.0 send 0.0 }
+	state-machine {
+		start in send { "send = 0" }
+		deltint (S:wait) => S":send { "send++" }
+		deltint (S:send) => S":wait
+		outfn (S:send) => Y:[beep]
+	}
+}
+
+atomic Counter {
+	vars { int counter }
+	interfaceIO { input in }
+	state-time-machine { idle infinity }
+	state-machine {
+		start in idle { "counter = 0" }
+		deltext (S:idle, X:[in]) => S":idle { "counter++" }
+	}
+}
+
+coupled Top {
+	models {
+		atomic Generator g1
+		atomic Generator g2
+		atomic Counter c
+	}
+	interfaceIO {
+		input ent.Job solved
+		output ent.Reult rslt
+	}
+	couplings {
+		ic g1 : beep -> c : in
+		ic g2 : beep -> c : in
+	}
+}

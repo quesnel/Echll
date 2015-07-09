@@ -85,6 +85,16 @@ install(DIRECTORY vle
   DESTINATION include/Echll-${Echll_STABLEVERSION})
 
 ### # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+## Core binary
+#
+
+add_executable(devsml2 bin/echll.cpp bin/echll.hpp bin/main.cpp
+  bin/vle1x.hpp bin/writer.cpp bin/writer.hpp)
+target_link_libraries(devsml2 ${Echll_LINK_LIBRARIES})
+set_target_properties(devsml2 PROPERTIES
+    COMPILE_FLAGS "${echll_compile_flags}")
+
+### # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 ## Testing
 #
 
@@ -117,6 +127,13 @@ find_path(CATCH_INCLUDE_DIR catch.hpp PATHS /usr/include /usr/local/include ENV 
 if (CATCH_INCLUDE_DIR)
   message(STATUS " found 'catch.hpp' in ${CATCH_INCLUDE_DIR}")
   include_directories(${CATCH_INCLUDE_DIR})
+
+  add_executable(test_parser_devsml2 tests/parser-devsml2.cpp)
+  target_link_libraries(test_parser_devsml2 ${Echll_LINK_LIBRARIES})
+  set_target_properties(test_parser_devsml2 PROPERTIES
+    COMPILE_DEFINITIONS EXAMPLES_DIR="${CMAKE_SOURCE_DIR}/tests"
+    COMPILE_FLAGS "${echll_compile_flags}")
+  add_test(NAME test_parser_devsml2 COMMAND test_parser_devsml2)
 
   add_executable(test_utils tests/utils.cpp)
   target_link_libraries(test_utils ${Echll_LINK_LIBRARIES})
