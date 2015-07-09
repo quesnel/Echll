@@ -246,19 +246,17 @@ public:
 
         for (auto i = 0ul; i != (m_height * m_width); ++i) {
             switch (type[i]) {
-            case 0:
-            case 1:
-                std::cout << ((init[i] <= 300) ? ": " : "⚡ ");
-                m_models.emplace_back(
-                    ctx, dq, epsilon, init[i], 0u,
-                    Fire(alpha, K, k, enthalpy, mass, surrounding, dx, dy));
-                break;
-
             case 2:
                 std::cout << ((init[i] <= 300) ? ". " : "⚡ ");
                 m_models.emplace_back(
                     ctx, dq, epsilon, init[i], 0u,
                     Fire(alpha, K, k, enthalpy, mass / 4.0, surrounding, dx, dy));
+                break;
+            default:
+                std::cout << ((init[i] <= 300) ? ": " : "⚡ ");
+                m_models.emplace_back(
+                    ctx, dq, epsilon, init[i], 0u,
+                    Fire(alpha, K, k, enthalpy, mass, surrounding, dx, dy));
                 break;
             }
 
