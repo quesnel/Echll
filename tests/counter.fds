@@ -1,6 +1,10 @@
+entity real {
+	double value
+}
+
 atomic Generator {
 	vars { int send }
-	interfaceIO { output beep }
+	interfaceIO { output real beep }
 	state-time-machine { wait 1.0 send 0.0 }
 	state-machine {
 		start in send { "send = 0" }
@@ -12,7 +16,7 @@ atomic Generator {
 
 atomic Counter {
 	vars { int counter }
-	interfaceIO { input in }
+	interfaceIO { input real in }
 	state-time-machine { idle infinity }
 	state-machine {
 		start in idle { "counter = 0" }
@@ -26,10 +30,7 @@ coupled Top {
 		atomic Generator g2
 		atomic Counter c
 	}
-	interfaceIO {
-		input ent.Job solved
-		output ent.Reult rslt
-	}
+	interfaceIO {}
 	couplings {
 		ic g1 : beep -> c : in
 		ic g2 : beep -> c : in

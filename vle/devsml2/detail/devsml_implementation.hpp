@@ -415,6 +415,12 @@ void semantic_convert(vle::devsml2::parser::DevsML& p, DevsML& out)
     out.entities = convert_entities(p.entities);
     out.atomics = convert_atomics(p.atomics, out.entities);
     out.coupleds = convert_coupleds(p.coupleds, out.atomics, out.entities);
+
+    if (not out.coupleds.empty()) {
+        out.top = &out.coupleds.back();
+    } else {
+        out.top = nullptr;
+    }
 }
 
 }}

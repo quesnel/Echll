@@ -60,7 +60,7 @@ std::string writer_error::format_what(const std::string& msg,
 
 std::ostream& operator<<(std::ostream& os, const license& lic)
 {
-    os << "/*";
+    os << "/*\n";
 
     if (not lic.copyright_owners.empty())
         os << " * " << lic.copyright_owners << '\n';
@@ -109,7 +109,7 @@ std::ostream& operator<<(std::ostream& os, const license& lic)
         break;
     }
 
-    return os << " */";
+    return os << " */\n";
 }
 
 }}

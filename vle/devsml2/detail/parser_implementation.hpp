@@ -364,13 +364,15 @@ Parser <Iterator, Skipper>::Parser()
 }
 
 template <typename Iterator, typename Skipper>
-bool parse(Iterator &first, Iterator end, const Skipper& skipper, vle::devsml2::parser::DevsML &main)
+bool parse(Iterator &first, Iterator end, const Skipper& skipper,
+           vle::devsml2::parser::DevsML &main)
 {
     Parser <Iterator, Skipper> p;
     return boost::spirit::qi::phrase_parse(first, end, p, skipper, main);
 }
 
-bool parse_filename(const std::string& filename, vle::devsml2::parser::DevsML &main)
+bool parse_filename(const std::string& filename,
+                    vle::devsml2::parser::DevsML &main)
 {
     std::ifstream ifs(filename);
 

@@ -24,12 +24,18 @@
 
 #include <vle/devsml2/devsml.hpp>
 #include <vle/devsml2/exception.hpp>
+#include "writer.hpp"
 
 namespace vle { namespace devsml2 { namespace echll {
 
+/**
+ * @brief Write DevsML structure using Echll DSDE API in specified location.
+ *
+ */
 void write(const DevsML& data,
            const std::string& output_directory,
-           const std::string& package_name);
+           const std::string& package_name,
+           const license& lic = license());
 
 }}}
 
