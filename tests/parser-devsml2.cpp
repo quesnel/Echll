@@ -131,9 +131,8 @@ void parse_atomic()
     assert(main.atomics[0].statemachine.deltext.size() == 1u);
     assert(main.atomics[0].statemachine.outfn.size() == 1u);
     assert(main.atomics[0].statemachine.deltint.size() == 1u);
-    assert(main.atomics[0].statemachine.confluent.size() == 1u);
-    assert(main.atomics[0].statemachine.confluent[0]
-           == vle::devsml2::parser::CONFLUENT_IGNORE_INPUT);
+    assert(main.atomics[0].statemachine.confluent ==
+        vle::devsml2::parser::CONFLUENT_IGNORE_INPUT);
 
     assert(main.atomics[0].statemachine.initState.state == "passive");
 }

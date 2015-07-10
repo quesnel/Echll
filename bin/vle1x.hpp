@@ -29,7 +29,8 @@ namespace vle { namespace devsml2 { namespace vle1x {
 
 void write(const DevsML& data,
            const std::string& output_directory,
-           const std::string& package_name);
+           const std::string& package_name,
+           const license& lic = license());
 
 }}}
 

@@ -1,8 +1,10 @@
-=========
-VLE 2.0.0
-=========
+Echll - A new simulation kernel for VLE
+=======================================
 
 Changes since /dev/null
 -----------------------
 
-* Add a kernel
+* Echll proposeses a new set of kernel with DEVS, DSDE and DTSS support.
+
+* Echll introduces a DevsML2 parser/writer to enable the use of external
+  atomic/coupled models from text input files and produces C++ output files.
