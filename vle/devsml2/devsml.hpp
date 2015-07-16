@@ -64,6 +64,13 @@ struct Abstract {
     std::vector <Message> ins;
     std::vector <Message> outs;
     ComponentType type;
+
+protected:
+    /**
+     * @brief Destructor is protected to avoid the use of the delete operator
+     * from a pointer of an Abstract object.
+     */
+    ~Abstract() {}
 };
 
 struct Component {
