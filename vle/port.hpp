@@ -31,9 +31,7 @@
 #include <algorithm>
 #include <map>
 #include <vector>
-#include <boost/serialization/map.hpp>
 #include <boost/serialization/vector.hpp>
-#include <boost/serialization/string.hpp>
 
 namespace vle {
 
@@ -102,7 +100,6 @@ public:
      */
     void merge(const PortList &lst, std::size_t port_src,
                std::size_t port_dst);
-
 
     void add_ports(std::size_t number);
 
@@ -197,6 +194,10 @@ public:
     size_type size() const noexcept;
 
     void clear() noexcept;
+
+    friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version);
 
 private:
     sparse_port_list m_list;

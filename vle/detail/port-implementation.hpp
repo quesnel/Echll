@@ -321,6 +321,16 @@ void SparsePortList<Value>::clear() noexcept
     m_list.clear();
 }
 
+template <typename Value>
+template<class Archive>
+void SparsePortList<Value>::serialize(Archive &ar, const unsigned int version)
+{
+    (void)version;
+
+    ar & m_size;
+    ar & m_list;
+}
+
 }
 
 #endif
