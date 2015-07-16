@@ -36,6 +36,11 @@ enum VariableType {
     VARIABLE_TYPE_ENTITY
 };
 
+enum ComponentType {
+    COMPONENT_ATOMIC,
+    COMPONENT_COUPLED
+};
+
 struct Entity;
 
 struct Variable {
@@ -58,6 +63,7 @@ struct Message {
 struct Abstract {
     std::vector <Message> ins;
     std::vector <Message> outs;
+    ComponentType type;
 };
 
 struct Component {

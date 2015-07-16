@@ -268,6 +268,7 @@ std::vector <Atomic> convert_atomics(std::vector <parser::Atomic>& in,
         ret[i].name = in[i].name;
 
     for (std::size_t i = 0, e = ret.size(); i != e; ++i) {
+        ret[i].type = COMPONENT_ATOMIC;
         ret[i].ins = convert_message(in[i].interfaceIO,
                                      parser::MESSAGE_TYPE_INPUT,
                                      entities);
@@ -381,6 +382,7 @@ std::vector <Coupled> convert_coupleds(std::vector <parser::Coupled>& in,
         ret[i].name = in[i].name;
 
     for (std::size_t i = 0, e = ret.size(); i != e; ++i) {
+        ret[i].type = COMPONENT_COUPLED;
         ret[i].ins = convert_message(in[i].interfaceIO,
                                      parser::MESSAGE_TYPE_INPUT,
                                      entities);
