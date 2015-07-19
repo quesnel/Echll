@@ -97,7 +97,7 @@ struct StateMachine {
     std::vector <Deltext> deltext;
     std::vector <Outfn> outfn;
     std::vector <Deltint> deltint;
-    std::vector <ConfluentType> confluent;
+    ConfluentType confluent;
 };
 
 struct Atomic {

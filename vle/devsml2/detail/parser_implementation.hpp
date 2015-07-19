@@ -92,7 +92,7 @@ BOOST_FUSION_ADAPT_STRUCT(
     (std::vector <vle::devsml2::parser::Deltext>, deltext)
     (std::vector <vle::devsml2::parser::Outfn>, outfn)
     (std::vector <vle::devsml2::parser::Deltint>, deltint)
-    (std::vector <vle::devsml2::parser::ConfluentType>, confluent)
+    (vle::devsml2::parser::ConfluentType, confluent)
     )
 
 BOOST_FUSION_ADAPT_STRUCT(
@@ -299,7 +299,7 @@ Parser <Iterator, Skipper>::Parser()
         >> *( deltext_rule[phx::push_back(phx::at_c<1>(_val), _1)]
             | outfn_rule[phx::push_back(phx::at_c<2>(_val), _1)]
             | deltint_rule[phx::push_back(phx::at_c<3>(_val), _1)]
-            | ("confluent" >> confluent_type_choice[phx::push_back(phx::at_c<4>(_val), _1)])
+            | ("confluent" >> confluent_type_choice[phx::at_c<4>(_val)])
             )
         >> '}'
         ;
