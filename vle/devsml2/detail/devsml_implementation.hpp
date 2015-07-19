@@ -238,20 +238,21 @@ StateMachine convert_statemachine(parser::StateMachine& in, Atomic& atomic)
         }
     }
 
-    std::transform(in.confluent.begin(), in.confluent.end(),
-                   std::back_inserter(ret.confluent),
-                   [](parser::ConfluentType type) {
-                       switch (type) {
-                       case parser::CONFLUENT_IGNORE_INPUT:
-                           return CONFLUENT_IGNORE_INPUT;
-                       case parser::CONFLUENT_INPUT_ONLY:
-                           return CONFLUENT_INPUT_ONLY;
-                       case parser::CONFLUENT_INPUT_FIRST:
-                           return CONFLUENT_INPUT_FIRST;
-                       case parser::CONFLUENT_INPUT_LATER:
-                           return CONFLUENT_INPUT_LATER;
-                       }
-                   });
+   switch (in.confluent) {
+   case parser::CONFLUENT_IGNORE_INPUT:
+       ret.confluent = CONFLUENT_IGNORE_INPUT;
+       break;
+   case parser::CONFLUENT_INPUT_ONLY:
+       ret.confluent = CONFLUENT_INPUT_ONLY;
+       break;
+   case parser::CONFLUENT_INPUT_FIRST:
+       ret.confluent = CONFLUENT_INPUT_FIRST;
+       break;
+   case parser::CONFLUENT_INPUT_LATER:
+       ret.confluent = CONFLUENT_INPUT_LATER;
+       break;
+   }
+
     return ret;
 }
 
