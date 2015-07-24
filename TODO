@@ -6,24 +6,25 @@ Here's a short list of things we can do
   - Add the move constructible traits
   - Add the move assignable traits
 
-- Parallel kernel
+- Parallel multi/kernel
   - How to define parallel vle::Simulation class ?
 
-- Engine
+- Engines
   - Initialization system:
-    - Add a generic init system for all engines/models in CTOR?
-    - Provides an experimental frames manager.
-  - Add a **devs** engine.
+    - Add a generic init system for all engines/models in CTOR to permit the
+      use of an experimental frames manager.
+  - Add a thread pool system in context to avoid the specific thread pool in
+    the DSDE coupled model.
   - Add a **dtss** engine.
     - Use the `std::is_integral <Time::type>::value` to ensure type of the
       template.
-  - How to provide several simulation algorithms?
-  - Add a global identifier (`size_t` and/or `std::string`): `size_t`
-    may be useful with PRNG but std::string for observation…
   - Add an observation function, but when call it ? We can provide
     several methods: timed (at the end of the simulation or following
     a time step) and event (when a model produce an output).
   - Add feature to avoid update of the scheduler in transition function.
+  - DSDE/DEVS: improve the algorithms and API to remove the template parameters
+    of children (time, input and output ports) in coupled/executive model to
+    suppress the virtual function.
 
 - Project
   - Change the name of VLE
