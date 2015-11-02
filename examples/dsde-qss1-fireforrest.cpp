@@ -78,16 +78,22 @@ struct Storage {
                 std::cout << "\rWrite: " << filename << std::flush;
 
                 for (const auto &event : vector[i]) {
-                    ofs << event.first << ' ' << event.second.in.size() << ' ';
+                    ofs << event.first << ' ';
 
-                    for (const auto &in : event.second.in)
-                        ofs << in[0] << ' ' << in[1] << ' ' << in[2] << ' ' << in[3] << ' ' <<
-                            in[4] << ' ';
+                    if (event.second.in.empty())
+                        ofs << "nan nan nan nan nan ";
+                    else
+                        for (const auto &in : event.second.in)
+                            ofs << in[0] << ' ' << in[1] << ' ' << in[2] << ' '
+                                << in[3] << ' ' << in[4] << ' ';
 
-                    ofs << event.second.out.size() << " ";
+                    if (event.second.out.empty())
+                        ofs << "nan";
+                    else
+                        for (const auto &out : event.second.out)
+                            ofs << out[0];
 
-                    for (const auto &out : event.second.out)
-                        ofs << out[0] << ' ';
+                    ofs << '\n';
                 }
 
                 ofs << '\n';
