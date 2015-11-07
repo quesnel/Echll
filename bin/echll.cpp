@@ -62,6 +62,8 @@ void write_variable(std::ostream& os, const Variable& variable)
     case VARIABLE_TYPE_ENTITY:
         os << variable.entity->name;
         break;
+    default:
+        assert(false && "unknown state");
     }
 
     os << ' ' << variable.name << ";\n";
@@ -113,7 +115,7 @@ std::ostream& operator<<(std::ostream& os, const STAValue& value)
     if (real != nullptr)
         return os << *real;
 
-    const Variable* const* variable = boost::get <const Variable* const>(&value);
+    const Variable* const* variable = boost::get <Variable*>(&value);
     if (variable != nullptr)
         return os << (*variable)->name;
 
@@ -201,6 +203,8 @@ void write_state_machine(std::ostream& os, const Atomic& atomic)
         os << "            internal();\n"
            << "            external(e, r, t);\n";
         break;
+    default:
+        assert(false && "unknown state");
     }
 
     os << "        } else if (x.empty()) {\n"
@@ -259,6 +263,8 @@ std::string abstract_name_get(const Abstract *model)
         return static_cast <const Atomic*>(model)->name;
     case COMPONENT_COUPLED:
         return static_cast <const Coupled*>(model)->name;
+    default:
+        assert(false && "unknown state");
     }
 }
 
@@ -282,8 +288,8 @@ void write_coupled(std::ostream& os, const Coupled& coupled)
        << "    {\n";
 
     /// FIXME perhaps check @e out paramter to improve speedup.
-    for (const auto& coupling : coupled.couplings) {
-    }
+    //for (const auto& coupling : coupled.couplings) {
+    //}
 
     os << "        }\n"
        << "    }\n";

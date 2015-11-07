@@ -106,6 +106,7 @@ std::ostream& operator<<(std::ostream& os, const license& lic)
             " * SOFTWARE.\n";
         break;
     case WITHOUT_LICENSE:
+    default:
         break;
     }
 

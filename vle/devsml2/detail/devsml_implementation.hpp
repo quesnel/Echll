@@ -251,6 +251,8 @@ StateMachine convert_statemachine(parser::StateMachine& in, Atomic& atomic)
    case parser::CONFLUENT_INPUT_LATER:
        ret.confluent = CONFLUENT_INPUT_LATER;
        break;
+   default:
+       assert(false && "unknown state");
    }
 
     return ret;
