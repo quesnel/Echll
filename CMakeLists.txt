@@ -53,7 +53,7 @@ else()
 endif ()
 
 message(STATUS "checking for Boost headers and libraries")
-find_package(Boost 1.55 REQUIRED COMPONENTS mpi serialization)
+find_package(Boost 1.54 REQUIRED COMPONENTS mpi serialization)
 if (NOT Boost_FOUND)
   message(ERROR " failed to found Boost headers or Boost MPI library.
   Please install them or assign BOOST_ROOT, BOOST_INCLUDREDIR,
