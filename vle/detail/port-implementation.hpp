@@ -64,7 +64,7 @@ PortList <Value>::PortList(size_type port_number)
 template <typename Value>
 void PortList <Value>::merge(const PortList &lst)
 {
-    for (auto i = 0ul, e = lst.size(); i != e; ++i)
+    for (std::size_t i = 0ul, e = lst.size(); i != e; ++i)
         for (const auto &value : lst[i])
             ports[i].push_back(value);
 }

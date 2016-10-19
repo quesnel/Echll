@@ -40,7 +40,7 @@ std::ostream &operator<<(std::ostream &os, const PortList<Value> &port)
     if (not port.empty()) {
         os << " (";
 
-        for (auto i = 0ul, e = port.size(); i != e; ++i) {
+        for (std::size_t i = 0, e = port.size(); i != e; ++i) {
             const auto &values = port[i];
 
             for (const auto &v : values)

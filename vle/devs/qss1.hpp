@@ -164,7 +164,7 @@ public:
         m_time += e;
         m_sigma = Time::infinity();
 
-        for (auto i = 0ul, end = parent_type::x.size(); i != end; ++i) {
+        for (std::size_t i = 0ul, end = parent_type::x.size(); i != end; ++i) {
             if (not std::isnan(parent_type::x[i])) {
                 m_variable[i] = parent_type::x[i];
                 m_sigma = Time::null();
@@ -292,7 +292,8 @@ public:
     virtual void post(const child_type *out, UpdatedPort &in) const override
     {
         if (!out) {
-            for (auto i = 0ul, end = parent_type::x.size(); i != end; ++i) {
+            for (std::size_t i = 0ul, end = parent_type::x.size(); i != end;
+                ++i) {
                 if (!std::isnan(parent_type::x[i])) {
                     m_staticfunction.x[i] = parent_type::x[i];
                     in.emplace(&m_staticfunction);
